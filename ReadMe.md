@@ -12,7 +12,7 @@ The following lines make sure you are in the "server" subfolder, install needed 
   ```
   cd server
   pip install -r requirements.txt
-  python app.py
+  python server.py
   ```
 
 After that the server is running under:
@@ -81,7 +81,7 @@ The commands in the build file are explained in the following and can also be ru
     ```
 
 - Building the Client part automatically puts the new Client-Files into the servers static folder. Therefore by starting the Python server the new client is served.
-  - make sure you are in the right folder (server) and run the app.py script:
+  - make sure you are in the right folder (server) and run the server.py script:
     ```
     cd server
     pip install -r requirements.txt
