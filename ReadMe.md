@@ -16,8 +16,8 @@ The following lines make sure you are in the "server" subfolder, install needed 
   ```
 
 After that the server is running under:
-- https://127.0.0.1:5000/apidocs for the documentation
-- https://127.0.0.1:5000/editor for the GUI.
+- http://127.0.0.1:5000/apidocs for the documentation
+- http://127.0.0.1:5000/editor for the GUI.
 
 # Functionality
 ## already implemented Features
@@ -85,7 +85,7 @@ The commands in the build file are explained in the following and can also be ru
     ```
     cd server
     pip install -r requirements.txt
-    python app.py
+    python server.py
     ```
 
 # Notes for developers
