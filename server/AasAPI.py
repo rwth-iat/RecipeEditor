@@ -37,6 +37,109 @@ def get_all_aas_capabilities(file_content):
                           "IRI":capability.find(ns+'semanticId').find(ns+'keys').find(ns+'key').text
                           })
   return capabilities
+
+def parse_aas_equipment_info(file_content):
+    """Extract equipment information from AAS file for PropertyWindow display"""
+    root = ET.fromstring(file_content)
+    ns = '{http://www.admin-shell.io/aas/2/0}'
+    
+    equipment_info = {
+        "aas_id": None,
+        "asset_id": None,
+        "capabilities": [],
+        "properties": [],
+        "operations": []
+    }
+    
+    # Extract AAS ID
+    aas_elem = root.find(ns+'assetAdministrationShell')
+    if aas_elem is not None:
+        identification = aas_elem.find(ns+'identification')
+        if identification is not None and hasattr(identification, 'text'):
+            equipment_info["aas_id"] = identification.text
+    
+    # Extract Asset ID
+    asset_elem = root.find(ns+'asset')
+    if asset_elem is not None:
+        asset_id = asset_elem.find(ns+'identification')
+        if asset_id is not None and hasattr(asset_id, 'text'):
+            equipment_info["asset_id"] = asset_id.text
+    
+    # Extract Capabilities
+    for capability in root.iter(ns+'capability'):
+        cap_info = {
+            "id": None,
+            "semantic_id": None
+        }
+        id_short = capability.find(ns+'idShort')
+        if id_short is not None and hasattr(id_short, 'text'):
+            cap_info["id"] = id_short.text
+        semantic_id = capability.find(ns+'semanticId')
+        if semantic_id is not None:
+            keys = semantic_id.find(ns+'keys')
+            if keys is not None:
+                key = keys.find(ns+'key')
+                if key is not None and hasattr(key, 'text'):
+                    cap_info["semantic_id"] = key.text
+        equipment_info["capabilities"].append(cap_info)
+    
+    # Extract Properties
+    for property_elem in root.iter(ns+'property'):
+        prop_info = {
+            "id": None,
+            "value": None,
+            "data_type": None
+        }
+        id_short = property_elem.find(ns+'idShort')
+        if id_short is not None and hasattr(id_short, 'text'):
+            prop_info["id"] = id_short.text
+        value = property_elem.find(ns+'value')
+        if value is not None and hasattr(value, 'text'):
+            prop_info["value"] = value.text
+        data_type = property_elem.find(ns+'valueType')
+        if data_type is not None and hasattr(data_type, 'text'):
+            prop_info["data_type"] = data_type.text
+        equipment_info["properties"].append(prop_info)
+    
+    # Extract Operations
+    for operation in root.iter(ns+'operation'):
+        op_info = {
+            "id": None,
+            "input_variables": [],
+            "output_variables": []
+        }
+        
+        # Extract input variables
+        for input_var in operation.iter(ns+'inputVariable'):
+            var_info = {
+                "id": None,
+                "value": None
+            }
+            id_short = input_var.find(ns+'idShort')
+            if id_short is not None and hasattr(id_short, 'text'):
+                var_info["id"] = id_short.text
+            value = input_var.find(ns+'value')
+            if value is not None and hasattr(value, 'text'):
+                var_info["value"] = value.text
+            op_info["input_variables"].append(var_info)
+        
+        # Extract output variables
+        for output_var in operation.iter(ns+'outputVariable'):
+            var_info = {
+                "id": None,
+                "value": None
+            }
+            id_short = output_var.find(ns+'idShort')
+            if id_short is not None and hasattr(id_short, 'text'):
+                var_info["id"] = id_short.text
+            value = output_var.find(ns+'value')
+            if value is not None and hasattr(value, 'text'):
+                var_info["value"] = value.text
+            op_info["output_variables"].append(var_info)
+        
+        equipment_info["operations"].append(op_info)
+    
+    return equipment_info
         
 def get_all_aasx_capabilities(file_contents):
     with tempfile.NamedTemporaryFile(mode='wb+', delete=False) as temp_file:

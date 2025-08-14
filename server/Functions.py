@@ -5,7 +5,7 @@ import owlready2
 
 UPLOAD_FOLDER = './upload/'
 
-ALLOWED_EXTENSIONS = {'owl', 'aasx', 'xml'}
+ALLOWED_EXTENSIONS = {'owl', 'aasx', 'xml', 'mtp', 'aml'}
 
 def upload_file(request, subfolder):
   print("upload startet")
