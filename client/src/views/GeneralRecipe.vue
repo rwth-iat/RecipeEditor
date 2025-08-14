@@ -1,9 +1,11 @@
 <template>
   <main>
-    <Topbar title="General Recipe Tool" @trigger-export="callExportFunciton" />
+    <Topbar title="General Recipe Tool" @trigger-export="callExportGeneralRecipeFunction"
+      @trigger-save="triggerSaveWorkspace" @trigger-exportJson="triggerExportWorkspace"
+      @trigger-importJson="triggerImportWorkspace" @trigger-reset="triggerResetWorkspace" />
     <div id="editor">
-      <Sidebar id="side_bar" />
-      <workspace id="workspace" ref="workspaceRef" />
+      <Sidebar id="side_bar" mode="general" />
+      <workspace :storage-key="workspaceStorageKey" :key="workspaceKey" id="workspace" ref="workspaceRef" />
     </div>
   </main>
 </template>
@@ -12,14 +14,29 @@
 import Topbar from '../components/TopBar.vue'
 import Sidebar from '../components/SideBar.vue'
 import workspace from '../components/WorkspaceContainer.vue'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { useWorkspaceActions } from '@/composables/useWorkspaceActions'
+
+
+const route = useRoute()
 
 const workspaceRef = ref(null);
 
-const callExportFunciton = () => {
-  console.log("function call")
-  workspaceRef.value.export_batchml();
-};
+watch(() => route.fullPath, (newPath) => {
+  workspaceKey.value = newPath // update key when route changes
+})
+
+const {
+  workspaceKey,
+  workspaceStorageKey,
+  callExportGeneralRecipeFunction,
+  triggerResetWorkspace,
+  triggerSaveWorkspace,
+  triggerExportWorkspace,
+  triggerImportWorkspace
+} = useWorkspaceActions(workspaceRef, 'workspaceState_general');
+
 </script>
 
 <style lang="scss">
@@ -83,5 +100,4 @@ main {
   display: flex;
   flex-grow: 1;
 }
-
 </style>
