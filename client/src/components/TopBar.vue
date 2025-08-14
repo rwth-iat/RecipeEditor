@@ -1,35 +1,101 @@
 <template>
   <header id="topbar">
-    <button class="button-with-border" style="float:left;" @click="triggerExportInWorkspace">Export</button>
-    <h3>{{ title }}</h3>
-    <div class="dropdown">
-      <button class="button-with-border settings-button" @click="toggleDropdown">
-        ⚙ Settings
+    <div class="dropdown actions-dropdown">
+      <button class="button-with-border settings-button" @click="toggleActionsDropdown">
+        Actions
       </button>
-      <div v-if="dropdownVisible" class="dropdown-menu">
-        <router-link to="/" class="dropdown-item">General Recipe</router-link>
-        <router-link to="/master-recipe" class="dropdown-item">Master Recipe</router-link>
+      <div v-if="actionsDropdownVisible" class="dropdown-menu">
+        <button class="dropdown-item" @click="triggerExportInWorkspace">
+          Export BatchML Recipe
+        </button>
+
+        <button v-if="mode === 'master'" class="dropdown-item" @click="triggerOpenConfig">
+          Configure Recipe
+        </button>
+        <button class="dropdown-item" @click="triggerExportWorkspace">
+          Export Workspace
+        </button>
+        <button class="dropdown-item" @click="triggerSaveWorkspace">
+          Save Workspace
+        </button>
+        <button class="dropdown-item" @click="$refs.importInput.click()">
+          Import Recipe
+        </button>
+        <button class="dropdown-item" @click="triggerResetWorkspace">
+          Reset Workspace
+        </button>
       </div>
     </div>
+
+    <h3 style="color: lightgray"> {{ title }}</h3>
+    <div class="dropdown">
+      <button class="button-with-border settings-button" @click="toggleSettingsDropdown">
+        ⚙ Settings
+      </button>
+      <div v-if="settingsDropdownVisible" class="dropdown-menu">
+        <router-link to="/" class="dropdown-item">General Recipe</router-link>
+        <router-link to="/master-recipe" class="dropdown-item">Master Recipe</router-link>
+        <a :href="apiDocsLink" target="_blank" class="dropdown-item">API Docs</a>
+      </div>
+    </div>
+    <input type="file" accept=".json,.xml" ref="importInput" style="display: none" @change="onImportSelected" />
   </header>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+const apiDocsLink = window.location.origin.replace(/:\d+$/, ":5000") + "/apidocs";
+import { ref } from "vue";
 
 defineProps({
-  title: String
-})
-const emit = defineEmits(['trigger-export']);
-const dropdownVisible = ref(false);
+  title: String,
+  mode: {
+    type: String,
+    default: 'general'
+  }
+});
+const emit = defineEmits(["trigger-export", "trigger-save", "trigger-reset", "trigger-importJson", "trigger-exportJson", "trigger-open-config", "trigger-export-master-recipe"]);
+const actionsDropdownVisible = ref(false);
+const settingsDropdownVisible = ref(false);
 
-const triggerExportInWorkspace = () => {
-  console.log("trigger-export")
-  emit('trigger-export');
+const toggleActionsDropdown = () => {
+  actionsDropdownVisible.value = !actionsDropdownVisible.value;
 };
 
-const toggleDropdown = () => {
-  dropdownVisible.value = !dropdownVisible.value;
+const toggleSettingsDropdown = () => {
+  settingsDropdownVisible.value = !settingsDropdownVisible.value;
+};
+const triggerExportInWorkspace = () => {
+  console.log("trigger-export");
+  emit("trigger-export");
+};
+
+const triggerOpenConfig = () => {
+  console.log("trigger-open-config");
+  emit("trigger-open-config");
+};
+
+const triggerSaveWorkspace = () => {
+  console.log("trigger-save");
+  emit("trigger-save");
+};
+
+const triggerResetWorkspace = () => {
+  console.log("trigger-reset");
+  emit("trigger-reset");
+};
+
+function onImportSelected(e) {
+  emit('trigger-importJson', e);
+}
+
+const triggerExportWorkspace = () => {
+  console.log("trigger-exportJson");
+  emit("trigger-exportJson");
+};
+
+const triggerExportMasterRecipe = () => {
+  console.log("trigger-export-master-recipe");
+  emit("trigger-export-master-recipe");
 };
 
 </script>
@@ -49,6 +115,7 @@ h3 {
   flex-grow: 1;
   text-align: center;
   margin: 0;
+  border: 0 !important;
 }
 
 #exportBtt {
@@ -94,5 +161,11 @@ h3 {
 
 .dropdown-item:hover {
   background: #f1f1f1;
+}
+
+.actions-dropdown .dropdown-menu {
+  right: auto;
+  left: 0;
+  top: 100%;
 }
 </style>

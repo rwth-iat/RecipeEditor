@@ -88,3 +88,103 @@ button {
     //color: red; // Change text color on hover
   }
 }
+
+// Recipe Element Types for Master Recipe
+.RecipeProcedureThatReferencesEquipmentProcedure {
+  width: 200px;
+  height: 60px;
+  background-color: #fff;
+  border: 2px solid #0066cc;
+  border-radius: 8px;
+  margin: 10px auto;
+  position: relative;
+  
+  &:before {
+    content: "P";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: bold;
+    color: #0066cc;
+  }
+}
+
+.RecipeUnitProcedureThatReferencesEquipmentUnitProcedure {
+  width: 200px;
+  height: 60px;
+  background-color: #fff;
+  border: 2px solid #009933;
+  border-radius: 8px;
+  margin: 10px auto;
+  position: relative;
+  
+  &:before {
+    content: "UP";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: bold;
+    color: #009933;
+  }
+}
+
+.RecipeOperationThatReferencesEquipmentOperation {
+  width: 200px;
+  height: 60px;
+  background-color: #fff;
+  border: 2px solid #cc6600;
+  border-radius: 8px;
+  margin: 10px auto;
+  position: relative;
+  
+  &:before {
+    content: "O";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: bold;
+    color: #cc6600;
+  }
+}
+
+.RecipePhaseThatReferencesEquipmentPhase {
+  width: 200px;
+  height: 60px;
+  background-color: #fff;
+  border: 2px solid #9900cc;
+  border-radius: 8px;
+  margin: 10px auto;
+  position: relative;
+  clip-path: polygon(0% 0%, 100% 0%, 95% 100%, 5% 100%);
+  
+  &:before {
+    content: "Ph";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: bold;
+    color: #9900cc;
+  }
+}
+
+.DirectedLink {
+  width: 200px;
+  height: 4px;
+  background-color: #000;
+  margin: 10px auto;
+  position: relative;
+  
+  &:after {
+    content: ">";
+    position: absolute;
+    right: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-weight: bold;
+    color: #000;
+  }
+}
