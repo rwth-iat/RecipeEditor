@@ -93,273 +93,272 @@
         </div>
       </div>
     </div>
-  </div>
 
+    <!-- Material Properties Section - Shown only for material-type elements -->
+    <div v-show='computedSelectedElement.type == "material"'>
+      <label for="materialType">MaterialType:</label>
+      <select id="materialType" v-model="computedSelectedElement.materialType">
+        <option value="Input">Input</option>
+        <option value="Intermediate">Intermediate</option>
+        <option value="Output">Output</option>
+      </select>
 
-  <!-- Material Properties Section - Shown only for material-type elements -->
-  <div v-show='computedSelectedElement.type == "material"'>
-    <label for="materialType">MaterialType:</label>
-    <select id="materialType" v-model="computedSelectedElement.materialType">
-      <option value="Input">Input</option>
-      <option value="Intermediate">Intermediate</option>
-      <option value="Output">Output</option>
-    </select>
+      <label for="materialID">MaterialID:</label>
+      <input type="text" id="materialID" v-model="computedSelectedElement.materialID" />
 
-    <label for="materialID">MaterialID:</label>
-    <input type="text" id="materialID" v-model="computedSelectedElement.materialID" />
+      <label for="order">Order:</label>
+      <input type="text" id="order" v-model="computedSelectedElement.order" />
 
-    <label for="order">Order:</label>
-    <input type="text" id="order" v-model="computedSelectedElement.order" />
+      <label for="amount">Amount:</label>
+      <ValueTypeProperty :id="'amount'" :valueType="computedSelectedElement.amount"
+        @update:valueType="computedSelectedElement.amount = $event" />
+    </div>
 
-    <label for="amount">Amount:</label>
-    <ValueTypeProperty :id="'amount'" :valueType="computedSelectedElement.amount"
-      @update:valueType="computedSelectedElement.amount = $event" />
-  </div>
+    <!--Process Properties-->
+    <!-- Only show processElementType dropdown for process elements -->
+    <div v-show='computedSelectedElement.type == "process"'>
+      <label for="processElementType">Process Type:</label>
+      <select id="processElementType" v-model="computedSelectedElement.processElementType">
+        <option value="" disabled selected>Select process type</option>
+        <option v-if="props.mode === 'master'" value="Recipe Procedure Containing Lower Level PFC">
+          Recipe Procedure
+        </option>
+      </select>
 
-  <!--Process Properties-->
-  <!-- Only show processElementType dropdown for process elements -->
-  <div v-show='computedSelectedElement.type == "process"'>
-    <label for="processElementType">Process Type:</label>
-    <select id="processElementType" v-model="computedSelectedElement.processElementType">
-      <option value="" disabled selected>Select process type</option>
-      <option v-if="props.mode === 'master'" value="Recipe Procedure Containing Lower Level PFC">
-        Recipe Procedure
-      </option>
-    </select>
-
-    <!-- Equipment Information Section (MTP/AAS) -->
-    <div v-if="computedSelectedElement.equipmentInfo" class="equipment-info-section">
-      <h2>Equipment Information (Read-Only)</h2>
-      <div class="equipment-source">
-        <label>Source:</label>
-        <input type="text"
-          :value="computedSelectedElement.equipmentInfo.source_type + ': ' + computedSelectedElement.equipmentInfo.source_file"
-          readonly class="locked-input" />
-      </div>
-
-      <!-- Show target process if available (for filtered MTP data) -->
-      <div v-if="computedSelectedElement.equipmentInfo.target_process" class="target-process">
-        <label>Target Process:</label>
-        <input type="text" :value="computedSelectedElement.equipmentInfo.target_process" readonly
-          class="locked-input" />
-      </div>
-
-      <!-- MTP Equipment Info -->
-      <div
-        v-if="computedSelectedElement.equipmentInfo.source_type === 'MTP' && computedSelectedElement.equipmentInfo.equipment_data">
-        <!-- Equipment Service Information (RecipeElement reference) -->
-        <div v-if="computedSelectedElement.equipmentInfo.equipment_data.service_info" class="equipment-details">
-          <h3>Equipment Service (RecipeElement Reference)</h3>
-          <label>Service Name:</label>
-          <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.service_info.name || 'N/A'"
-            readonly class="locked-input" />
-
-          <label>Service ID:</label>
-          <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.service_info.id || 'N/A'"
-            readonly class="locked-input" />
-        </div>
-
-        <!-- Equipment Procedure Information (RecipeElement reference) -->
-        <div v-if="computedSelectedElement.equipmentInfo.equipment_data.procedure_info" class="equipment-details">
-          <h3>Equipment Procedure (RecipeElement Reference)</h3>
-          <label>Procedure Name:</label>
-          <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.procedure_info.name || 'N/A'"
-            readonly class="locked-input" />
-
-          <label>Procedure ID:</label>
-          <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.procedure_info.id || 'N/A'"
-            readonly class="locked-input" />
-
-          <label>Self Completing:</label>
+      <!-- Equipment Information Section (MTP/AAS) -->
+      <div v-if="computedSelectedElement.equipmentInfo" class="equipment-info-section">
+        <h2>Equipment Information (Read-Only)</h2>
+        <div class="equipment-source">
+          <label>Source:</label>
           <input type="text"
-            :value="computedSelectedElement.equipmentInfo.equipment_data.procedure_info.self_completing ? 'Yes' : 'No'"
+            :value="computedSelectedElement.equipmentInfo.source_type + ': ' + computedSelectedElement.equipmentInfo.source_file"
             readonly class="locked-input" />
         </div>
 
-        <!-- Recipe Parameters (B2MML Formula section) -->
-        <div
-          v-if="computedSelectedElement.equipmentInfo.equipment_data.recipe_parameters && computedSelectedElement.equipmentInfo.equipment_data.recipe_parameters.length > 0">
-          <h3>Recipe Parameters (B2MML Formula)</h3>
-          <div v-for="(parameter, index) in computedSelectedElement.equipmentInfo.equipment_data.recipe_parameters"
-            :key="index" class="parameter-item">
-            <label>Parameter {{ index + 1 }}:</label>
-            <input type="text" :value="parameter.name + ' (ID: ' + parameter.id + ')'" readonly class="locked-input" />
-
-            <!-- Enhanced parameter details with validation -->
-            <div v-if="parameter.min || parameter.max" class="parameter-details">
-              <label>Range:</label>
-              <input type="text"
-                :value="(parameter.min || 'N/A') + ' to ' + (parameter.max || 'N/A') + (parameter.unit ? ' ' + parameter.unit : '')"
-                readonly class="locked-input" />
-
-              <!-- Show current/default value with validation -->
-              <div class="current-value-display">
-                <label>Current/Default Value:</label>
-                <div class="value-with-unit">
-                  <input type="number" v-model="parameter.default" :min="parameter.min" :max="parameter.max"
-                    class="current-value-input" :class="{ 'validation-error': isValueInvalid(parameter) }"
-                    @input="onRecipeParameterInput(parameter, index)" :placeholder="'Not set'" />
-                  <span v-if="parameter.unit" class="unit-label">{{ parameter.unit }}</span>
-                </div>
-                <span v-if="isValueInvalid(parameter)" class="validation-error">
-                  ⚠️ Value must be between {{ parameter.min || 'N/A' }} and {{ parameter.max || 'N/A' }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Parameter type information -->
-            <div v-if="parameter.paramElem" class="parameter-type-info">
-              <label>Parameter Type:</label>
-              <input type="text" :value="parameter.paramElem.Type || 'N/A'" readonly class="locked-input" />
-            </div>
-          </div>
-        </div>
-
-        <!-- Equipment Requirements (B2MML EquipmentRequirement section) -->
-        <div
-          v-if="computedSelectedElement.equipmentInfo.equipment_data.equipment_requirements && computedSelectedElement.equipmentInfo.equipment_data.equipment_requirements.length > 0">
-          <h3>Equipment Requirements (B2MML EquipmentRequirement)</h3>
-          <div v-for="(equipment, index) in computedSelectedElement.equipmentInfo.equipment_data.equipment_requirements"
-            :key="index" class="equipment-item">
-            <label>Equipment {{ index + 1 }}:</label>
-            <input type="text" :value="equipment.name + ' (ID: ' + equipment.id + ')'" readonly class="locked-input" />
-          </div>
-        </div>
-      </div>
-
-      <!-- AAS Equipment Info -->
-      <div
-        v-if="computedSelectedElement.equipmentInfo.source_type === 'AAS' && computedSelectedElement.equipmentInfo.equipment_data">
-        <div class="equipment-details">
-          <label>AAS ID:</label>
-          <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.aas_id || 'N/A'" readonly
-            class="locked-input" />
-
-          <label>Asset ID:</label>
-          <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.asset_id || 'N/A'" readonly
+        <!-- Show target process if available (for filtered MTP data) -->
+        <div v-if="computedSelectedElement.equipmentInfo.target_process" class="target-process">
+          <label>Target Process:</label>
+          <input type="text" :value="computedSelectedElement.equipmentInfo.target_process" readonly
             class="locked-input" />
         </div>
 
-        <!-- AAS Capabilities -->
+        <!-- MTP Equipment Info -->
         <div
-          v-if="computedSelectedElement.equipmentInfo.equipment_data.capabilities && computedSelectedElement.equipmentInfo.equipment_data.capabilities.length > 0">
-          <h3>Equipment Capabilities</h3>
-          <div v-for="(capability, index) in computedSelectedElement.equipmentInfo.equipment_data.capabilities"
-            :key="index" class="capability-item">
-            <label>Capability {{ index + 1 }}:</label>
-            <input type="text"
-              :value="capability.id + (capability.semantic_id ? ' (' + capability.semantic_id + ')' : '')" readonly
-              class="locked-input" />
-          </div>
-        </div>
+          v-if="computedSelectedElement.equipmentInfo.source_type === 'MTP' && computedSelectedElement.equipmentInfo.equipment_data">
+          <!-- Equipment Service Information (RecipeElement reference) -->
+          <div v-if="computedSelectedElement.equipmentInfo.equipment_data.service_info" class="equipment-details">
+            <h3>Equipment Service (RecipeElement Reference)</h3>
+            <label>Service Name:</label>
+            <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.service_info.name || 'N/A'"
+              readonly class="locked-input" />
 
-        <!-- AAS Properties -->
-        <div
-          v-if="computedSelectedElement.equipmentInfo.equipment_data.properties && computedSelectedElement.equipmentInfo.equipment_data.properties.length > 0">
-          <h3>Equipment Properties</h3>
-          <div v-for="(property, index) in computedSelectedElement.equipmentInfo.equipment_data.properties" :key="index"
-            class="property-item">
-            <label>Property {{ index + 1 }}:</label>
-            <input type="text"
-              :value="property.id + ': ' + (property.value || 'N/A') + ' (' + (property.data_type || 'N/A') + ')'"
+            <label>Service ID:</label>
+            <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.service_info.id || 'N/A'"
               readonly class="locked-input" />
           </div>
+
+          <!-- Equipment Procedure Information (RecipeElement reference) -->
+          <div v-if="computedSelectedElement.equipmentInfo.equipment_data.procedure_info" class="equipment-details">
+            <h3>Equipment Procedure (RecipeElement Reference)</h3>
+            <label>Procedure Name:</label>
+            <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.procedure_info.name || 'N/A'"
+              readonly class="locked-input" />
+
+            <label>Procedure ID:</label>
+            <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.procedure_info.id || 'N/A'"
+              readonly class="locked-input" />
+
+            <label>Self Completing:</label>
+            <input type="text"
+              :value="computedSelectedElement.equipmentInfo.equipment_data.procedure_info.self_completing ? 'Yes' : 'No'"
+              readonly class="locked-input" />
+          </div>
+
+          <!-- Recipe Parameters (B2MML Formula section) -->
+          <div
+            v-if="computedSelectedElement.equipmentInfo.equipment_data.recipe_parameters && computedSelectedElement.equipmentInfo.equipment_data.recipe_parameters.length > 0">
+            <h3>Recipe Parameters (B2MML Formula)</h3>
+            <div v-for="(parameter, index) in computedSelectedElement.equipmentInfo.equipment_data.recipe_parameters"
+              :key="index" class="parameter-item">
+              <label>Parameter {{ index + 1 }}:</label>
+              <input type="text" :value="parameter.name + ' (ID: ' + parameter.id + ')'" readonly class="locked-input" />
+
+              <!-- Enhanced parameter details with validation -->
+              <div v-if="parameter.min || parameter.max" class="parameter-details">
+                <label>Range:</label>
+                <input type="text"
+                  :value="(parameter.min || 'N/A') + ' to ' + (parameter.max || 'N/A') + (parameter.unit ? ' ' + parameter.unit : '')"
+                  readonly class="locked-input" />
+
+                <!-- Show current/default value with validation -->
+                <div class="current-value-display">
+                  <label>Current/Default Value:</label>
+                  <div class="value-with-unit">
+                    <input type="number" v-model="parameter.default" :min="parameter.min" :max="parameter.max"
+                      class="current-value-input" :class="{ 'validation-error': isValueInvalid(parameter) }"
+                      @input="onRecipeParameterInput(parameter, index)" :placeholder="'Not set'" />
+                    <span v-if="parameter.unit" class="unit-label">{{ parameter.unit }}</span>
+                  </div>
+                  <span v-if="isValueInvalid(parameter)" class="validation-error">
+                    ⚠️ Value must be between {{ parameter.min || 'N/A' }} and {{ parameter.max || 'N/A' }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Parameter type information -->
+              <div v-if="parameter.paramElem" class="parameter-type-info">
+                <label>Parameter Type:</label>
+                <input type="text" :value="parameter.paramElem.Type || 'N/A'" readonly class="locked-input" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Equipment Requirements (B2MML EquipmentRequirement section) -->
+          <div
+            v-if="computedSelectedElement.equipmentInfo.equipment_data.equipment_requirements && computedSelectedElement.equipmentInfo.equipment_data.equipment_requirements.length > 0">
+            <h3>Equipment Requirements (B2MML EquipmentRequirement)</h3>
+            <div v-for="(equipment, index) in computedSelectedElement.equipmentInfo.equipment_data.equipment_requirements"
+              :key="index" class="equipment-item">
+              <label>Equipment {{ index + 1 }}:</label>
+              <input type="text" :value="equipment.name + ' (ID: ' + equipment.id + ')'" readonly class="locked-input" />
+            </div>
+          </div>
         </div>
 
-        <!-- AAS Operations -->
+        <!-- AAS Equipment Info -->
         <div
-          v-if="computedSelectedElement.equipmentInfo.equipment_data.operations && computedSelectedElement.equipmentInfo.equipment_data.operations.length > 0">
-          <h3>Equipment Operations</h3>
-          <div v-for="(operation, index) in computedSelectedElement.equipmentInfo.equipment_data.operations"
-            :key="index" class="operation-item">
-            <label>Operation {{ index + 1 }}:</label>
-            <input type="text" :value="operation.id" readonly class="locked-input" />
+          v-if="computedSelectedElement.equipmentInfo.source_type === 'AAS' && computedSelectedElement.equipmentInfo.equipment_data">
+          <div class="equipment-details">
+            <label>AAS ID:</label>
+            <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.aas_id || 'N/A'" readonly
+              class="locked-input" />
+
+            <label>Asset ID:</label>
+            <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.asset_id || 'N/A'" readonly
+              class="locked-input" />
+          </div>
+
+          <!-- AAS Capabilities -->
+          <div
+            v-if="computedSelectedElement.equipmentInfo.equipment_data.capabilities && computedSelectedElement.equipmentInfo.equipment_data.capabilities.length > 0">
+            <h3>Equipment Capabilities</h3>
+            <div v-for="(capability, index) in computedSelectedElement.equipmentInfo.equipment_data.capabilities"
+              :key="index" class="capability-item">
+              <label>Capability {{ index + 1 }}:</label>
+              <input type="text"
+                :value="capability.id + (capability.semantic_id ? ' (' + capability.semantic_id + ')' : '')" readonly
+                class="locked-input" />
+            </div>
+          </div>
+
+          <!-- AAS Properties -->
+          <div
+            v-if="computedSelectedElement.equipmentInfo.equipment_data.properties && computedSelectedElement.equipmentInfo.equipment_data.properties.length > 0">
+            <h3>Equipment Properties</h3>
+            <div v-for="(property, index) in computedSelectedElement.equipmentInfo.equipment_data.properties" :key="index"
+              class="property-item">
+              <label>Property {{ index + 1 }}:</label>
+              <input type="text"
+                :value="property.id + ': ' + (property.value || 'N/A') + ' (' + (property.data_type || 'N/A') + ')'"
+                readonly class="locked-input" />
+            </div>
+          </div>
+
+          <!-- AAS Operations -->
+          <div
+            v-if="computedSelectedElement.equipmentInfo.equipment_data.operations && computedSelectedElement.equipmentInfo.equipment_data.operations.length > 0">
+            <h3>Equipment Operations</h3>
+            <div v-for="(operation, index) in computedSelectedElement.equipmentInfo.equipment_data.operations"
+              :key="index" class="operation-item">
+              <label>Operation {{ index + 1 }}:</label>
+              <input type="text" :value="operation.id" readonly class="locked-input" />
+            </div>
           </div>
         </div>
       </div>
+      <div>
+        <h2>Parameters</h2>
+
+        <!-- Process Element Parameters -->
+        <div v-if="(computedSelectedElement.processElementParameter || []).length > 0">
+          <h3>Process Element Parameters</h3>
+          <div v-for="(parameter, index) in (computedSelectedElement.processElementParameter || [])"
+            :key="`process_${index}`" class="container-with-border">
+            <label :for="'parameter_' + index + '_id'">ID:</label>
+            <input type="text" :id="'parameter_' + index + '_id'" v-model="parameter.id" />
+            <label :for="'parameter_' + index + '_description'">Description:</label>
+            <input type="text" :id="'parameter_' + index + '_description'" v-model="parameter.description[0]" />
+            <label :for="'parameter_' + index + '_valueType'">ParameterValue:</label>
+            <ValueTypeProperty :id="'parameter_' + index + '_valueType'" :valueType="parameter.value"
+              :minValue="getParameterMinValue(parameter)" :maxValue="getParameterMaxValue(parameter)"
+              :unit="getParameterUnit(parameter)" @update:valueType="parameter.value = $event"
+              @validation-error="handleParameterValidationError(index, $event)" />
+          </div>
+        </div>
+
+        <!-- Other Information -->
+        <div v-if="computedSelectedElement.otherInformation && computedSelectedElement.otherInformation.length > 0">
+          <h3>Other Information</h3>
+          <div v-for="(otherInformation, index) in (computedSelectedElement.otherInformation || [])"
+            :key="`other_${index}`" class="container-with-border">
+            <label :for="'otherInformation_' + index + '_otherInfoID'">ID:</label>
+            <input type="text" :id="'otherInformation_' + index + '_otherInfoID'"
+              v-model="otherInformation.otherInfoID" />
+            <label :for="'otherInformation_' + index + '_description'">Description:</label>
+            <input type="text" :id="'otherInformation_' + index + '_description'"
+              v-model="otherInformation.description[0]" />
+            <label :for="'otherInformation_' + index + '_otherValue'">OtherValue:</label>
+            <ValueTypeProperty :valueType="otherInformation.otherValue[0]"
+              @update:valueType="otherInformation.otherValue[0] = $event" />
+          </div>
+        </div>
+
+        <!-- Resource Constraints -->
+        <div v-if="computedSelectedElement.resourceConstraint && computedSelectedElement.resourceConstraint.length > 0">
+          <h3>Resource Constraints</h3>
+          <div v-for="(resourceConstraint, index) in (computedSelectedElement.resourceConstraint || [])"
+            :key="`resource_${index}`" class="container-with-border">
+            <label :for="'resourceConstraint_' + index + '_constrainedID'">ID:</label>
+            <input type="text" :id="'resourceConstraint_' + index + '_constrainedID'"
+              v-model="resourceConstraint.constrinedID" />
+            <label :for="'resourceConstraint_' + index + '_description'">Description:</label>
+            <input type="text" :id="'resourceConstraint_' + index + '_description'"
+              v-model="resourceConstraint.description[0]" />
+            <label :for="'resourceConstraint_' + index + '_constraintType'">ConstraintType:</label>
+            <select :id="'resourceConstraint_' + index + '_constraintType'" v-model="resourceConstraint.constraintType">
+              <option value="Required">Required</option>
+              <option value="Optional">Optional</option>
+              <option value="Other">Other</option>
+            </select>
+            <label :for="'resourceConstraint_' + index + '_lifeCycleState'">LifeCycleState:</label>
+            <input type="text" :id="'resourceConstraint_' + index + '_lifeCycleState'"
+              v-model="resourceConstraint.lifeCycleState" />
+            <label :for="'resourceConstraint_' + index + '_range'">Range:</label>
+            <ValueTypeProperty :id="'resourceConstraint_' + index + '_range'" :valueType="resourceConstraint.range"
+              @update:valueType="resourceConstraint.valueType = $event" />
+            <label
+              :for="'resourceConstraint_' + index + '_resourceConstraintProperty'">ResourceConstraintProperty:</label>
+            <input type="text" :id="'resourceConstraint_' + index + '_resourceConstraintProperty'"
+              v-model="resourceConstraint.resourceConstraintProperty" />
+          </div>
+        </div>
+
+        <!-- Add buttons for each type -->
+        <div class="add-buttons-container">
+          <button @click="addProcessElementParameter" id="addProcessElementParameter" class="add-button">
+            <span class="material-icons-light">+</span> Add Process Parameter
+          </button>
+          <button @click="addOtherInformation" id="addOtherValue" class="add-button">
+            <span class="material-icons-light">+</span> Add Other Information
+          </button>
+          <button @click="addResourceConstraint" id="addResourceConstraint" class="add-button">
+            <span class="material-icons-light">+</span> Add Resource Constraint
+          </button>
+        </div>
+      </div>
     </div>
-    <div>
-      <h2>Parameters</h2>
-
-      <!-- Process Element Parameters -->
-      <div v-if="(computedSelectedElement.processElementParameter || []).length > 0">
-        <h3>Process Element Parameters</h3>
-        <div v-for="(parameter, index) in (computedSelectedElement.processElementParameter || [])"
-          :key="`process_${index}`" class="container-with-border">
-          <label :for="'parameter_' + index + '_id'">ID:</label>
-          <input type="text" :id="'parameter_' + index + '_id'" v-model="parameter.id" />
-          <label :for="'parameter_' + index + '_description'">Description:</label>
-          <input type="text" :id="'parameter_' + index + '_description'" v-model="parameter.description[0]" />
-          <label :for="'parameter_' + index + '_valueType'">ParameterValue:</label>
-          <ValueTypeProperty :id="'parameter_' + index + '_valueType'" :valueType="parameter.value"
-            :minValue="getParameterMinValue(parameter)" :maxValue="getParameterMaxValue(parameter)"
-            :unit="getParameterUnit(parameter)" @update:valueType="parameter.value = $event"
-            @validation-error="handleParameterValidationError(index, $event)" />
-        </div>
-      </div>
-
-      <!-- Other Information -->
-      <div v-if="computedSelectedElement.otherInformation && computedSelectedElement.otherInformation.length > 0">
-        <h3>Other Information</h3>
-        <div v-for="(otherInformation, index) in (computedSelectedElement.otherInformation || [])"
-          :key="`other_${index}`" class="container-with-border">
-          <label :for="'otherInformation_' + index + '_otherInfoID'">ID:</label>
-          <input type="text" :id="'otherInformation_' + index + '_otherInfoID'"
-            v-model="otherInformation.otherInfoID" />
-          <label :for="'otherInformation_' + index + '_description'">Description:</label>
-          <input type="text" :id="'otherInformation_' + index + '_description'"
-            v-model="otherInformation.description[0]" />
-          <label :for="'otherInformation_' + index + '_otherValue'">OtherValue:</label>
-          <ValueTypeProperty :valueType="otherInformation.otherValue[0]"
-            @update:valueType="otherInformation.otherValue[0] = $event" />
-        </div>
-      </div>
-
-      <!-- Resource Constraints -->
-      <div v-if="computedSelectedElement.resourceConstraint && computedSelectedElement.resourceConstraint.length > 0">
-        <h3>Resource Constraints</h3>
-        <div v-for="(resourceConstraint, index) in (computedSelectedElement.resourceConstraint || [])"
-          :key="`resource_${index}`" class="container-with-border">
-          <label :for="'resourceConstraint_' + index + '_constrainedID'">ID:</label>
-          <input type="text" :id="'resourceConstraint_' + index + '_constrainedID'"
-            v-model="resourceConstraint.constrinedID" />
-          <label :for="'resourceConstraint_' + index + '_description'">Description:</label>
-          <input type="text" :id="'resourceConstraint_' + index + '_description'"
-            v-model="resourceConstraint.description[0]" />
-          <label :for="'resourceConstraint_' + index + '_constraintType'">ConstraintType:</label>
-          <select :id="'resourceConstraint_' + index + '_constraintType'" v-model="resourceConstraint.constraintType">
-            <option value="Required">Required</option>
-            <option value="Optional">Optional</option>
-            <option value="Other">Other</option>
-          </select>
-          <label :for="'resourceConstraint_' + index + '_lifeCycleState'">LifeCycleState:</label>
-          <input type="text" :id="'resourceConstraint_' + index + '_lifeCycleState'"
-            v-model="resourceConstraint.lifeCycleState" />
-          <label :for="'resourceConstraint_' + index + '_range'">Range:</label>
-          <ValueTypeProperty :id="'resourceConstraint_' + index + '_range'" :valueType="resourceConstraint.range"
-            @update:valueType="resourceConstraint.valueType = $event" />
-          <label
-            :for="'resourceConstraint_' + index + '_resourceConstraintProperty'">ResourceConstraintProperty:</label>
-          <input type="text" :id="'resourceConstraint_' + index + '_resourceConstraintProperty'"
-            v-model="resourceConstraint.resourceConstraintProperty" />
-        </div>
-      </div>
-
-      <!-- Add buttons for each type -->
-      <div class="add-buttons-container">
-        <button @click="addProcessElementParameter" id="addProcessElementParameter" class="add-button">
-          <span class="material-icons-light">+</span> Add Process Parameter
-        </button>
-        <button @click="addOtherInformation" id="addOtherValue" class="add-button">
-          <span class="material-icons-light">+</span> Add Other Information
-        </button>
-        <button @click="addResourceConstraint" id="addResourceConstraint" class="add-button">
-          <span class="material-icons-light">+</span> Add Resource Constraint
-        </button>
-      </div>
-    </div>
+    
   </div>
-  
 </template>
 
 <script setup>
