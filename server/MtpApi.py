@@ -1809,7 +1809,7 @@ def parse_mtp_aml(file_content) -> Pea:
         return mtp
 
 
-mtp = parse_mtp_aml(TESTMTP1)
+# mtp = parse_mtp_aml(TESTMTP1)
 # for s in mtp.servs:
 #     print(s.name)
 #     for p in s.procs:
