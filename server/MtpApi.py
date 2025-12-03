@@ -3,9 +3,9 @@ from defusedxml.ElementTree import parse
 import os
 
 ### static variables
-TESTMTP1 = r"C:\Users\Karen\Desktop\Bachelors\RecipeTool\server\Artefakte\HC10_manifest_new.aml"
-TESTMTP2 = r"C:\Users\Karen\Desktop\Bachelors\RecipeTool\server\Artefakte\HC20_manifest.aml"
-TESTMTP3 = r"C:\Users\Karen\Desktop\Bachelors\RecipeTool\server\Artefakte\HC30_manifest_new.aml"
+TESTMTP1 = r".\upload\mtp\2025-11-10-Zenon_HC10_MTP_V1.0.0.aml"
+TESTMTP2 = r".\upload\mtp\2025-11-10-HC20-Zenon_v1.0.0.aml"
+TESTMTP3 = r".\upload\mtp\2025-11-05-HC30.aml"
 TESTMTPS = [TESTMTP1, TESTMTP2, TESTMTP3] 
 NAMESPACE = "{http://www.dke.de/CAEX}"
 

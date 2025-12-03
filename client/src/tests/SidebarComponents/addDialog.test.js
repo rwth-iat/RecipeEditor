@@ -3,6 +3,7 @@ import addDialog from "../../components/SidebarComponents/addDialog.vue";
 import { expect, test, afterAll } from "vitest";
 import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
+import flushPromises from 'flush-promises';
 
 // Create an instance of the mock adapter
 const mock = new MockAdapter(axios);
@@ -67,54 +68,75 @@ test("mount Processes component", async () => {
    expect(addDialog).toBeTruthy();
 });
 
+// test("list available ontologies as options", async () => {
+//    const wrapper = mount(addDialog, {
+//       propsData: {
+//          element_type: 'Processes'
+//       }
+//     })
+//    expect(wrapper.props().element_type).toBe('Processes')
+//    expect(addDialog).toBeTruthy();
+//    await wrapper.vm.$nextTick();
+//    await wrapper.vm.$nextTick();
+//    // Find the options select element using wrapper.find()
+//    const ontoSelect = wrapper.find('#ontoSelect');
+//    // Access the options property and check the length
+//    const numOptions = ontoSelect.element.options.length;
+//    // should in this test always be 2 as it has the "addnew" and "capability_with_query" 
+//    expect(numOptions).toBe(3)
+//    expect(ontoSelect.element.options[0].textContent).toBe('Onto 1');
+//    expect(ontoSelect.element.options[1].textContent).toBe('Onto 2');
+//    expect(ontoSelect.element.options[2].textContent).toBe('add new to server');
+// });
 test("list available ontologies as options", async () => {
-   const wrapper = mount(addDialog, {
-      propsData: {
-         element_type: 'Processes'
-      }
-    })
-   expect(wrapper.props().element_type).toBe('Processes')
-   expect(addDialog).toBeTruthy();
-   await wrapper.vm.$nextTick();
-   await wrapper.vm.$nextTick();
-   // Find the options select element using wrapper.find()
-   const ontoSelect = wrapper.find('#ontoSelect');
-   // Access the options property and check the length
-   const numOptions = ontoSelect.element.options.length;
-   // should in this test always be 2 as it has the "addnew" and "capability_with_query" 
-   expect(numOptions).toBe(3)
-   expect(ontoSelect.element.options[0].textContent).toBe('Onto 1');
-   expect(ontoSelect.element.options[1].textContent).toBe('Onto 2');
-   expect(ontoSelect.element.options[2].textContent).toBe('add new to server');
+  const wrapper = mount(addDialog, { propsData: { element_type: 'Processes' } });
+  await flushPromises();              // wartet auf den GET /onto Mock
+  const ontoSelect = wrapper.find('#ontoSelect');
+  const numOptions = ontoSelect.element.options.length;
+  expect(numOptions).toBe(3);
+  expect(ontoSelect.element.options[0].textContent).toBe('Onto 1');
+  expect(ontoSelect.element.options[1].textContent).toBe('Onto 2');
+  expect(ontoSelect.element.options[2].textContent).toBe('add new to server');
 });
 
+// test("list classes of ontology as options", async () => {
+//    const wrapper = mount(addDialog, {
+//      propsData: {
+//        element_type: 'Processes'
+//      }
+//    });
+
+//    // Trigger the function that fetches ontology classes
+//    await wrapper.vm.readServerOntoClasses('test_ontology.owl');
+
+//    // Wait for the component to update after the API call
+//    // two ticks are needed, i dont know why
+//    await wrapper.vm.$nextTick();
+//    await wrapper.vm.$nextTick();
+
+//    // Now, find the options select element using wrapper.find()
+//    const classSelect = wrapper.find('#super_class_select');
+//    // Access the options property and check the length
+//    const numOptions = classSelect.element.options.length;
+
+//    // Assertions
+//    expect(numOptions).toBe(3); // Adjust the expected number of options based on your mock response
+//    expect(classSelect.element.options[0].textContent).toBe('Class A');
+//    expect(classSelect.element.options[1].textContent).toBe('Class B');
+//    expect(classSelect.element.options[2].textContent).toBe('Class C');
+//  });
+
 test("list classes of ontology as options", async () => {
-   const wrapper = mount(addDialog, {
-     propsData: {
-       element_type: 'Processes'
-     }
-   });
-
-   // Trigger the function that fetches ontology classes
-   await wrapper.vm.readServerOntoClasses('test_ontology.owl');
-
-   // Wait for the component to update after the API call
-   // two ticks are needed, i dont know why
-   await wrapper.vm.$nextTick();
-   await wrapper.vm.$nextTick();
-
-   // Now, find the options select element using wrapper.find()
-   const classSelect = wrapper.find('#super_class_select');
-   // Access the options property and check the length
-   const numOptions = classSelect.element.options.length;
-
-   // Assertions
-   expect(numOptions).toBe(3); // Adjust the expected number of options based on your mock response
-   expect(classSelect.element.options[0].textContent).toBe('Class A');
-   expect(classSelect.element.options[1].textContent).toBe('Class B');
-   expect(classSelect.element.options[2].textContent).toBe('Class C');
- });
-
+  const wrapper = mount(addDialog, { propsData: { element_type: 'Processes' } });
+  await wrapper.vm.readServerOntoClasses('test_ontology.owl'); // löst den Mock aus
+  await flushPromises();              // wartet auf den GET /onto/.../classes Mock
+  const classSelect = wrapper.find('#super_class_select');
+  const numOptions = classSelect.element.options.length;
+  expect(numOptions).toBe(3);
+  expect(classSelect.element.options[0].textContent).toBe('Class A');
+  expect(classSelect.element.options[1].textContent).toBe('Class B');
+  expect(classSelect.element.options[2].textContent).toBe('Class C');
+});
 
 test("add subclasses button", async () => {
    const wrapper = mount(addDialog, {

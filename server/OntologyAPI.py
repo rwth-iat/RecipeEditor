@@ -54,12 +54,13 @@ def add_subclasses(input_object, children_classes_list, super_class_name):
 
 def load_ontologies():
     ontologies = {}
-    for filename in os.listdir(os.path.join(UPLOAD_FOLDER, ONTO_FOLDER)):
+    base_dir = os.path.join(UPLOAD_FOLDER, ONTO_FOLDER)
+    world = owlready2.World()
+    owlready2.onto_path.append(base_dir)  # erlaubt lokale Auflösung von owl:imports
+    for filename in os.listdir(base_dir):
         if filename.endswith('.owl'):
-            # with open(os.path.join(UPLOAD_FOLDER, filename), 'r') as file:
-            #    ontologies[filename] = file.read()
-            complete_path = os.path.join(UPLOAD_FOLDER, ONTO_FOLDER, filename)
-            ontologies[filename] = owlready2.get_ontology(complete_path).load()
+            complete_path = os.path.join(base_dir, filename)
+            ontologies[filename] = world.get_ontology(complete_path).load(only_local=True)
     return ontologies
 
 
