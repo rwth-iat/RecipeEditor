@@ -1,0 +1,1033 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.semanticweb.org/m.winter/ontologies/2025/3/untitled-ontology-85/"
+     xml:base="http://www.semanticweb.org/m.winter/ontologies/2025/3/untitled-ontology-85/"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
+    <owl:Ontology rdf:about="http://css.iat.rwth-aachen.de/OntoProCap">
+        <owl:versionIRI rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap/0.0.1"/>
+        <rdfs:comment xml:lang="en">The ontology is licensed under the Creative Commons CC BY-SA 4.0 (Attribution-ShareAlike 4.0 International) license. This means that you can freely use, distribute, edit, and build upon the ontology as long as you give proper credit to the creator of the ontology and publish your derivations under the same license.
+
+Creator: Michael Winter, Indah Radityo Putri
+
+E-Mail: {m.winter, i.putri}@iat.rwth-aachen.de</rdfs:comment>
+    </owl:Ontology>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#comment -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#comment"/>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#label -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#label"/>
+    
+
+
+    <!-- http://www.w3.org/2000/01/rdf-schema#seeAlso -->
+
+    <owl:AnnotationProperty rdf:about="http://www.w3.org/2000/01/rdf-schema#seeAlso"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.w3.org/1999/02/22-rdf-syntax-ns#PlainLiteral -->
+
+    <rdfs:Datatype rdf:about="http://www.w3.org/1999/02/22-rdf-syntax-ns#PlainLiteral"/>
+    
+
+
+    <!-- http://www.w3.org/2001/XMLSchema#anyURI -->
+
+    <rdfs:Datatype rdf:about="http://www.w3.org/2001/XMLSchema#anyURI"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Abrasion -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Abrasion">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Fragmentation"/>
+        <rdfs:comment xml:lang="en">Granulation of a solid by frictional action using an abrading medium.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Absorption -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Absorption">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Absorption is the transfer of a soluble component in a gas-phase mixture into a liquid absorbent whose volatility is low under process conditions. (Perry)</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Adsorption -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Adsorption">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Adsorption is the selcective transfer of molecules or fine-granular particles from a fluid (gas or liquid) to the interface of the adsorbents.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Agitating -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Agitating">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#MixingOfLiquids"/>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#BoilingDown -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#BoilingDown">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Boiling down refers to the separation of a solution into gaseous and solid substances by evaporating the volatile components completely.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Briquetting -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Briquetting">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Combination"/>
+        <rdfs:comment xml:lang="en">The agglomeration of a fine-granular powder to coarse-granular pieces by mechanical pressure.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Capability -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Capability"/>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Cementation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Cementation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Cementation is process to recover dissolved metals from the aqueous phase. The basic principle of cementation is contact reduction. In other words, the electrons from a less noble metal are given up to a more noble dissolved metal. (Free, M. L. (2013). Hydrometallurgy: Fundamentals and Applications. Wiley.)</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Centrifugation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Centrifugation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">A process of separating the lighter portions of a solution, mixture, or suspension from the heavier portions by centrifugal force.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Circulating -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Circulating">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#MixingOfLiquids"/>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Combination -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Combination">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TransformationCapability"/>
+        <rdfs:comment xml:lang="en">A combination in terms of unit operation means to get together different process steps to achieve a particular one.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Compacting -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Compacting">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Combination"/>
+        <rdfs:comment xml:lang="en">The compression of a loose, voluminous powder to a more dense, closely packed powder by mechanical pressure.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#ConcentrationByEvaporation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#ConcentrationByEvaporation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">In evaporization, the vapor from a boiling liquid is removed and a more concentrated solution remains. (Geankoplis: Transport processes and unit operations)</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Condensation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Condensation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChangeOfGases"/>
+        <owl:disjointWith rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Desublimation"/>
+        <rdfs:comment xml:lang="en">The phase transition from gas to liquid.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Conveying -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Conveying">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TransportCapability"/>
+        <owl:disjointWith rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Dosing"/>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#CoolingOfGases -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#CoolingOfGases">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChangeOfGases"/>
+        <owl:disjointWith rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#HeatingOfGases"/>
+        <rdfs:comment xml:lang="en">Reducing the temperature of a gas without changing ist state of aggregation</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#CoolingOfLiquids -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#CoolingOfLiquids">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChangeOfLiquids"/>
+        <owl:disjointWith rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#HeatingOfLiquids"/>
+        <rdfs:comment xml:lang="en">Reducing the temperature of a liquid without changing ist state of aggregation</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#CoolingOfSolids -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#CoolingOfSolids">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChangeOfSolids"/>
+        <owl:disjointWith rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#HeatingOfSolids"/>
+        <rdfs:comment xml:lang="en">Reducing the temperature of a solid.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Cutting -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Cutting">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Fragmentation"/>
+        <rdfs:comment xml:lang="en">Fragmentation of solid material by the effect of shear forces</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#CyclonicSeparation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#CyclonicSeparation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Cyclonic separation is a method of removing particles from a gas stream by means of centrifugal forces.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Desublimation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Desublimation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChangeOfGases"/>
+        <rdfs:comment xml:lang="en">The phase transition from gas to solid without passing through an intermediate liquid state.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#DiffusionSeparation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#DiffusionSeparation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Process to separate a gas mixture into its components by means of differences in the diffusion rates of the component molecules</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Dissolution -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Dissolution">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Combination"/>
+        <rdfs:comment xml:lang="en">The mixing of a solid and a liquid with the formation of one new homogeneous phase (i.e. the solution).</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Distillation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Distillation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Distillation is the seperation of the constituents of liquid mixture via partial vaporization of the mixture and separate recovery of vapor and residue. (Perry)</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Dosing -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Dosing">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TransportCapability"/>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Drying -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Drying">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Drying is the process by which volatile materials are evaporated from a material to yield a solid product. (Perry)</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#ElectricalGasCleaning -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#ElectricalGasCleaning">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">The separation of dispersed particles from a gas phase by means of an electric field.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Electrodialysis -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Electrodialysis">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">A process which uses an electric field and two semipermeable membranes to separate dissociated species from undissociated species in a solvent. The electric field forces the dissociated ions through the membranes, while the nonpolar species remain in the solvent.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#ElectromagneticCrushing -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#ElectromagneticCrushing">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Fragmentation"/>
+        <rdfs:comment xml:lang="en">The process of crushing solid material by applying electromagnetic fields that cause internal stresses.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Electrophoresis -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Electrophoresis">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Electrophoresis is the technique of separating electrically charged particles, particularly proteins, in a solution by passing an electric current through the solution. The rate of movement of the different components depends upon their charge, so that they gradually separate into bands. [neurolab.jsc.nasa.gov/glosseh.htm]</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Emulsification -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Emulsification">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Combination"/>
+        <rdfs:comment xml:lang="en">The formation of a mixture of two liquids, such as oil and water, in which one of the liquids is in the form of fine droplets and is dispersed in the other.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#EnthalpyChange -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#EnthalpyChange">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TransformationCapability"/>
+        <rdfs:comment xml:lang="en">EnthalpyChange in terms of unit operation considers a conversion of energy which often result in a change of the state of aggregation.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Extraction -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Extraction">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Extraction refers to both liquid-liquid extraction and leaching:
+Liquid-liquid extraction is a process for separationg components in solution by their distribution between two immiscible liquid phases. Such a process can also be simply referred to as liquid extraction or solvent extraction; however, the latter term my be confusing because it also applies to the leaching of soluble substance from a solid. (Perry&apos;s) 
+Leaching is the removal of a soluble fraction, in the form of a solution, from an insoluble, permeable solid phase with which it is associated. The separation usually involves selective dissolution. The soluble constituent may be solid or liquid (Perry&apos;s)</rdfs:comment>
+        <rdfs:comment xml:lang="en">Might also be used for Solvent Extraction process.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Flashing -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Flashing">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Flashing utilized the state of phase equilibrium between a vapor and a liquid phase and the resulting material transport if a mixture with different fugacity is existent. In terms of unit operation this is usually accomplished in a vessel.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#FoamFormation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#FoamFormation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Combination"/>
+        <rdfs:comment xml:lang="en">The combination of a liquid and a gas phase to a foam.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#FoamFractionation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#FoamFractionation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">A method of separation in which a component of the bulk liquid is preferentially adsorbed at the liquid/vapour (L/V) interface and is removed by foaming. (IUPAC Compendium of Chemical Terminology)</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Fragmentation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Fragmentation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TransformationCapability"/>
+        <rdfs:comment xml:lang="en">Fragmentation in terms of unit operation is the breakup of solid material for further processing.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Fusion -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Fusion">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Combination"/>
+        <rdfs:comment xml:lang="en">The merging of two or more solid components by melting.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#GasCentrifugation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#GasCentrifugation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">The separation of a mixture of gases of different densities by centrifugal force.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#GasFiltration -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#GasFiltration">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Gas filtration is the separation of a gas-solids mixture by forcing the mixture through a porous barrier which retains most of the solid particulates contained in the mixture.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Grinding -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Grinding">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Fragmentation"/>
+        <rdfs:comment xml:lang="en">The process of pulverizing solid material to fine-granular particles by applying mechanical forces</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#HeatingOfGases -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#HeatingOfGases">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChangeOfGases"/>
+        <rdfs:comment xml:lang="en">Increasing the temperature of a gas</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#HeatingOfLiquids -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#HeatingOfLiquids">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChangeOfLiquids"/>
+        <rdfs:comment xml:lang="en">Increasing the temperature of a liquid without changing ist state of aggregation</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#HeatingOfSolids -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#HeatingOfSolids">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChangeOfSolids"/>
+        <rdfs:comment xml:lang="en">Increasing the temperature of a solid without changing ist state of aggregation.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#HoldingTemperature -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#HoldingTemperature">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#StorageCapability"/>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Humidification -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Humidification">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Combination"/>
+        <rdfs:comment xml:lang="en">The mixing of a gas and the vapor of a liquid with the formation of a new homogeneous phase.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#HydrocyclonicSeparation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#HydrocyclonicSeparation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Hydrocyclonic separation is a method of removing particles from a liquid stream by means of centrifugal forces.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#ImpingementSeparation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#ImpingementSeparation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Particles are separated from gas by impingement on collected bodies arrayed across the path of the gas stream.(Perry)</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Impregnation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Impregnation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Combination"/>
+        <rdfs:comment xml:lang="en">The process of soaking a porous material with a liquid.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Kneading -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Kneading">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Combination"/>
+        <rdfs:comment xml:lang="en">The blending of solid and liquid components into a uniform mass, as by folding, pressing, and stretching.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Leaching -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Leaching">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Leaching in terms of unit operation is a particular form of extraction. Usually, a solute, a insolvable carrier and a solvent are applied for solid extraction</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#LiquidFiltration -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#LiquidFiltration">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Liquid filtration is the separation of a liquid-solids mixture by forcing the mixture through a porous barrier which retains most of the solid particulates contained in the mixture.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#LiquidPhasesGravitySeparation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#LiquidPhasesGravitySeparation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Liquid phases gravity separation refers to two liquid phases settle into separate layers due to gravity. (Perry)</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#MechanicalCrushing -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#MechanicalCrushing">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Fragmentation"/>
+        <rdfs:comment xml:lang="en">The process of breaking solid material into coarse-granular pieces by applying mechanical forces</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Melting -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Melting">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChangeOfSolids"/>
+        <owl:disjointWith rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Sublimation"/>
+        <rdfs:comment xml:lang="en">The phase transition from solid to the liquid.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Mixing -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Mixing">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Combination"/>
+        <rdfs:comment xml:lang="en">Mixing in terms of unit operations is a special type of combination which results in a mixture which is required for further processing. It is usually accomplished by means of stirrer.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#MixingOfLiquids -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#MixingOfLiquids">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Mixing"/>
+        <rdfs:comment xml:lang="en">The combination of two or more liquids of different composition to a homogeneous system.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#MixingOfSolids -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#MixingOfSolids">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Mixing"/>
+        <rdfs:comment xml:lang="en">The blending of different solid components to a granular mixture</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#MixingofGases -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#MixingofGases">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Mixing"/>
+        <rdfs:comment xml:lang="en">The mixing of two ore more gases of different compositions.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#PhaseChange -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChange">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#EnthalpyChange"/>
+        <rdfs:comment xml:lang="en">PhaseChange is a specialization of EnthalpyChange an usually it is applied for the purpose of heat exchange between spatially separated phases</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#PhaseChangeOfGases -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChangeOfGases">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChange"/>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#PhaseChangeOfLiquids -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChangeOfLiquids">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChange"/>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#PhaseChangeOfSolids -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChangeOfSolids">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChange"/>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Precipitation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Precipitation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Precipitation of products, impurities, or contaminants can be induced by the addition of solvents, salts, or polymers to the solution; by increasing temperature; or by adjusting the solution pH. (Perry)</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#PressureChange -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#PressureChange">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#EnthalpyChange"/>
+        <rdfs:comment xml:lang="en">By means of a PressureChange a heat content of a particular fluid may be exchanged which may be used for heating or cooling purposes in terms of unit operations.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#PressureChangeOfGas -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#PressureChangeOfGas">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#PressureChange"/>
+        <owl:disjointWith rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#PressureChangeOfLiquid"/>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#PressureChangeOfLiquid -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#PressureChangeOfLiquid">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#PressureChange"/>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Process -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Process">
+        <rdfs:comment xml:lang="en">351-42-33, process, &lt;in control technology&gt;: &quot;complete set of interacting operations in a system by which matter, energy or information is transformed, transported or stored&quot;</rdfs:comment>
+        <rdfs:label xml:lang="en">Process</rdfs:label>
+        <rdfs:label xml:lang="de">Prozess</rdfs:label>
+        <rdfs:seeAlso rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://www.electropedia.org/iev/iev.nsf/display?openform&amp;ievref=351-42-33</rdfs:seeAlso>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#QuenchGranulation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#QuenchGranulation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Fragmentation"/>
+        <rdfs:comment xml:lang="en">Fragmentation of a melt by rapid solidifaction, which causes internal stresses.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Rectification -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Rectification">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Rectification is the separation of the constituents of a liquid mixture by successive distillations (partial vaporizations and condensations) and is obtained via the use of an integral of differential process. (Perry)</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Scrubbing -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Scrubbing">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">The separation of dispersed particels from a gas phase by suspensing or solving the particles in a liquid phase.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Sedimentation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Sedimentation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Sedimentation is the partial separation or concentration of suspended solid particles from a liquid by gravity settling. (Perry)</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Separation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Separation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TransformationCapability"/>
+        <rdfs:comment xml:lang="en">Separation in terms of unit operation means to achieve single components of a mixture by means of physical of chemical phenomenon.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Shredding -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Shredding">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Fragmentation"/>
+        <rdfs:comment xml:lang="en">The fragmentation of fibrous materials by the effect of tensile forces.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Sintering -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Sintering">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Combination"/>
+        <rdfs:comment xml:lang="en">The heating of a mass of fine particles below the melting point, causing agglomeration to form larger particles. 
+(www.mim.com.au/glossary.html)</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Solidification -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Solidification">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChangeOfLiquids"/>
+        <owl:disjointWith rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Vaporization"/>
+        <rdfs:comment xml:lang="en">The phase transition from liquid to solid.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#SonicGasCleaning -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#SonicGasCleaning">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        <rdfs:comment xml:lang="en">Separation procedure based on the coagulation of small particles suspended in a fluid medium into larger aggregates by the action of sound waves.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Splitting -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Splitting">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Fragmentation"/>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Spraying -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Spraying">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Fragmentation"/>
+        <rdfs:comment xml:lang="en">The process of dispersing liquid droplets in a gas phase.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Stirring -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Stirring">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#MixingOfLiquids"/>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#StorageCapability -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#StorageCapability">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Capability"/>
+        <rdfs:comment xml:lang="en">Capability to store materials, energy or information.</rdfs:comment>
+        <rdfs:comment xml:lang="de">Fähigkeit, Stoffe, Energie oder Informationen zu speichern.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Storing -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Storing">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#StorageCapability"/>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Sublimation -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Sublimation">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChangeOfSolids"/>
+        <rdfs:comment xml:lang="en">The phase transition from solid to gas without passing through an intermediate liquid state.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Suspending -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Suspending">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Combination"/>
+        <rdfs:comment xml:lang="en">The process of preparing a mixture in which fine particles are suspended in a fluid, where they are supported by buoyancy.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Tabletting -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Tabletting">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Combination"/>
+        <rdfs:comment xml:lang="en">The process of preparing a small flat compressed cake of some powder by means of high pressure.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChange -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChange">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#EnthalpyChange"/>
+        <rdfs:comment xml:lang="en">TemperatureChange in terms of unit operation means to transport the heat content of one material to another and it is applied for heating or cooling purposes.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChangeOfGases -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChangeOfGases">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChange"/>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChangeOfLiquids -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChangeOfLiquids">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChange"/>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChangeOfSolids -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChangeOfSolids">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChange"/>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#ThermalCrushing -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#ThermalCrushing">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Fragmentation"/>
+        <rdfs:comment xml:lang="en">The process of crushing solid material by applying temperature differences that cause internal stresses.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#TransformationCapability -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#TransformationCapability">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Capability"/>
+        <rdfs:comment xml:lang="en">Capability to change the properties of a material, energy or information flow (e.g. temperature, chemical composition, position).</rdfs:comment>
+        <rdfs:comment xml:lang="de">Fähigkeit, Eigenschaften eines Stoff-, Energie- oder Informationsstroms zu ändern (z.B. Temperatur, chemische Zusammensetzung, Position).</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#TransportCapability -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#TransportCapability">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Capability"/>
+        <rdfs:comment xml:lang="en">Capability to transport substances, energy or information.</rdfs:comment>
+        <rdfs:comment xml:lang="de">Fähigkeit, Stoffe, Energie oder Informationen zu transportieren.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Vaporization -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Vaporization">
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChangeOfLiquids"/>
+        <rdfs:comment xml:lang="en">The phase transition from liquid to gas.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // General axioms
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <rdf:Description>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
+        <owl:members rdf:parseType="Collection">
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Abrasion"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Cutting"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#ElectromagneticCrushing"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Grinding"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#MechanicalCrushing"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#QuenchGranulation"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Shredding"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Splitting"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Spraying"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#ThermalCrushing"/>
+        </owl:members>
+    </rdf:Description>
+    <rdf:Description>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
+        <owl:members rdf:parseType="Collection">
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Absorption"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Adsorption"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#BoilingDown"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Centrifugation"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#ConcentrationByEvaporation"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#CyclonicSeparation"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#DiffusionSeparation"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Distillation"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#ElectricalGasCleaning"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Electrodialysis"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Electrophoresis"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Extraction"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Flashing"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#FoamFractionation"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#GasCentrifugation"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#GasFiltration"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#HydrocyclonicSeparation"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#ImpingementSeparation"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Leaching"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#LiquidFiltration"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Rectification"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Scrubbing"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#SonicGasCleaning"/>
+        </owl:members>
+    </rdf:Description>
+    <rdf:Description>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
+        <owl:members rdf:parseType="Collection">
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Briquetting"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Compacting"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Dissolution"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Emulsification"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#FoamFormation"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Fusion"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Humidification"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Impregnation"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Kneading"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Mixing"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Sintering"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Suspending"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Tabletting"/>
+        </owl:members>
+    </rdf:Description>
+    <rdf:Description>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
+        <owl:members rdf:parseType="Collection">
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Combination"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#EnthalpyChange"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Fragmentation"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
+        </owl:members>
+    </rdf:Description>
+    <rdf:Description>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
+        <owl:members rdf:parseType="Collection">
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#MixingOfLiquids"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#MixingOfSolids"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#MixingofGases"/>
+        </owl:members>
+    </rdf:Description>
+    <rdf:Description>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
+        <owl:members rdf:parseType="Collection">
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChange"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#PressureChange"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChange"/>
+        </owl:members>
+    </rdf:Description>
+    <rdf:Description>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
+        <owl:members rdf:parseType="Collection">
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChangeOfGases"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChangeOfLiquids"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#PhaseChangeOfSolids"/>
+        </owl:members>
+    </rdf:Description>
+    <rdf:Description>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
+        <owl:members rdf:parseType="Collection">
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChangeOfGases"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChangeOfLiquids"/>
+            <rdf:Description rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#TemperatureChangeOfSolids"/>
+        </owl:members>
+    </rdf:Description>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 4.5.29.2024-05-13T12:11:03Z) https://github.com/owlcs/owlapi -->
+

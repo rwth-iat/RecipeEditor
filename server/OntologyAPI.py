@@ -83,7 +83,7 @@ def upload_onto():
         examples:
             rgb: ['red', 'green', 'blue']
     """
-    upload_file(request, "ontologies")
+    upload_file(request, "ontologies/")
     
 
 # Method to load an ontology
