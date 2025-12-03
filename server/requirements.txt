@@ -10,6 +10,7 @@ click==8.1.8
 colorama==0.4.6
 coverage==7.3.0
 cryptography==44.0.1
+defusedxml==0.7.1
 dicttoxml==1.7.16
 Django==5.0
 exceptiongroup==1.1.3
