@@ -1304,7 +1304,7 @@ function stringifyConditionGroup(group) {
       return '';
     }
     if (group.keyword === 'Step') {
-      return `Step "${group.instance || ''}" is Complete`;
+      return `Step "${group.instance || ''}" is Completed`;
     } else {
       const instancePart = group.instance ? `${group.instance} ` : '';
       return `${group.keyword} ${instancePart}${group.operator} ${group.value}`;

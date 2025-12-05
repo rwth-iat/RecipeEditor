@@ -39,7 +39,7 @@
             <option value="Pressure">Pressure</option>
             <option value="Speed">Speed</option>
             <option value="Weight">Weight</option>
-            <option value="Step">Step</option>
+            <option value="Step">Step</option>            
           </select>
           
           <!-- Special handling for Step-type conditions -->
@@ -49,8 +49,8 @@
               <option value="" disabled selected>Select Step</option>
               <option v-for="step in availableSteps" :key="step.id" :value="step.id">{{ step.name }}</option>
             </select>
-            <!-- Step conditions are always "Complete" - readonly -->
-            <input type="text" value="Complete" readonly style="background: #fff; color: #23272f; min-width: 80px;" />
+            <!-- Step conditions are always "Completed" - readonly -->
+            <input type="text" value="Completed" readonly style="background: #fff; color: #23272f; min-width: 80px;" />
           </template>
           
           <!-- Standard condition editing for non-Step types -->
@@ -152,10 +152,10 @@ watch(groupRef, (val) => {
 function addCondition() {
   groupRef.value.children.push({
     type: 'condition',
-    keyword: 'Level',        // Default keyword
+    keyword: 'Step',        // Default keyword
     instance: '',            // Instance name (e.g., "500")
     operator: '==',          // Default comparison operator
-    value: ''                // Condition value
+    value: '0'                // Condition value
   });
 }
 

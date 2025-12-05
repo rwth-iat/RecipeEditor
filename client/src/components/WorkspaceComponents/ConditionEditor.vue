@@ -66,7 +66,7 @@ const conditionSummary = computed(() => {
       
       // Special handling for Step-type conditions
       if (group.keyword === 'Step') {
-        return `Step "${group.instance || ''}" is Complete`;
+        return `Step "${group.instance || ''}" is Completed`;
       } else {
         // For other condition types, format as: "Keyword Instance Operator Value"
         const instancePart = group.instance ? `${group.instance} ` : '';

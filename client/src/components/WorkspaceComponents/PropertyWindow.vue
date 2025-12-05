@@ -854,7 +854,7 @@ watch(
     newList.forEach(condition => {
       if (condition.keyword === 'Step') {
         condition.operator = 'is';
-        condition.value = 'Complete';
+        condition.value = 'Completed';
       }
     });
   },
