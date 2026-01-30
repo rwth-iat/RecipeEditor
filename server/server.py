@@ -40,12 +40,13 @@ def create_app():
     app.config['SWAGGER'] = {
         'uiversion': 3,
         "specs_route": "/apidocs/",
-        'title': 'Recipe Editor Tool for ANSI/ISA-88 General and Master Recipes',
-        "description": "Comprehensive API for BatchML recipe management, including General Recipe Editor, Master Recipe Editor, MTP (Modular Type Package) file processing, AAS (Asset Administration Shell) file management, ontology operations, and equipment integration for industrial automation workflows",
+        'title': 'API Recipe Editor',
+        "description": """API for the *Recipe Editor*, which are created according to ANSI/ISA-88 in BatchML. The API provides endpoints for the General- and Master Recipes Editor, interfaces for processing of MTP (Modular Type Package) files and AAS (Asset Administration Shell) files, as well as operations for validation, and management of ontologies, recipes and AAS files.
+                          """,
         "version": "0.0.1",
         "contact": {
-            "name": "Sebastian Ulrich",
-            "email": "sebastian.ulrich@rwth-aachen.de"
+            "name": "Michael Winter",
+            "email": "m.winter@iat.rwth-aachen.de"
         }
     }
 
@@ -56,7 +57,7 @@ def create_app():
         tags:
           - General Recipe Editor
         responses:
-          302:
+          "302":
             description: redirects to /editor.
             examples:
               rgb: ['red', 'green', 'blue']
@@ -71,7 +72,7 @@ def create_app():
         tags:
           - General Recipe Editor
         responses:
-          200:
+          "200":
             description: The html file of the Graphical Editor UI.
             examples:
               rgb: ['red', 'green', 'blue']
@@ -86,7 +87,7 @@ def create_app():
         tags:
           - Master Recipe Editor
         responses:
-          200:
+          "200":
             description: The html file of the Graphical Editor UI.
             examples:
               rgb: ['red', 'green', 'blue']
@@ -134,7 +135,7 @@ def create_app():
         tags:
           - MTP
         responses:
-          200:
+          "200":
             description: List of MTP files
         """
         try:
@@ -159,7 +160,7 @@ def create_app():
             type: file
             required: true
         responses:
-          200:
+          "200":
             description: Upload successful
         """
         if 'file' not in request.files:
@@ -193,7 +194,7 @@ def create_app():
             type: string
             required: true
         responses:
-          200:
+          "200":
             description: MTP file content
         """
         try:
@@ -214,7 +215,7 @@ def create_app():
             type: string
             required: true
         responses:
-          200:
+          "200":
             description: Parsed MTP data
         """
         try:
@@ -243,7 +244,7 @@ def create_app():
             type: string
             required: true
         responses:
-          200:
+          "200":
             description: Equipment information from MTP file
         """
         try:
@@ -284,7 +285,7 @@ def create_app():
             type: string
             required: true
         responses:
-          200:
+          "200":
             description: Filtered equipment information for specific process
         """
         try:
@@ -326,7 +327,7 @@ def create_app():
             type: string
             required: true
         responses:
-          200:
+          "200":
             description: Master recipe specific equipment information
         """
         try:
@@ -360,7 +361,7 @@ def create_app():
         tags:
           - AAS
         responses:
-          200:
+          "200":
             description: List of AAS files
         """
         try:
@@ -385,7 +386,7 @@ def create_app():
             type: file
             required: true
         responses:
-          200:
+          "200":
             description: Upload successful
         """
         if 'file' not in request.files:
@@ -419,7 +420,7 @@ def create_app():
             type: string
             required: true
         responses:
-          200:
+          "200":
             description: AAS file content
         """
         try:
@@ -440,7 +441,7 @@ def create_app():
             type: string
             required: true
         responses:
-          200:
+          "200":
             description: Parsed AAS data
         """
         try:
@@ -468,7 +469,7 @@ def create_app():
             type: string
             required: true
         responses:
-          200:
+          "200":
             description: Equipment information from AAS file
         """
         try:
@@ -509,7 +510,7 @@ def create_app():
             required: true
             default: /assets/index-4ed49a4e.css
         responses:
-          200:
+          "200":
             description: The requested File
             examples:
               rgb: ['red', 'green', 'blue']
@@ -536,7 +537,7 @@ def create_app():
             type: file
             required: true
         responses:
-          200:
+          "200":
             description: The requested File
             examples:
               rgb: ['red', 'green', 'blue']
@@ -593,7 +594,7 @@ def create_app():
             type: file
             required: true
         responses:
-          200:
+          "200":
             description: The requested File
             examples:
               rgb: ['red', 'green', 'blue']
@@ -660,7 +661,7 @@ def create_app():
             type: file
             required: true
         responses:
-          200:
+          "200":
             description: The requested File
             examples:
               rgb: ['red', 'green', 'blue']

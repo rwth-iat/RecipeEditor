@@ -173,7 +173,7 @@ def get_aasx_capabilities():
         type: file
         required: true
     responses:
-      200:
+      "200":
         description: An ackknowledgement that the upload worked.
         examples:
             rgb: ['red', 'green', 'blue']
@@ -200,7 +200,7 @@ def get_aas_capabilities():
         type: file
         required: true
     responses:
-      200:
+      "200":
         description: An ackknowledgement that the upload worked.
         examples:
             rgb: ['red', 'green', 'blue']
@@ -227,7 +227,7 @@ def validate_aasx():
         type: file
         required: true
     responses:
-      200:
+      "200":
         description: Boolean showing if AASX is valid or not.
         examples:
             rgb: True
@@ -267,7 +267,7 @@ def validate_aas():
         type: file
         required: true
     responses:
-      200:
+      "200":
         description: Boolean showing if AAS is valid or not.
         examples:
             rgb: True

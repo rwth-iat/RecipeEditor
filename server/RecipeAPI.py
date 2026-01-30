@@ -81,9 +81,9 @@ def validate_batchml():
         required: true
         default: ""
     responses:
-      200:
+      "200":
         description: Given String is valid.
-        400:
+        "400":
         description: Given String is not valid.
     """
     args = request.args
@@ -115,11 +115,11 @@ def validate_mrecipe_post():
         type: object
         required: true
     responses:
-      200:
+      "200":
         description: Valid XML
-      400:
+      "400":
         description: Schema validation failure
-      500:
+      "500":
         description: Internal parse/XSD load error
     """
     try:
@@ -162,11 +162,11 @@ def validate_mrecipe():
         type: string
         required: true
     responses:
-      200:
+      "200":
         description: Valid XML
-      400:
+      "400":
         description: Schema validation failure
-      500:
+      "500":
         description: Internal parse/XSD load error
     """
     xml_string = request.args.get("xml_string", "")
@@ -198,7 +198,7 @@ def get_recipe_capabilities():
         type: file
         required: true
     responses:
-      200:
+      "200":
         description: An ackknowledgement that the upload worked.
         examples:
             rgb: ['red', 'green', 'blue']
@@ -383,11 +383,11 @@ def create_master_recipe():
         required: true
         description: Master recipe JSON payload with enhanced structure
     responses:
-      200:
+      "200":
         description: Valid BatchML XML
-      400:
+      "400":
         description: Schema validation failure
-      500:
+      "500":
         description: Internal parse/XSD load error
     """
     try:

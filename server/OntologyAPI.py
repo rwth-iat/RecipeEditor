@@ -78,7 +78,7 @@ def upload_onto():
         type: file
         required: true
     responses:
-      200:
+      "200":
         description: An ackknowledgement that the upload worked.
         examples:
             rgb: ['red', 'green', 'blue']
@@ -94,7 +94,7 @@ def get_onto():
     tags:
       - Ontologies
     responses:
-      200:
+      "200":
         description: A list of the currently available Ontologies
         examples:
           rgb: ['Ontocap', 'acplt']
@@ -117,7 +117,7 @@ def download_onto(filename):
         required: true
         default: c4i.owl
     responses:
-      200:
+      "200":
         description: 
         examples:
             rgb: ['red', 'green', 'blue']
@@ -145,7 +145,7 @@ def get_classes(onto_name, methods=['GET']):
         required: true
         default: all
     responses:
-      200:
+      "200":
         description: A list of the classes in given Ontology.
     """
     # returns a generator therefore we need list()
@@ -173,7 +173,7 @@ def get_subclasses(onto_name="acplt", super_class="GeneralCapabilityEffecting"):
         required: true
         default: GeneralCapabilityEffecting
     responses:
-      200:
+      "200":
         description: A list Subclasses and their respective subclasses
         examples:
             rgb: [{
