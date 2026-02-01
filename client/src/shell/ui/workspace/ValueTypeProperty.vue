@@ -17,7 +17,7 @@
 </template>
 
 <script setup>
-import '@/assets/main.scss'; //import global css
+import '@/shell/assets/main.scss'; //import global css
 import { computed, ref } from 'vue';
 
 const props = defineProps({

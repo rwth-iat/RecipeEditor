@@ -21,7 +21,7 @@
 
 import { Builder } from "xml2js";
 import { Draft04 } from "json-schema-library";
-import allSchemas from "./AllSchemas.json";
+import allSchemas from "./schemas/AllSchemas.json";
 
 /**
  * Creates a B2MML ValueType object from a value type definition

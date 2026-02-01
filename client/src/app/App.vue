@@ -9,8 +9,8 @@
 
 <style lang="scss">
 :root {
-  --primary: #4ade80;
-  --primary-alt: #22c55e;
+  --primary: #47c575;
+  --primary-alt: #30a15a;
   --grey: #64748b;
   --dark: #1e293b;
   --dark-alt: #334155;

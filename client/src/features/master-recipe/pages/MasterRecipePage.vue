@@ -1,14 +1,25 @@
 <template>
   <main>
-    <Topbar title="Master Recipe Tool" mode="master" style="background-color: var(--dark);"
-      @trigger-export="callExportMasterRecipeFunction" @trigger-save="triggerSaveWorkspace"
-      @trigger-exportJson="triggerExportWorkspace" @trigger-importJson="triggerImportWorkspace"
-      @trigger-reset="triggerResetWorkspace" @trigger-open-config="openMasterRecipeConfig"
-      @trigger-export-master-recipe="exportMasterRecipe" />
+    <Topbar 
+    title="Master Recipe Editor" 
+    mode="master" 
+    style="background-color: var(--dark);"
+    @trigger-export="callExportMasterRecipeFunction" @trigger-save="triggerSaveWorkspace"
+    @trigger-exportJson="triggerExportWorkspace" @trigger-importJson="triggerImportWorkspace"
+    @trigger-reset="triggerResetWorkspace" @trigger-open-config="openMasterRecipeConfig"
+    @trigger-export-master-recipe="exportMasterRecipe" />
     <div id="editor">
-      <Sidebar id="side_bar" mode="master" />
-      <workspace :key="workspaceKey" mode="master" :storage-key="workspaceStorageKey"
-        :master-recipe-config="masterRecipeConfig" id="workspace" ref="workspaceRef" />
+      <Sidebar 
+      id="side_bar" 
+      mode="master" />
+      <workspace 
+      :key="workspaceKey" 
+      :property-window-component="MasterPropertyWindow"
+      :storage-key="workspaceStorageKey"
+      :master-recipe-config="masterRecipeConfig" 
+      id="workspace" 
+      ref="workspaceRef"
+      mode="master"  />
     </div>
 
     <!-- Master Recipe Configuration Modal -->
@@ -19,14 +30,15 @@
 </template>
 
 <script setup>
-import Topbar from '../components/TopBar.vue'
-import Sidebar from '../components/SideBar.vue'
-import workspace from '../components/WorkspaceContainer.vue'
-import MasterRecipeConfig from '../components/MasterRecipeConfig.vue'
+import Topbar from '@/shell/ui/topbar/TopBar.vue'
+import Sidebar from '@/shell/ui/sidebar/SideBar.vue'
+import workspace from '@/shell/ui/workspace/WorkspaceContainer.vue'
+import MasterPropertyWindow from '@/features/master-recipe/ui/MasterPropertyWindow.vue'
+import MasterRecipeConfig from '@/features/master-recipe/ui/MasterRecipeConfig.vue'
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { useWorkspaceActions } from '@/composables/useWorkspaceActions';
-import { create_validate_download_master_recipe_batchml } from '@/components/create_xml/new_export_xml.js';
+import { useWorkspaceActions } from '@/shell/composables/useWorkspaceActions';
+import { create_validate_download_master_recipe_batchml } from '@/services/recipeExport/new_export_xml.js';
 import axios from 'axios';
 
 const route = useRoute()
@@ -93,6 +105,7 @@ const {
   triggerImportWorkspace
 } = useWorkspaceActions(workspaceRef, 'workspaceState_master');
 
+
 // --- Export Master Recipe ---
 const client = axios.create({ baseURL: '' });
 function exportMasterRecipe() {
@@ -124,28 +137,6 @@ function exportMasterRecipe() {
 </script>
 
 <style lang="scss">
-:root {
-  --primary: #4ade80;
-  --primary-alt: #22c55e;
-  --grey: #64748b;
-  --dark: #1e293b;
-  --dark-alt: #334155;
-  --light: #f1f5f9;
-  --red: red;
-
-  --sidebar-width: 300px;
-  --topbar-height: auto;
-  --element-height: 10px;
-}
-
-/*this blocks makes sure that the menu bar on the left is directly at the rim and no gap appears*/
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Fira sans', sans-serif;
-}
-
 header {
   background: var(--dark);
 }

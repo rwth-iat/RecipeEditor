@@ -1,22 +1,35 @@
 <template>
   <main>
-    <Topbar title="General Recipe Tool" @trigger-export="callExportGeneralRecipeFunction"
-      @trigger-save="triggerSaveWorkspace" @trigger-exportJson="triggerExportWorkspace"
-      @trigger-importJson="triggerImportWorkspace" @trigger-reset="triggerResetWorkspace" />
+    <Topbar 
+    title="General Recipe Editor" 
+    mode="general"
+    @trigger-export="callExportGeneralRecipeFunction"
+    @trigger-save="triggerSaveWorkspace" 
+    @trigger-exportJson="triggerExportWorkspace"
+    @trigger-importJson="triggerImportWorkspace" 
+    @trigger-reset="triggerResetWorkspace" />
     <div id="editor">
-      <Sidebar id="side_bar" mode="general" />
-      <workspace :storage-key="workspaceStorageKey" :key="workspaceKey" id="workspace" ref="workspaceRef" />
+      <Sidebar 
+      id="side_bar" 
+      mode="general" />
+      <workspace 
+      :storage-key="workspaceStorageKey" 
+      :key="workspaceKey" 
+      :property-window-component="GeneralPropertyWindow"
+      id="workspace" 
+      ref="workspaceRef" />
     </div>
   </main>
 </template>
 
 <script setup>
-import Topbar from '../components/TopBar.vue'
-import Sidebar from '../components/SideBar.vue'
-import workspace from '../components/WorkspaceContainer.vue'
+import Topbar from '@/shell/ui/topbar/TopBar.vue'
+import Sidebar from '@/shell/ui/sidebar/SideBar.vue'
+import workspace from '@/shell/ui/workspace/WorkspaceContainer.vue'
+import GeneralPropertyWindow from '@/features/general-recipe/ui/GeneralPropertyWindow.vue'
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { useWorkspaceActions } from '@/composables/useWorkspaceActions'
+import { useWorkspaceActions } from '@/shell/composables/useWorkspaceActions'
 
 
 const route = useRoute()
@@ -40,28 +53,6 @@ const {
 </script>
 
 <style lang="scss">
-:root {
-  --primary: #4ade80;
-  --primary-alt: #22c55e;
-  --grey: #64748b;
-  --dark: #1e293b;
-  --dark-alt: #334155;
-  --light: #f1f5f9;
-  --red: red;
-
-  --sidebar-width: 300px;
-  --topbar-height: auto;
-  --element-height: 10px;
-}
-
-/*this blocks makes sure that the menu bar on the left is directly at the rim and no gap appears*/
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Fira sans', sans-serif;
-}
-
 header {
   background: var(--dark);
 }

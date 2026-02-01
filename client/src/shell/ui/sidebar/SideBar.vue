@@ -37,11 +37,10 @@
 </template>
 
 <script setup>
-import '@/assets/main.scss'; //import global css
-//import vue from 'vue'
-import { ref } from 'vue'
-import logoURL from '../assets/logo.png'
-import elementWindow from './SidebarComponents/elementWindow.vue'
+import '@/shell/assets/main.scss'; //import global css
+import { ref } from 'vue' //import vue from 'vue'
+import logoURL from '@/shell/assets/logo.png'
+import elementWindow from '@/shell/ui/sidebar/elementWindow.vue'
 
 defineProps({
 	mode: {

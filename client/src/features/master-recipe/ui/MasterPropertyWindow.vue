@@ -1,13 +1,11 @@
 <template>
-  <div class="property-window-content">
-    <!-- Header with close, workspace, and delete actions -->
-    <div class="property-window-header">
-      <h2>Property Window</h2>
-      <button @click="close" class="closeBtt">X</button>
-      <button @click="openInWorkspace" class="openWorkspaceBtt">Open in Workspace</button>
-      <button @click="deleteElement" class="deleteBtt">Delete</button>
-    </div>
-
+  <PropertyWindowBase
+    v-bind="props"
+    @close="emit('close')"
+    @openInWorkspace="emit('openInWorkspace')"
+    @deleteElement="emit('deleteElement')"
+    @update:selectedElement="emit('update:selectedElement', $event)"
+  >
     <!-- Validation Warning Display - Shows when parameters have validation errors -->
     <div v-if="hasValidationErrors" class="validation-warning-banner">
       <span class="warning-icon">⚠️</span>
@@ -47,7 +45,7 @@
     <div
       v-show="computedSelectedElement.recipeElementType === 'Condition' || computedSelectedElement.type === 'transition'">
       <label for="condition">Condition:</label>
-      
+
       <!-- Display current condition summary if it exists and is not just "True" -->
       <div v-if="conditionSummary && conditionSummary !== 'True'">
         <div class="always-true-container">
@@ -57,10 +55,10 @@
           <span>Current Condition: <b>{{ conditionSummary }}</b></span>
         </div>
       </div>
-      
+
       <!-- Button to open the condition editing modal -->
       <button @click="showConditionModal = true" class="open-condition-modal-btn">Edit Condition</button>
-      
+
       <!-- Condition Editor Modal - Provides full-screen editing experience -->
       <template v-if="showConditionModal">
         <div class="modal-overlay" @click.self="tryCloseConditionModal">
@@ -92,26 +90,6 @@
           <span class="click-hint">Click to use</span>
         </div>
       </div>
-    </div>
-
-    <!-- Material Properties Section - Shown only for material-type elements -->
-    <div v-show='computedSelectedElement.type == "material"'>
-      <label for="materialType">MaterialType:</label>
-      <select id="materialType" v-model="computedSelectedElement.materialType">
-        <option value="Input">Input</option>
-        <option value="Intermediate">Intermediate</option>
-        <option value="Output">Output</option>
-      </select>
-
-      <label for="materialID">MaterialID:</label>
-      <input type="text" id="materialID" v-model="computedSelectedElement.materialID" />
-
-      <label for="order">Order:</label>
-      <input type="text" id="order" v-model="computedSelectedElement.order" />
-
-      <label for="amount">Amount:</label>
-      <ValueTypeProperty :id="'amount'" :valueType="computedSelectedElement.amount"
-        @update:valueType="computedSelectedElement.amount = $event" />
     </div>
 
     <!--Process Properties-->
@@ -200,7 +178,7 @@
                     <span v-if="parameter.unit" class="unit-label">{{ parameter.unit }}</span>
                   </div>
                   <span v-if="isValueInvalid(parameter)" class="validation-error">
-                    ⚠️ Value must be between {{ parameter.min || 'N/A' }} and {{ parameter.max || 'N/A' }}
+                    ?? Value must be between {{ parameter.min || 'N/A' }} and {{ parameter.max || 'N/A' }}
                   </span>
                 </div>
               </div>
@@ -276,128 +254,25 @@
           </div>
         </div>
       </div>
-      <div>
-        <h2>Parameters</h2>
-
-        <!-- Process Element Parameters -->
-        <div v-if="(computedSelectedElement.processElementParameter || []).length > 0">
-          <h3>Process Element Parameters</h3>
-          <div v-for="(parameter, index) in (computedSelectedElement.processElementParameter || [])"
-            :key="`process_${index}`" class="container-with-border">
-            <label :for="'parameter_' + index + '_id'">ID:</label>
-            <input type="text" :id="'parameter_' + index + '_id'" v-model="parameter.id" />
-            <label :for="'parameter_' + index + '_description'">Description:</label>
-            <input type="text" :id="'parameter_' + index + '_description'" v-model="parameter.description[0]" />
-            <label :for="'parameter_' + index + '_valueType'">ParameterValue:</label>
-            <ValueTypeProperty :id="'parameter_' + index + '_valueType'" :valueType="parameter.value"
-              :minValue="getParameterMinValue(parameter)" :maxValue="getParameterMaxValue(parameter)"
-              :unit="getParameterUnit(parameter)" @update:valueType="parameter.value = $event"
-              @validation-error="handleParameterValidationError(index, $event)" />
-          </div>
-        </div>
-
-        <!-- Other Information -->
-        <div v-if="computedSelectedElement.otherInformation && computedSelectedElement.otherInformation.length > 0">
-          <h3>Other Information</h3>
-          <div v-for="(otherInformation, index) in (computedSelectedElement.otherInformation || [])"
-            :key="`other_${index}`" class="container-with-border">
-            <label :for="'otherInformation_' + index + '_otherInfoID'">ID:</label>
-            <input type="text" :id="'otherInformation_' + index + '_otherInfoID'"
-              v-model="otherInformation.otherInfoID" />
-            <label :for="'otherInformation_' + index + '_description'">Description:</label>
-            <input type="text" :id="'otherInformation_' + index + '_description'"
-              v-model="otherInformation.description[0]" />
-            <label :for="'otherInformation_' + index + '_otherValue'">OtherValue:</label>
-            <ValueTypeProperty :valueType="otherInformation.otherValue[0]"
-              @update:valueType="otherInformation.otherValue[0] = $event" />
-          </div>
-        </div>
-
-        <!-- Resource Constraints -->
-        <div v-if="computedSelectedElement.resourceConstraint && computedSelectedElement.resourceConstraint.length > 0">
-          <h3>Resource Constraints</h3>
-          <div v-for="(resourceConstraint, index) in (computedSelectedElement.resourceConstraint || [])"
-            :key="`resource_${index}`" class="container-with-border">
-            <label :for="'resourceConstraint_' + index + '_constrainedID'">ID:</label>
-            <input type="text" :id="'resourceConstraint_' + index + '_constrainedID'"
-              v-model="resourceConstraint.constrinedID" />
-            <label :for="'resourceConstraint_' + index + '_description'">Description:</label>
-            <input type="text" :id="'resourceConstraint_' + index + '_description'"
-              v-model="resourceConstraint.description[0]" />
-            <label :for="'resourceConstraint_' + index + '_constraintType'">ConstraintType:</label>
-            <select :id="'resourceConstraint_' + index + '_constraintType'" v-model="resourceConstraint.constraintType">
-              <option value="Required">Required</option>
-              <option value="Optional">Optional</option>
-              <option value="Other">Other</option>
-            </select>
-            <label :for="'resourceConstraint_' + index + '_lifeCycleState'">LifeCycleState:</label>
-            <input type="text" :id="'resourceConstraint_' + index + '_lifeCycleState'"
-              v-model="resourceConstraint.lifeCycleState" />
-            <label :for="'resourceConstraint_' + index + '_range'">Range:</label>
-            <ValueTypeProperty :id="'resourceConstraint_' + index + '_range'" :valueType="resourceConstraint.range"
-              @update:valueType="resourceConstraint.valueType = $event" />
-            <label
-              :for="'resourceConstraint_' + index + '_resourceConstraintProperty'">ResourceConstraintProperty:</label>
-            <input type="text" :id="'resourceConstraint_' + index + '_resourceConstraintProperty'"
-              v-model="resourceConstraint.resourceConstraintProperty" />
-          </div>
-        </div>
-
-        <!-- Add buttons for each type -->
-        <div class="add-buttons-container">
-          <button @click="addProcessElementParameter" id="addProcessElementParameter" class="add-button">
-            <span class="material-icons-light">+</span> Add Process Parameter
-          </button>
-          <button @click="addOtherInformation" id="addOtherValue" class="add-button">
-            <span class="material-icons-light">+</span> Add Other Information
-          </button>
-          <button @click="addResourceConstraint" id="addResourceConstraint" class="add-button">
-            <span class="material-icons-light">+</span> Add Resource Constraint
-          </button>
-        </div>
-      </div>
     </div>
-    
-  </div>
+  </PropertyWindowBase>
 </template>
 
 <script setup>
-import '@/assets/main.scss'; //import global css
-
 import { computed, ref, watch, watchEffect } from 'vue';
-import ValueTypeProperty from './ValueTypeProperty.vue';
-import ConditionEditor from './ConditionEditor.vue';
-
-/**
- * PropertyWindow Component
- * 
- * This component provides a comprehensive interface for editing workspace element properties.
- * It handles different element types (process, material, transition) and provides specialized
- * editing interfaces for each type.
- * 
- * Key Features:
- * - Dynamic property editing based on element type
- * - Advanced condition editing with modal interface
- * - Parameter validation and error display
- * - Equipment information display (AAS, MTP)
- * - Sensor data integration for transitions
- * - Real-time validation feedback
- */
+import PropertyWindowBase from '@/shell/ui/workspace/PropertyWindowBase.vue';
+import ConditionEditor from '@/features/master-recipe/ui/ConditionEditor.vue';
 
 const props = defineProps({
-  // The currently selected workspace element to edit
-  selectedElement: Object, 
-  // Mode: 'general' or 'master' recipe
+  selectedElement: Object,
   mode: {
     type: String,
-    default: 'general'
+    default: 'master'
   },
-  // All workspace items for reference and step selection
   workspaceItems: {
     type: Array,
     default: () => []
   },
-  // Workspace connections for finding related elements
   connections: {
     type: Array,
     default: () => []
@@ -406,15 +281,6 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'openInWorkspace', 'deleteElement', 'update:selectedElement']);
 
-/**
- * Computed property that provides two-way binding with the parent component
- * This is the recommended Vue 3 pattern for achieving two-way binding:
- * - get: retrieves the value from the parent
- * - set: emits updates to the parent, which then sets the new value
- * 
- * This approach ensures the parent component remains the single source of truth
- * while allowing the child to modify the data.
- */
 const computedSelectedElement = computed({
   get: () => props.selectedElement,
   set: (newValue) => {
@@ -422,16 +288,6 @@ const computedSelectedElement = computed({
   },
 });
 
-/**
- * WatchEffect to ensure conditionGroup is always properly initialized
- * This prevents the "Cannot read properties of undefined" error when
- * the ConditionEditor component first renders.
- * 
- * Default structure:
- * - type: 'group' - indicates this is a logical group
- * - operator: 'AND' - default logical operator
- * - children: [] - empty array for child conditions/groups
- */
 watchEffect(() => {
   if (
     computedSelectedElement.value &&
@@ -445,11 +301,6 @@ watchEffect(() => {
   }
 });
 
-/**
- * Computed property for safe description access
- * Handles the case where description might be undefined, null, or not an array
- * Provides a fallback empty string if the description structure is invalid
- */
 const descriptionValue = computed({
   get: () => {
     if (computedSelectedElement.value && computedSelectedElement.value.description && Array.isArray(computedSelectedElement.value.description)) {
@@ -459,7 +310,6 @@ const descriptionValue = computed({
   },
   set: (value) => {
     if (computedSelectedElement.value) {
-      // Ensure description is always an array
       if (!computedSelectedElement.value.description) {
         computedSelectedElement.value.description = [];
       }
@@ -471,13 +321,6 @@ const descriptionValue = computed({
   }
 });
 
-/**
- * Computed property to determine if the element is a transition
- * Transitions are special elements that can have conditions and connect
- * different parts of the recipe workflow.
- * 
- * Checks both the element type and recipeElementType for transition indicators
- */
 const isTransitionElement = computed(() => {
   return computedSelectedElement.value && (
     computedSelectedElement.value.type === 'transition' ||
@@ -485,57 +328,72 @@ const isTransitionElement = computed(() => {
   );
 });
 
-/**
- * Computed property for available sensors from previous steps
- * This provides sensor data that can be used to auto-fill condition fields
- * for transition elements, improving user experience and reducing errors.
- */
 const availableSensors = computed(() => {
   return getPreviousElementSensorData(computedSelectedElement.value);
 });
 
-/**
- * Computed property for available steps that can be referenced in conditions
- * Filters workspace items to only include process and recipe_element types
- * Maps them to a simplified format with id and name for the condition editor
- */
 const availableSteps = computed(() => {
   return props.workspaceItems
     .filter(item => item.type === 'process' || item.type === 'recipe_element')
     .map(item => ({ id: item.id, name: item.name || item.id }));
 });
 
-/**
- * Function to get previous element's sensor data for transitions
- * This function analyzes the workspace connections to find the element
- * that comes before a transition, then extracts its sensor information
- * for use in condition editing.
- * 
- * @param {Object} transitionElement - The transition element to analyze
- * @returns {Array} - Array of available sensor data objects
- */
+const stringifyConditionGroup = (node) => {
+  if (!node) return '';
+  if (node.type === 'condition') {
+    const parts = [node.keyword, node.operator, node.value]
+      .filter(part => part !== undefined && part !== null && part !== '');
+    return parts.join(' ');
+  }
+  if (node.type === 'group') {
+    const operator = node.operator || 'AND';
+    const children = (node.children || [])
+      .map(stringifyConditionGroup)
+      .filter(Boolean);
+    if (!children.length) return 'True';
+    if (operator === 'NOT') return 'NOT (' + (children[0] || 'True') + ')';
+    return children.join(' ' + operator + ' ');
+  }
+  return '';
+};
+
+const conditionSummary = computed(() => {
+  const element = computedSelectedElement.value;
+  if (!element) return '';
+  if (element.conditionGroup) {
+    const summary = stringifyConditionGroup(element.conditionGroup);
+    return summary || 'True';
+  }
+  if (Array.isArray(element.conditionList) && element.conditionList.length > 0) {
+    const summary = element.conditionList
+      .map(condition => [condition.keyword, condition.instance, condition.operator, condition.value]
+        .filter(part => part !== undefined && part !== null && part !== '')
+        .join(' '))
+      .filter(Boolean)
+      .join(' AND ');
+    return summary || 'True';
+  }
+  return 'True';
+});
+
 const getPreviousElementSensorData = (transitionElement) => {
   if (!transitionElement || transitionElement.recipeElementType !== 'Condition') {
     return [];
   }
 
-  // Find the connection where this transition is the target
   const incomingConnection = props.connections.find(conn => conn.targetId === transitionElement.id);
   if (!incomingConnection) {
     return [];
   }
 
-  // Find the source element (previous element)
   const previousElement = props.workspaceItems.find(item => item.id === incomingConnection.sourceId);
   if (!previousElement || !previousElement.equipmentInfo) {
     return [];
   }
 
-  // Extract sensor data from the previous element's equipment info
   const sensors = [];
 
   if (previousElement.equipmentInfo.equipment_data) {
-    // MTP sensors
     if (previousElement.equipmentInfo.equipment_data.condition_sensors) {
       previousElement.equipmentInfo.equipment_data.condition_sensors.forEach(sensor => {
         sensors.push({
@@ -543,15 +401,13 @@ const getPreviousElementSensorData = (transitionElement) => {
           name: sensor.name,
           type: 'sensor',
           source: 'MTP',
-          keyword: sensor.sensor_keyword || 'Level' // Use extracted keyword or default
+          keyword: sensor.sensor_keyword || 'Level'
         });
       });
     }
 
-    // AAS properties (can be used as sensors)
     if (previousElement.equipmentInfo.equipment_data.properties) {
       (previousElement.equipmentInfo.equipment_data.properties || []).forEach(property => {
-        // Try to extract keyword from AAS property name
         const extractKeywordFromAAS = (propertyName) => {
           const nameLower = propertyName.toLowerCase();
           if (nameLower.includes('temp') || nameLower.includes('temperature')) return 'Temp';
@@ -563,7 +419,7 @@ const getPreviousElementSensorData = (transitionElement) => {
           if (nameLower.includes('density') || nameLower.includes('dens')) return 'Dens';
           if (nameLower.includes('distance') || nameLower.includes('dist')) return 'Dist';
           if (nameLower.includes('time') || nameLower.includes('duration')) return 'Time';
-          return 'Level'; // Default
+          return 'Level';
         };
 
         sensors.push({
@@ -581,34 +437,21 @@ const getPreviousElementSensorData = (transitionElement) => {
   return sensors;
 };
 
-/**
- * Function to handle clicking on a sensor (auto-fill current condition)
- * This function is triggered when a user clicks on a sensor item in the available sensors list.
- * It finds the current condition being edited (last one or empty one) and auto-fills it
- * with the sensor's keyword, instance, and a default operator/value.
- * 
- * @param {Object} sensor - The sensor data object that was clicked
- */
 const onSensorClicked = (sensor) => {
-  // Find the current condition being edited (last one or empty one)
   let targetCondition = null;
 
   if (!computedSelectedElement.value.conditionList || computedSelectedElement.value.conditionList.length === 0) {
-    // No conditions exist, create a new one
     addCondition();
     targetCondition = computedSelectedElement.value.conditionList[0];
   } else {
-    // Find the last condition or one with empty instance
     const conditions = computedSelectedElement.value.conditionList;
     targetCondition = conditions.find(c => !c.instance) || conditions[conditions.length - 1];
   }
 
   if (targetCondition) {
-    // Auto-fill the condition with sensor data
     targetCondition.keyword = sensor.keyword;
     targetCondition.instance = sensor.name;
 
-    // Set a default operator and value based on sensor type
     if (sensor.keyword === 'Temp') {
       targetCondition.operator = '>';
       targetCondition.value = '25';
@@ -625,14 +468,6 @@ const onSensorClicked = (sensor) => {
   }
 };
 
-/**
- * Add validation for recipe parameter value
- * This function checks if the default value of a recipe parameter falls
- * within its defined minimum and maximum range.
- * 
- * @param {Object} parameter - The recipe parameter object to validate
- * @returns {boolean} - True if the value is invalid, false otherwise
- */
 const isValueInvalid = (parameter) => {
   if ((parameter.min !== undefined && parameter.min !== null && parameter.min !== '') ||
     (parameter.max !== undefined && parameter.max !== null && parameter.max !== '')) {
@@ -647,16 +482,7 @@ const isValueInvalid = (parameter) => {
   return false;
 };
 
-/**
- * Handler for input events on recipe parameter valueType properties.
- * This function validates the input value and updates the error state
- * for the specific parameter.
- * 
- * @param {Object} parameter - The recipe parameter object
- * @param {number} index - The index of the parameter in the list
- */
 function onRecipeParameterInput(parameter, index) {
-  // Validate and update error state
   if (isValueInvalid(parameter)) {
     validationErrors.value.add(`recipe_parameter_${index}`);
   } else {
@@ -664,97 +490,12 @@ function onRecipeParameterInput(parameter, index) {
   }
 }
 
-// Validation state tracking
 const validationErrors = ref(new Set());
 
-/**
- * Helper function to get parameter min value from equipment info
- * This function retrieves the minimum value defined for a recipe parameter
- * from the equipment information of the currently selected element.
- * 
- * @param {Object} parameter - The recipe parameter object
- * @returns {string|null} - The minimum value as a string, or null if not found
- */
-const getParameterMinValue = (parameter) => {
-  if (!computedSelectedElement.value.equipmentInfo ||
-    !computedSelectedElement.value.equipmentInfo.equipment_data ||
-    !computedSelectedElement.value.equipmentInfo.equipment_data.recipe_parameters) {
-    return null;
-  }
-
-  // Try to find matching parameter in equipment data
-  const equipmentParam = computedSelectedElement.value.equipmentInfo.equipment_data.recipe_parameters
-    .find(p => p.id === parameter.id || p.name === parameter.id);
-
-  return equipmentParam ? equipmentParam.min : null;
-};
-
-/**
- * Helper function to get parameter max value from equipment info
- * This function retrieves the maximum value defined for a recipe parameter
- * from the equipment information of the currently selected element.
- * 
- * @param {Object} parameter - The recipe parameter object
- * @returns {string|null} - The maximum value as a string, or null if not found
- */
-const getParameterMaxValue = (parameter) => {
-  if (!computedSelectedElement.value.equipmentInfo ||
-    !computedSelectedElement.value.equipmentInfo.equipment_data ||
-    !computedSelectedElement.value.equipmentInfo.equipment_data.recipe_parameters) {
-    return null;
-  }
-
-  // Try to find matching parameter in equipment data
-  const equipmentParam = computedSelectedElement.value.equipmentInfo.equipment_data.recipe_parameters
-    .find(p => p.id === parameter.id || p.name === parameter.id);
-
-  return equipmentParam ? equipmentParam.max : null;
-};
-
-/**
- * Helper function to get parameter unit from equipment info
- * This function retrieves the unit of measurement for a recipe parameter
- * from the equipment information of the currently selected element.
- * 
- * @param {Object} parameter - The recipe parameter object
- * @returns {string} - The unit of measurement, or an empty string if not found
- */
-const getParameterUnit = (parameter) => {
-  if (!computedSelectedElement.value.equipmentInfo ||
-    !computedSelectedElement.value.equipmentInfo.equipment_data ||
-    !computedSelectedElement.value.equipmentInfo.equipment_data.recipe_parameters) {
-    return '';
-  }
-
-  // Try to find matching parameter in equipment data
-  const equipmentParam = computedSelectedElement.value.equipmentInfo.equipment_data.recipe_parameters
-    .find(p => p.id === parameter.id || p.name === parameter.id);
-
-  return equipmentParam ? equipmentParam.unit : '';
-};
-
-/**
- * Handler for parameter validation errors
- * This function updates the validation error state for a specific parameter
- * based on whether it has an error or not.
- * 
- * @param {number} index - The index of the parameter in the list
- * @param {boolean} hasError - True if the parameter has a validation error, false otherwise
- */
-const handleParameterValidationError = (index, hasError) => {
-  if (hasError) {
-    validationErrors.value.add(`parameter_${index}`);
-  } else {
-    validationErrors.value.delete(`parameter_${index}`);
-  }
-};
-
-// Computed property to check if there are any validation errors
 const hasValidationErrors = computed(() => {
   return validationErrors.value.size > 0;
 });
 
-// Computed property to check if the element has equipment parameters
 const hasEquipmentParameters = computed(() => {
   return computedSelectedElement.value.equipmentInfo &&
     computedSelectedElement.value.equipmentInfo.equipment_data &&
@@ -762,11 +503,6 @@ const hasEquipmentParameters = computed(() => {
     computedSelectedElement.value.equipmentInfo.equipment_data.recipe_parameters.length > 0;
 });
 
-/**
- * Function to add a new condition to the current element's condition list.
- * This function is called when the user clicks the "Edit Condition" button.
- * It ensures the conditionList is an array and adds a new condition object.
- */
 function addCondition() {
   if (!computedSelectedElement.value.conditionList) {
     computedSelectedElement.value.conditionList = [];
@@ -774,7 +510,6 @@ function addCondition() {
     computedSelectedElement.value.conditionList = [];
   }
 
-  // Clear the isAlwaysTrue flag when adding a condition
   computedSelectedElement.value.isAlwaysTrue = false;
 
   computedSelectedElement.value.conditionList.push({
@@ -786,67 +521,6 @@ function addCondition() {
   });
 }
 
-/**
- * Function to close the property window.
- * Emits the 'close' event to the parent component.
- */
-function close() {
-  emit('close');
-}
-
-/**
- * Function to open the currently selected element in the workspace.
- * Emits the 'openInWorkspace' event to the parent component.
- */
-function openInWorkspace() {
-  emit('openInWorkspace');
-}
-
-/**
- * Function to add a new process element parameter to the current element's processElementParameter list.
- * This function is called when the user clicks the "Add Process Parameter" button.
- * It ensures the processElementParameter is an array and adds a new parameter object.
- */
-function addProcessElementParameter() {
-  if (!Array.isArray(computedSelectedElement.value.processElementParameter)) {
-    computedSelectedElement.value.processElementParameter = []
-  }
-  computedSelectedElement.value.processElementParameter.push({ id: '', description: [''], value: [{ valueString: '', dataType: '', unitOfMeasure: '', key: '' }] });
-}
-
-/**
- * Function to add a new other information item to the current element's otherInformation list.
- * This function is called when the user clicks the "Add Other Information" button.
- * It ensures the otherInformation is an array and adds a new other information object.
- */
-function addOtherInformation() {
-  if (!Array.isArray(computedSelectedElement.value.otherInformation)) {
-    computedSelectedElement.value.otherInformation = []
-  }
-  computedSelectedElement.value.otherInformation.push({ otherInfoId: '', description: [''], otherValue: [{ valueString: '', dataType: '', unitOfMeasure: '', key: '' }] });
-}
-
-/**
- * Function to add a new resource constraint to the current element's resourceConstraint list.
- * This function is called when the user clicks the "Add Resource Constraint" button.
- * It ensures the resourceConstraint is an array and adds a new resource constraint object.
- */
-function addResourceConstraint() {
-  if (!Array.isArray(computedSelectedElement.value.resourceConstraint)) {
-    computedSelectedElement.value.resourceConstraint = []
-  }
-  computedSelectedElement.value.resourceConstraint.push({ constraintID: '', description: [''], constraintType: '', lifeCycleState: '', range: [{ valueString: '', dataType: '', unitOfMeasure: '', key: '' }], resourceConstraintProperty: '' });
-}
-
-/**
- * Function to delete the currently selected element.
- * Emits the 'deleteElement' event to the parent component.
- */
-function deleteElement() {
-  emit('deleteElement', props.selectedElement)
-}
-
-// Ensure for 'Step' conditions, operator is always 'is'
 watch(
   () => computedSelectedElement.value?.conditionList,
   (newList) => {
@@ -861,7 +535,6 @@ watch(
   { deep: true }
 );
 
-// In the script section, set the default value for processElementType when in master mode and the selected element is a process
 watch(
   () => [computedSelectedElement.value, props.mode],
   ([selected, currentMode]) => {
@@ -875,7 +548,6 @@ watch(
 const showConditionModal = ref(false);
 const showConditionModalWarning = ref(false);
 
-// Validation for the condition group
 function isConditionGroupValid(group) {
   if (!group) return false;
   if (group.type === 'condition') {
@@ -898,79 +570,7 @@ function tryCloseConditionModal() {
 }
 </script>
 
-
 <style>
-input.locked-input,
-textarea {
-  background: lightslategrey;
-}
-
-.property-window-content {
-  overflow-y: scroll;
-  height: 100%;
-  float: right;
-  background-color: var(--dark);
-  color: var(--light);
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  /* Arrange children vertically */
-  padding: 20px;
-  transition: transform 0.8s ease-in-out;
-  /* Adjust the duration as needed */
-  border-radius: 5px;
-}
-
-.deleteBtt {
-  margin-left: 15px;
-  padding: 5px;
-  color: red;
-  float: right;
-  background-color: var(--light);
-  border: 1px solid red;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
-.openWorkspaceBtt {
-  padding: 5px;
-  color: black;
-  float: right;
-  background-color: var(--light);
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
-.property-window-content h2 {
-  margin-top: 0;
-}
-
-.property-window-content label {
-  display: block;
-  margin-top: 10px;
-}
-
-.property-window-content input {
-  width: 100%;
-  padding: 8px;
-  margin-top: 5px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
-input,
-select {
-  height: 36px;
-  padding: 5px;
-  font-size: 14px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  box-sizing: border-box;
-
-}
-
 /* Style for Add Condition button */
 #addCondition {
   padding: 8px 16px;
@@ -1404,22 +1004,6 @@ button.remove-condition:hover {
   margin-bottom: 2px;
 }
 
-/* Property Window Header */
-.property-window-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #dee2e6;
-  color: white;
-}
-
-.property-window-header h2 {
-  margin: 0;
-  color: #495057;
-}
-
 /* Validation Warning Banner */
 .validation-warning-banner {
   background-color: #f8d7da;
@@ -1464,51 +1048,6 @@ button.remove-condition:hover {
   color: #28a745;
   font-weight: 600;
   font-size: 14px;
-}
-
-/* Unified Parameters Section */
-.add-buttons-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 20px;
-  padding: 15px;
-  background-color: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
-}
-
-.add-button {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 8px 12px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  transition: background-color 0.2s ease;
-}
-
-.add-button:hover {
-  background-color: #0056b3;
-}
-
-.add-button .material-icons-light {
-  font-size: 14px;
-}
-
-/* Subsection headers */
-h3 {
-  color: #495057;
-  font-size: 16px;
-  margin: 20px 0 15px 0;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #dee2e6;
-  font-weight: 600;
 }
 
 /* Master Recipe Configuration Styles */

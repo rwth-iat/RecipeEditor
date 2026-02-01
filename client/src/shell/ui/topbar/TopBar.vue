@@ -33,8 +33,8 @@
         ⚙ Settings
       </button>
       <div v-if="settingsDropdownVisible" class="dropdown-menu">
-        <router-link to="/" class="dropdown-item">General Recipe</router-link>
-        <router-link to="/master-recipe" class="dropdown-item">Master Recipe</router-link>
+        <router-link to="/general-recipe-editor" class="dropdown-item">General Recipe</router-link>
+        <router-link to="/master-recipe-editor" class="dropdown-item">Master Recipe</router-link>
         <a :href="apiDocsLink" target="_blank" class="dropdown-item">API Docs</a>
       </div>
     </div>

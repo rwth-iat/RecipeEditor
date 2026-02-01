@@ -35,10 +35,19 @@
     <div class="property-window-container">
       <transition name="property-window">
         <div v-show="isPropertyWindowOpen">
-          <PropertyWindowContent v-model:selectedElement="selectedElement" :mode="mode"
-            :workspaceItems="showSecondaryWorkspace ? secondary_workspace_items : main_workspace_items"
-            :connections="showSecondaryWorkspace ? secondaryWorkspaceContent?.getConnections() || [] : mainWorkspaceContent?.getConnections() || []"
-            @close="closePropertyWindow" @openInWorkspace="openInWorkspace" @deleteElement="deleteElement($event)" />
+          <!-- 
+          <PropertyWindowContent 
+          -->
+          <component 
+          :is="props.propertyWindowComponent"
+          v-model:selectedElement="selectedElement" 
+          :mode="mode"
+          :workspaceItems="showSecondaryWorkspace ? secondary_workspace_items : main_workspace_items"
+          :connections="showSecondaryWorkspace ? secondaryWorkspaceContent?.getConnections() || [] : mainWorkspaceContent?.getConnections() || []"
+          @close="closePropertyWindow" 
+          @openInWorkspace="openInWorkspace" 
+          @deleteElement="deleteElement($event)" />
+          
         </div>
       </transition>
     </div>
@@ -49,22 +58,24 @@
 <script setup>
 import { ref, nextTick } from 'vue';
 import axios from 'axios'
-import { create_validate_download_general_recipe_batchml } from './create_xml/new_export_xml.js';
-import { create_validate_download_master_recipe_batchml } from './create_xml/new_export_xml.js';
-import PropertyWindowContent from './WorkspaceComponents/PropertyWindow.vue'; // Import your property window content component
-import WorkspaceContent from './WorkspaceComponents/WorkspaceContent.vue';
+import { create_validate_download_general_recipe_batchml } from '@/services/recipeExport/new_export_xml.js';
+import { create_validate_download_master_recipe_batchml } from '@/services/recipeExport/new_export_xml.js';
+//import PropertyWindowContent from '@/shell/ui/workspace/PropertyWindow.vue'; // Import your property window content component
+import PropertyWindowBase from '@/shell/ui/workspace/PropertyWindowBase.vue';
+import WorkspaceContent from '@/shell/ui/workspace/WorkspaceContent.vue';
 
 const props = defineProps({
-  mode: {
-    type: String,
-    default: 'general'
-  },
-  masterRecipeConfig: {
+  mode: { 
+    type: String, 
+    default: 'general' },
+  masterRecipeConfig: { 
+    type: Object, 
+    default: null },
+  propertyWindowComponent: {
     type: Object,
-    default: null
+    default: () => PropertyWindowBase
   }
-})
-
+});
 //variables for main workspace
 const main_workspace_items = ref([]); //containing processes and materials of the main workspace
 const mainWorkspaceContent = ref(null) //reference to the mainWorkspace Component

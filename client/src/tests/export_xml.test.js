@@ -1,4 +1,4 @@
-import { generate_batchml } from "../components/create_xml/new_export_xml.js"; // Adjust the path as needed
+import { generate_batchml } from "@/services/recipeExport/new_export_xml.js"; // Adjust the path as needed
 import { expect, test } from "vitest";
 import * as fs from 'fs'
 

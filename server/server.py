@@ -58,14 +58,14 @@ def create_app():
           - General Recipe Editor
         responses:
           "302":
-            description: redirects to /editor.
+            description: redirects to /general-recipe.
             examples:
               rgb: ['red', 'green', 'blue']
         """
-        return redirect("/editor", code=302)
+        return redirect("/general-recipe-editor", code=302)
       
     # Main Website
-    @app.route("/editor")
+    @app.route("/general-recipe-editor")
     def editor():
         """Endpoint to the Graphical Editor for General Recipes.
         ---
@@ -80,7 +80,7 @@ def create_app():
         return app.send_static_file("index.html")
 
 
-    @app.route("/master-recipe")
+    @app.route("/master-recipe-editor")
     def master_recipe():
         """Endpoint to the Graphical Editor for Master Recipes.
         ---

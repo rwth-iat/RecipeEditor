@@ -1,9 +1,9 @@
 <script setup>
 //import vue from 'vue'
 import { ref, toRefs } from 'vue'
-import addDialog from './addDialog.vue'
-import Recursive_component from './RecursiveComponent.vue';
-import '@/assets/main.scss'; //import global css 
+import addDialog from '@/shell/ui/sidebar/addDialog.vue'
+import Recursive_component from '@/shell/ui/sidebar/RecursiveComponent.vue';
+import '@/shell/assets/main.scss'; //import global css 
 
 //we define a prop elementtype so that we can use this component for materials and Processes 
 //we also define mode to differentiate between general and master recipe
