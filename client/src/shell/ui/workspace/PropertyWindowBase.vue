@@ -1,5 +1,6 @@
 <template>
   <div class="property-window-content">
+    <!-- Header with close, workspace, and delete actions -->
     <div class="property-window-header">
       <slot name="header">
         <h2>{{ title }}</h2>
@@ -51,7 +52,7 @@ const computedSelectedElement = computed({
 
 const emitClose = () => emit('close');
 const emitOpenInWorkspace = () => emit('openInWorkspace');
-const emitDeleteElement = () => emit('deleteElement');
+const emitDeleteElement = () => emit('deleteElement', computedSelectedElement.value);
 </script>
 
 <style>

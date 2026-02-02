@@ -3,7 +3,7 @@
     v-bind="props"
     @close="emit('close')"
     @openInWorkspace="emit('openInWorkspace')"
-    @deleteElement="emit('deleteElement')"
+    @deleteElement="emit('deleteElement', $event)"
     @update:selectedElement="emit('update:selectedElement', $event)"
   >
     <!-- Validation Warning Display - Shows when parameters have validation errors -->
@@ -259,20 +259,39 @@
 </template>
 
 <script setup>
+/**
+ * PropertyWindow Component
+ * 
+ * This component provides a comprehensive interface for editing workspace element properties.
+ * It handles different element types (process, material, transition) and provides specialized
+ * editing interfaces for each type.
+ * 
+ * Key Features:
+ * - Dynamic property editing based on element type
+ * - Advanced condition editing with modal interface
+ * - Parameter validation and error display
+ * - Equipment information display (AAS, MTP)
+ * - Sensor data integration for transitions
+ * - Real-time validation feedback
+ */
 import { computed, ref, watch, watchEffect } from 'vue';
 import PropertyWindowBase from '@/shell/ui/workspace/PropertyWindowBase.vue';
 import ConditionEditor from '@/features/master-recipe/ui/ConditionEditor.vue';
 
 const props = defineProps({
+  // The currently selected workspace element to edit
   selectedElement: Object,
+  // Mode: 'general' or 'master' recipe
   mode: {
     type: String,
     default: 'master'
   },
+  // All workspace items for reference and step selection
   workspaceItems: {
     type: Array,
     default: () => []
   },
+  // Workspace connections for finding related elements
   connections: {
     type: Array,
     default: () => []
@@ -281,6 +300,15 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'openInWorkspace', 'deleteElement', 'update:selectedElement']);
 
+/**
+ * Computed property that provides two-way binding with the parent component
+ * This is the recommended Vue 3 pattern for achieving two-way binding:
+ * - get: retrieves the value from the parent
+ * - set: emits updates to the parent, which then sets the new value
+ * 
+ * This approach ensures the parent component remains the single source of truth
+ * while allowing the child to modify the data.
+ */
 const computedSelectedElement = computed({
   get: () => props.selectedElement,
   set: (newValue) => {
@@ -288,6 +316,16 @@ const computedSelectedElement = computed({
   },
 });
 
+/**
+ * WatchEffect to ensure conditionGroup is always properly initialized
+ * This prevents the "Cannot read properties of undefined" error when
+ * the ConditionEditor component first renders.
+ * 
+ * Default structure:
+ * - type: 'group' - indicates this is a logical group
+ * - operator: 'AND' - default logical operator
+ * - children: [] - empty array for child conditions/groups
+ */
 watchEffect(() => {
   if (
     computedSelectedElement.value &&
@@ -301,6 +339,11 @@ watchEffect(() => {
   }
 });
 
+/**
+ * Computed property for safe description access
+ * Handles the case where description might be undefined, null, or not an array
+ * Provides a fallback empty string if the description structure is invalid
+ */
 const descriptionValue = computed({
   get: () => {
     if (computedSelectedElement.value && computedSelectedElement.value.description && Array.isArray(computedSelectedElement.value.description)) {
@@ -310,6 +353,7 @@ const descriptionValue = computed({
   },
   set: (value) => {
     if (computedSelectedElement.value) {
+      // Ensure description is always an array
       if (!computedSelectedElement.value.description) {
         computedSelectedElement.value.description = [];
       }
@@ -321,6 +365,13 @@ const descriptionValue = computed({
   }
 });
 
+/**
+ * Computed property to determine if the element is a transition
+ * Transitions are special elements that can have conditions and connect
+ * different parts of the recipe workflow.
+ * 
+ * Checks both the element type and recipeElementType for transition indicators
+ */
 const isTransitionElement = computed(() => {
   return computedSelectedElement.value && (
     computedSelectedElement.value.type === 'transition' ||
@@ -328,10 +379,24 @@ const isTransitionElement = computed(() => {
   );
 });
 
+/**
+ * Computed property for available sensors from previous steps
+ * This provides sensor data that can be used to auto-fill condition fields
+ * for transition elements, improving user experience and reducing errors.
+ */
 const availableSensors = computed(() => {
   return getPreviousElementSensorData(computedSelectedElement.value);
 });
 
+/**
+ * Function to get previous element's sensor data for transitions
+ * This function analyzes the workspace connections to find the element
+ * that comes before a transition, then extracts its sensor information
+ * for use in condition editing.
+ * 
+ * @param {Object} transitionElement - The transition element to analyze
+ * @returns {Array} - Array of available sensor data objects
+ */
 const availableSteps = computed(() => {
   return props.workspaceItems
     .filter(item => item.type === 'process' || item.type === 'recipe_element')
@@ -376,24 +441,37 @@ const conditionSummary = computed(() => {
   return 'True';
 });
 
+/**
+ * Function to get previous element's sensor data for transitions
+ * This function analyzes the workspace connections to find the element
+ * that comes before a transition, then extracts its sensor information
+ * for use in condition editing.
+ * 
+ * @param {Object} transitionElement - The transition element to analyze
+ * @returns {Array} - Array of available sensor data objects
+ */
 const getPreviousElementSensorData = (transitionElement) => {
   if (!transitionElement || transitionElement.recipeElementType !== 'Condition') {
     return [];
   }
 
+  // Find the connection where this transition is the target
   const incomingConnection = props.connections.find(conn => conn.targetId === transitionElement.id);
   if (!incomingConnection) {
     return [];
   }
 
+  // Find the source element (previous element)
   const previousElement = props.workspaceItems.find(item => item.id === incomingConnection.sourceId);
   if (!previousElement || !previousElement.equipmentInfo) {
     return [];
   }
 
+  // Extract sensor data from the previous element's equipment info
   const sensors = [];
 
   if (previousElement.equipmentInfo.equipment_data) {
+    // MTP sensors
     if (previousElement.equipmentInfo.equipment_data.condition_sensors) {
       previousElement.equipmentInfo.equipment_data.condition_sensors.forEach(sensor => {
         sensors.push({
@@ -406,8 +484,10 @@ const getPreviousElementSensorData = (transitionElement) => {
       });
     }
 
+    // AAS properties (can be used as sensors)
     if (previousElement.equipmentInfo.equipment_data.properties) {
       (previousElement.equipmentInfo.equipment_data.properties || []).forEach(property => {
+        // Try to extract keyword from AAS property name
         const extractKeywordFromAAS = (propertyName) => {
           const nameLower = propertyName.toLowerCase();
           if (nameLower.includes('temp') || nameLower.includes('temperature')) return 'Temp';
@@ -437,21 +517,34 @@ const getPreviousElementSensorData = (transitionElement) => {
   return sensors;
 };
 
+/**
+ * Function to handle clicking on a sensor (auto-fill current condition)
+ * This function is triggered when a user clicks on a sensor item in the available sensors list.
+ * It finds the current condition being edited (last one or empty one) and auto-fills it
+ * with the sensor's keyword, instance, and a default operator/value.
+ * 
+ * @param {Object} sensor - The sensor data object that was clicked
+ */
 const onSensorClicked = (sensor) => {
+  // Find the current condition being edited (last one or empty one)
   let targetCondition = null;
 
   if (!computedSelectedElement.value.conditionList || computedSelectedElement.value.conditionList.length === 0) {
+    // No conditions exist, create a new one
     addCondition();
     targetCondition = computedSelectedElement.value.conditionList[0];
   } else {
+    // Find the last condition or one with empty instance
     const conditions = computedSelectedElement.value.conditionList;
     targetCondition = conditions.find(c => !c.instance) || conditions[conditions.length - 1];
   }
 
   if (targetCondition) {
+    // Auto-fill the condition with sensor data
     targetCondition.keyword = sensor.keyword;
     targetCondition.instance = sensor.name;
-
+    
+    // Set a default operator and value based on sensor type
     if (sensor.keyword === 'Temp') {
       targetCondition.operator = '>';
       targetCondition.value = '25';
@@ -492,10 +585,12 @@ function onRecipeParameterInput(parameter, index) {
 
 const validationErrors = ref(new Set());
 
+// Computed property to check if there are any validation errors
 const hasValidationErrors = computed(() => {
   return validationErrors.value.size > 0;
 });
 
+// Computed property to check if the element has equipment parameters
 const hasEquipmentParameters = computed(() => {
   return computedSelectedElement.value.equipmentInfo &&
     computedSelectedElement.value.equipmentInfo.equipment_data &&
@@ -503,6 +598,11 @@ const hasEquipmentParameters = computed(() => {
     computedSelectedElement.value.equipmentInfo.equipment_data.recipe_parameters.length > 0;
 });
 
+/*
+ * Function to add a new condition to the current element's condition list.
+ * This function is called when the user clicks the "Edit Condition" button.
+ * It ensures the conditionList is an array and adds a new condition object.
+ */
 function addCondition() {
   if (!computedSelectedElement.value.conditionList) {
     computedSelectedElement.value.conditionList = [];
@@ -510,6 +610,7 @@ function addCondition() {
     computedSelectedElement.value.conditionList = [];
   }
 
+  // Clear the isAlwaysTrue flag when adding a condition
   computedSelectedElement.value.isAlwaysTrue = false;
 
   computedSelectedElement.value.conditionList.push({
@@ -521,6 +622,7 @@ function addCondition() {
   });
 }
 
+// Ensure for 'Step' conditions, operator is always 'is'
 watch(
   () => computedSelectedElement.value?.conditionList,
   (newList) => {
@@ -535,6 +637,7 @@ watch(
   { deep: true }
 );
 
+// In the script section, set the default value for processElementType when in master mode and the selected element is a process
 watch(
   () => [computedSelectedElement.value, props.mode],
   ([selected, currentMode]) => {
@@ -548,6 +651,7 @@ watch(
 const showConditionModal = ref(false);
 const showConditionModalWarning = ref(false);
 
+// Validation for the condition group
 function isConditionGroupValid(group) {
   if (!group) return false;
   if (group.type === 'condition') {

@@ -3,11 +3,11 @@
     v-bind="props"
     @close="emit('close')"
     @openInWorkspace="emit('openInWorkspace')"
-    @deleteElement="emit('deleteElement')"
+    @deleteElement="emit('deleteElement',$event)"
     @update:selectedElement="emit('update:selectedElement', $event)"
   >
-    <!-- TODO: move general-recipe property fields here -->
-         <!-- Material Properties Section - Shown only for material-type elements -->
+
+     <!-- Material Properties Section - Shown only for material-type elements -->
     <div v-show='computedSelectedElement.type == "material"'>
       <label for="materialType">MaterialType:</label>
       <select id="materialType" v-model="computedSelectedElement.materialType">
@@ -108,6 +108,7 @@
             <span class="material-icons-light">+</span> Add Resource Constraint
           </button>
         </div>
+        
       </div>
 
 
@@ -144,6 +145,7 @@ const computedSelectedElement = computed({
   },
 });
 
+// Try to find matching parameter in equipment data
 const validationErrors = ref(new Set());
 
 const getParameterMinValue = (parameter) => {
@@ -152,13 +154,21 @@ const getParameterMinValue = (parameter) => {
     !computedSelectedElement.value.equipmentInfo.equipment_data.recipe_parameters) {
     return null;
   }
-
+  // Try to find matching parameter in equipment data
   const equipmentParam = computedSelectedElement.value.equipmentInfo.equipment_data.recipe_parameters
     .find(p => p.id === parameter.id || p.name === parameter.id);
 
   return equipmentParam ? equipmentParam.min : null;
 };
 
+/**
+ * Helper function to get parameter max value from equipment info
+ * This function retrieves the maximum value defined for a recipe parameter
+ * from the equipment information of the currently selected element.
+ * 
+ * @param {Object} parameter - The recipe parameter object
+ * @returns {string|null} - The maximum value as a string, or null if not found
+ */
 const getParameterMaxValue = (parameter) => {
   if (!computedSelectedElement.value.equipmentInfo ||
     !computedSelectedElement.value.equipmentInfo.equipment_data ||
@@ -166,6 +176,7 @@ const getParameterMaxValue = (parameter) => {
     return null;
   }
 
+   // Try to find matching parameter in equipment data
   const equipmentParam = computedSelectedElement.value.equipmentInfo.equipment_data.recipe_parameters
     .find(p => p.id === parameter.id || p.name === parameter.id);
 
