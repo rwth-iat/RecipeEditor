@@ -58,7 +58,7 @@ def create_app():
           - General Recipe Editor
         responses:
           "302":
-            description: redirects to /general-recipe.
+            description: redirects to /general-recipe-editor.
             examples:
               rgb: ['red', 'green', 'blue']
         """

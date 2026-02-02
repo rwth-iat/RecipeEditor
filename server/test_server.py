@@ -21,7 +21,7 @@ def client(app):
 
 
 def test_editor(client):
-    response = client.get('/editor')
+    response = client.get('/general-recipe-editor')
     assert response.status_code == 200
 
     # check if returned webpage is the same as index.html
@@ -56,7 +56,7 @@ def test_static_files(client):
 
 
 def test_get_onto(client):
-    response = client.get('/editor')
+    response = client.get('/general-recipe-editor')
     assert response.status_code == 200
     # Add more test assertions as needed
 
