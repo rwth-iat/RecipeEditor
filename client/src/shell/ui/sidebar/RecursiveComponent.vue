@@ -46,9 +46,9 @@
              - an new recursive component containing the list of their children if not empty
       -->
       <div :style="getIndentationStyle(indentationLevel)" :class="{ expandable: hasChildItems(item) }">
-        <div class="material-icons" v-show="!item.expanded">+</div>
-        <div class="material-icons" v-show="item.expanded">-</div>
-        <div class="material-icons" style="width:10px;"></div>
+        <div class="icon icon--light" v-show="!item.expanded">+</div>
+        <div class="icon icon--light" v-show="item.expanded">-</div>
+        <div class="icon icon--light" style="width:10px;"></div>
         <span>{{ item.name }}</span> 
       </div> 
       <!--
@@ -136,9 +136,8 @@ ul {
 .expandable {
   cursor: pointer;
 }
-.material-icons {
+.icon {
       font-size: 20px;
-      color: var(--light);
       transition: 0.2s ease-in-out;
       display: inline-block;
   }

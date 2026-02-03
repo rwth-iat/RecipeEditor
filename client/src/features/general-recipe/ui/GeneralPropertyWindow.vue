@@ -29,7 +29,7 @@
       @update:valueType="computedSelectedElement.amount = $event" />
     </div>
 
-    <div>
+    <div v-show='computedSelectedElement.type == "process"'>
         <h2>Parameters</h2>
 
         <!-- Process Element Parameters -->
@@ -99,13 +99,13 @@
         <!-- Add buttons for each type -->
         <div class="add-buttons-container">
           <button @click="addProcessElementParameter" id="addProcessElementParameter" class="add-button">
-            <span class="material-icons-light">+</span> Add Process Parameter
+            <span class="icon icon--light">+</span> Add Process Parameter
           </button>
           <button @click="addOtherInformation" id="addOtherValue" class="add-button">
-            <span class="material-icons-light">+</span> Add Other Information
+            <span class="icon icon--light">+</span> Add Other Information
           </button>
           <button @click="addResourceConstraint" id="addResourceConstraint" class="add-button">
-            <span class="material-icons-light">+</span> Add Resource Constraint
+            <span class="icon icon--light">+</span> Add Resource Constraint
           </button>
         </div>
         
@@ -276,7 +276,8 @@ function addResourceConstraint() {
   background-color: #0056b3;
 }
 
-.add-button .material-icons-light {
+.add-button 
+.icon {
   font-size: 14px;
 }
 </style>

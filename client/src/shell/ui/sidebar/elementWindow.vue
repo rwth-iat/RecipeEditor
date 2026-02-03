@@ -128,7 +128,7 @@ function onAddBtnClick() {
                 <h2>{{ element_type }}</h2>
             </div>
             <button ref="addBtn" @click="onAddBtnClick">
-                <span class="material-icons-light">+</span>
+                <span class="icon icon--light">+</span>
             </button>
         </div>
         <div class="element_spacer"></div>

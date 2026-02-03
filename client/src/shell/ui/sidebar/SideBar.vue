@@ -3,7 +3,7 @@
 
 		<div class="menu-toggle-wrap">
 			<button class="menu-toggle" @click="ToggleMenu">
-				<span class="material-icons-light">>></span>
+				<span class="icon icon--light">>></span>
 			</button>
 		</div>
 

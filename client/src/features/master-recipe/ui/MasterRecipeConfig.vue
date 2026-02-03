@@ -3,7 +3,7 @@
         <div class="config-header">
             <h2>Master Recipe Configuration</h2>
             <button class="close-button" @click="$emit('close')">
-                <span class="material-icons-light">×</span>
+                <span class="icon icon--light">×</span>
             </button>
         </div>
 

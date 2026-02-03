@@ -14,43 +14,40 @@
 }
 
 /*
-    Material icons are used to represent Icons by normal symbols
+    Icons are used to represent actions by simple symbols
     for example the +, -, x, <<, >> to open and close panels
 */
-.material-icons-light {
+.icon {
     font-size: 2rem;
-    color: var(--light);
-    transition: 0.2s ease-in-out;
     transition: background-color 0.3s, color 0.3s;
 }
 
-.material-icons-dark {
-    font-size: 2rem;
-    color: var(--dark);
-    transition: 0.2s ease-in-out;
-    transition: background-color 0.3s, color 0.3s;
+.icon--light {
+    color: var(--light);
 }
-.material-icons-red {
-    font-size: 2rem;
+
+.icon--dark {
+    color: var(--dark);
+}
+
+.icon--red {
     color: var(--red);
-    transition: 0.2s ease-in-out;
-    transition: background-color 0.3s, color 0.3s;
 }
 
 /*
     this file is a scss file meaning it is scripted css
     this allows us in the following code to do:
-        for every button, if we hover over change for all material icons inside that button the color
+        for every button, if we hover over change for all icons inside that button the color
 */
 button {
     &:hover {
-        .material-icons-light {
+        .icon--light {
             color: var(--primary);
         }
-        .material-icons-dark {
+        .icon--dark {
             color: var(--primary);
         }
-       .material-icons-red {
+       .icon--red {
             color: var(--red);
         } 
     }
