@@ -1,6 +1,6 @@
 <template>
-    <div class="workspace_content" ref="workspaceContentRef" @drop="$event => onDrop($event)" @dragenter.prevent
-        @dragover.prevent draggable="false" @mousedown="startPanning" @mousemove="handlePanning" @mouseup="stopPanning">
+    <div class="workspace_content" ref="workspaceContentRef" :style="workspaceStyle" @drop="$event => onDrop($event)" @dragenter.prevent
+        @dragover.prevent draggable="false" @wheel.prevent="onWheel" @mousemove="updateMouse" @mousedown="startPanning">
         <!--Draw all workspace elements. Connections are drawn by jsplumb in the background-->
         <div :class="'workspace_element'" v-for="item in computedWorkspaceItems" :key="item.id"
             :ref="skipUnwrap.jsplumbElements" :id="item.id" @click="handleClick(item)">
@@ -60,6 +60,14 @@ const jsplumbInstance = ref(null) //the jsplumb instance, this is a library whic
 const jsplumbElements = ref([])
 const managedElements = ref({}) //object to mark to which elements Endpoints where already added. That why when detecting a change in workspace elemets we know which items are new 
 const zoomLevel = ref(1)
+const initialWorkspaceWidth = 10000
+const initialWorkspaceHeight = 10000
+const workspaceWidth = ref(initialWorkspaceWidth)
+const workspaceHeight = ref(initialWorkspaceHeight)
+const workspaceStyle = computed(() => ({
+    width: `${workspaceWidth.value}px`,
+    height: `${workspaceHeight.value}px`
+}))
 
 //need this as the developer server "npm run dev" will run into error using a normal ref of a v-for. This skips the unwrapping
 let skipUnwrap = { jsplumbElements }
@@ -119,6 +127,7 @@ onMounted(async () => {
 
             // Set up a watcher to handle further changes in the workspace items
             watch(computedWorkspaceItems, createUpdateItemListHandler(jsplumbInstance, jsplumbElements, managedElements), { deep: true });
+            watch(computedWorkspaceItems, updateWorkspaceBounds, { deep: true, immediate: true });
         });
     }
 });
@@ -162,47 +171,46 @@ const handleDoubleClick = (item) => {
 };
 
 
-/*
-the following parameters and functions handle the panning of the workspace
-to pan the workspace you drag the background 
-*/
-//dragging parameters
-let panning = false; // Flag to indicate if panning is currently active
-let initialMouseX = 0; // Initial mouse X position when starting to pan
-let initialMouseY = 0; // Initial mouse Y position when starting to pan
-let initialPanX = 0; // Initial pan X value when starting to pan
-let initialPanY = 0; // Initial pan Y value when starting to pan
-/*
-This Function is called when the workspace_content is dragged.
-When dragging elements the event is also propagated to the parent("workspace_conntent") therefore we check if the target was the workspace_content.
-*/
-const startPanning = (event) => {
-    if (event.target.classList.contains("workspace_content")) {
-        panning = true;
-        initialMouseX = event.clientX;
-        initialMouseY = event.clientY;
-        initialPanX = workspaceContentRef.value.offsetLeft;
-        initialPanY = workspaceContentRef.value.offsetTop;
-        document.addEventListener("mousemove", handlePanning);
-        document.addEventListener("mouseup", stopPanning);
-    }
-}
-const handlePanning = (event) => {
-    if (panning) {
-        // Handle panning only if not dragging an element
-        const deltaX = event.clientX - initialMouseX;
-        const deltaY = event.clientY - initialMouseY;
+// Drag-panning via scrollbars (keep top-left reachable)
+let panning = false;
+let panStartX = 0;
+let panStartY = 0;
+let panStartScrollLeft = 0;
+let panStartScrollTop = 0;
 
-        // Update the position of workspace_content
-        workspaceContentRef.value.style.left = initialPanX + deltaX + "px";
-        workspaceContentRef.value.style.top = initialPanY + deltaY + "px";
-    }
+const startPanning = (event) => {
+    if (event.button !== 0) return;
+    if (!event.target.classList.contains("workspace_content")) return;
+    const container = workspaceContentRef.value?.parentElement;
+    if (!container) return;
+    event.preventDefault();
+    panning = true;
+    panStartX = event.clientX;
+    panStartY = event.clientY;
+    panStartScrollLeft = container.scrollLeft;
+    panStartScrollTop = container.scrollTop;
+    container.classList.add("is-panning");
+    window.addEventListener("mousemove", handlePanning);
+    window.addEventListener("mouseup", stopPanning);
+};
+
+const handlePanning = (event) => {
+    if (!panning) return;
+    const container = workspaceContentRef.value?.parentElement;
+    if (!container) return;
+    const dx = event.clientX - panStartX;
+    const dy = event.clientY - panStartY;
+    container.scrollLeft = panStartScrollLeft - dx;
+    container.scrollTop = panStartScrollTop - dy;
 };
 
 const stopPanning = () => {
+    if (!panning) return;
     panning = false;
-    document.removeEventListener("mousemove", handlePanning);
-    document.removeEventListener("mouseup", stopPanning);
+    const container = workspaceContentRef.value?.parentElement;
+    if (container) container.classList.remove("is-panning");
+    window.removeEventListener("mousemove", handlePanning);
+    window.removeEventListener("mouseup", stopPanning);
 };
 
 // TODO: check if this interfers with js plumb drag and drop as it may be called on every drop event
@@ -249,8 +257,9 @@ function onDrop(event) {
     }
 
     let rect = event.target.getBoundingClientRect();
-    let x = event.clientX - rect.left - x_offset;
-    let y = event.clientY - rect.top;
+    const zoom = zoomLevel.value || 1;
+    let x = (event.clientX - rect.left) / zoom - x_offset;
+    let y = (event.clientY - rect.top) / zoom;
 
     if (classes.includes("sidebar_element")) {
         console.debug(props);
@@ -305,7 +314,7 @@ function initializeJsPlumb(container) {
         connectionOverlays: [{ type: "Arrow", options: { location: 1 } }],
         connector: "Flowchart"
     });
-    container.value.style.transform = `scale(1)`;
+    container.value.style.zoom = '1';
     instance.setZoom(1);
     return instance
 }
@@ -581,20 +590,114 @@ function createUpdateItemListHandler(instance, jsplumbElements, managedElements)
     };
 }
 
-let zoomincrement = 0.1
-function zoom(newZoomLevel) {
-    console.log("zoom from zoom level: ", zoomLevel, " to: ", newZoomLevel)
-    zoomLevel.value = newZoomLevel;
-    workspaceContentRef.value.style.transform = `scale(${zoomLevel.value})`;
-    jsplumbInstance.value.setZoom(zoomLevel.value);
+function getItemSize(item) {
+    if (item?.type === "material") {
+        return { width: 50, height: 50 };
+    }
+    if (item?.type === "recipe_element") {
+        // recipe elements vary; use a safe default
+        return { width: 200, height: 80 };
+    }
+    if (item?.type === "chart_element") {
+        return { width: 200, height: 80 };
+    }
+    if (item?.type === "process") {
+        return { width: 200, height: 80 };
+    }
+    return { width: 200, height: 80 };
 }
+
+function updateWorkspaceBounds() {
+    const container = workspaceContentRef.value?.parentElement;
+    const minWidth = container?.clientWidth || 5000;
+    const minHeight = container?.clientHeight || 5000;
+
+    let maxRight = 0;
+    let maxBottom = 0;
+    const padding = 200;
+
+    const items = computedWorkspaceItems.value || [];
+    if (items.length === 0) {
+        workspaceWidth.value = Math.max(initialWorkspaceWidth, minWidth);
+        workspaceHeight.value = Math.max(initialWorkspaceHeight, minHeight);
+        return;
+    }
+
+    for (const item of items) {
+        if (typeof item?.x !== "number" || typeof item?.y !== "number") continue;
+        const size = getItemSize(item);
+        maxRight = Math.max(maxRight, item.x + size.width);
+        maxBottom = Math.max(maxBottom, item.y + size.height);
+    }
+
+    workspaceWidth.value = Math.max(initialWorkspaceWidth, minWidth, maxRight + padding);
+    workspaceHeight.value = Math.max(initialWorkspaceHeight, minHeight, maxBottom + padding);
+}
+
+let zoomincrement = 0.1
+const zoomMin = 0.2
+const zoomMax = 3
+const lastMouse = ref({ x: NaN, y: NaN })
+
+function updateMouse(event) {
+    lastMouse.value = { x: event.clientX, y: event.clientY }
+}
+
+function clampZoom(value) {
+    return Math.min(zoomMax, Math.max(zoomMin, value))
+}
+
+function applyZoom(newZoomLevel) {
+    zoomLevel.value = clampZoom(newZoomLevel)
+    if (workspaceContentRef.value) {
+        workspaceContentRef.value.style.zoom = String(zoomLevel.value)
+    }
+    if (jsplumbInstance.value) {
+        jsplumbInstance.value.setZoom(zoomLevel.value)
+    }
+}
+
+function zoomAt(clientX, clientY, newZoomLevel) {
+    const container = workspaceContentRef.value?.parentElement
+    if (!container || !workspaceContentRef.value) {
+        applyZoom(newZoomLevel)
+        return
+    }
+
+    const rect = container.getBoundingClientRect()
+    const x = clientX - rect.left + container.scrollLeft
+    const y = clientY - rect.top + container.scrollTop
+    const oldZoom = zoomLevel.value
+
+    applyZoom(newZoomLevel)
+
+    const scale = zoomLevel.value / oldZoom
+    container.scrollLeft = x * scale - (clientX - rect.left)
+    container.scrollTop = y * scale - (clientY - rect.top)
+}
+
+function onWheel(event) {
+    const delta = event.deltaY < 0 ? zoomincrement : -zoomincrement
+    zoomAt(event.clientX, event.clientY, zoomLevel.value + delta)
+}
+
 // Zoom in by incrementing the zoom level
 function zoomIn() {
-    zoom(zoomLevel.value + zoomincrement)
+    const { x, y } = lastMouse.value
+    if (Number.isFinite(x) && Number.isFinite(y)) {
+        zoomAt(x, y, zoomLevel.value + zoomincrement)
+    } else {
+        applyZoom(zoomLevel.value + zoomincrement)
+    }
 }
 // Zoom out by decrementing the zoom level
 function zoomOut() {
-    zoom(zoomLevel.value - zoomincrement)
+    const { x, y } = lastMouse.value
+    if (Number.isFinite(x) && Number.isFinite(y)) {
+        zoomAt(x, y, zoomLevel.value - zoomincrement)
+    } else {
+        applyZoom(zoomLevel.value - zoomincrement)
+    }
 }
 
 async function clearWorkspace() {
@@ -1350,14 +1453,17 @@ function generateConditionText(item) {
 <style>
 .workspace_content {
     position: relative;
-    width: max-content;
-    height: max-content;
-    min-width: 500%;
-    min-height: 500%;
-    transform-origin: center center;
+    transform-origin: 0 0;
     background-size: 50px 50px;
     background-image: radial-gradient(circle, #000 1px, rgba(0, 0, 0, 0) 1px);
     z-index: 1;
+}
+
+.workspace_content {
+    cursor: grab;
+}
+.workspace-scroll.is-panning .workspace_content {
+    cursor: grabbing;
 }
 
 .workspace_element {

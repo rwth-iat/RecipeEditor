@@ -3,14 +3,14 @@
 
 		<div class="menu-toggle-wrap">
 			<button class="menu-toggle" @click="ToggleMenu">
-				<span class="icon icon--light">>></span>
+				<span class="icon--light">>></span>
 			</button>
 		</div>
 
 
 		<div v-show="is_expanded">
 			<div class="logo">
-				<img :src="logoURL" alt="Vue" />
+				<img :src="logoURL" alt="Logo" />
 			</div>
 			<div class="element_spacer"></div>
 

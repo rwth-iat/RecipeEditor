@@ -17,20 +17,27 @@
     Icons are used to represent actions by simple symbols
     for example the +, -, x, <<, >> to open and close panels
 */
-.icon {
+%icon-base {
     font-size: 2rem;
     transition: background-color 0.3s, color 0.3s;
 }
 
+.icon {
+    @extend %icon-base;
+}
+
 .icon--light {
+    @extend %icon-base;
     color: var(--light);
 }
 
 .icon--dark {
+    @extend %icon-base;
     color: var(--dark);
 }
 
 .icon--red {
+    @extend %icon-base;
     color: var(--red);
 }
 
@@ -39,21 +46,12 @@
     this allows us in the following code to do:
         for every button, if we hover over change for all icons inside that button the color
 */
-button {
-    &:hover {
-        .icon--light {
-            color: var(--primary);
-        }
-        .icon--dark {
-            color: var(--primary);
-        }
-       .icon--red {
-            color: var(--red);
-        } 
-    }
+button:hover .icon--light,
+button:hover .icon--dark {
+    color: var(--primary);
 }
 
-// Define a class for buttons
+// Define a base button class + modifier
 .button-with-border {
   margin: 5px;
   padding: 5px;
@@ -70,15 +68,11 @@ button {
     //color: red; // Change text color on hover
   }
 }
-.button-with-border-red {
-  margin: 5px;
+
+.button-with-border--red {
+  @extend .button-with-border;
   color: var(--red); // Use the text color from the parent element
-  float: right;
-  background-color: var(--light);
-  border: 1px solid var(--red);
-  border-radius: 4px;
-  box-sizing: border-box;
-  transition: background-color 0.3s, color 0.3s;
+  border-color: var(--red);
 
   &:hover {
     background-color: lightpink; // Change background color on hover
@@ -87,85 +81,44 @@ button {
 }
 
 // Recipe Element Types for Master Recipe
-.RecipeProcedureThatReferencesEquipmentProcedure {
+@mixin recipe-node($border-color, $label, $clip-path: null) {
   width: 200px;
   height: 60px;
   background-color: #fff;
-  border: 2px solid #0066cc;
+  border: 2px solid $border-color;
   border-radius: 8px;
   margin: 10px auto;
   position: relative;
-  
+
+  @if $clip-path {
+    clip-path: $clip-path;
+  }
+
   &:before {
-    content: "P";
+    content: $label;
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     font-weight: bold;
-    color: #0066cc;
+    color: $border-color;
   }
+}
+
+.RecipeProcedureThatReferencesEquipmentProcedure {
+  @include recipe-node(#0066cc, "P");
 }
 
 .RecipeUnitProcedureThatReferencesEquipmentUnitProcedure {
-  width: 200px;
-  height: 60px;
-  background-color: #fff;
-  border: 2px solid #009933;
-  border-radius: 8px;
-  margin: 10px auto;
-  position: relative;
-  
-  &:before {
-    content: "UP";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-weight: bold;
-    color: #009933;
-  }
+  @include recipe-node(#009933, "UP");
 }
 
 .RecipeOperationThatReferencesEquipmentOperation {
-  width: 200px;
-  height: 60px;
-  background-color: #fff;
-  border: 2px solid #cc6600;
-  border-radius: 8px;
-  margin: 10px auto;
-  position: relative;
-  
-  &:before {
-    content: "O";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-weight: bold;
-    color: #cc6600;
-  }
+  @include recipe-node(#cc6600, "O");
 }
 
 .RecipePhaseThatReferencesEquipmentPhase {
-  width: 200px;
-  height: 60px;
-  background-color: #fff;
-  border: 2px solid #9900cc;
-  border-radius: 8px;
-  margin: 10px auto;
-  position: relative;
-  clip-path: polygon(0% 0%, 100% 0%, 95% 100%, 5% 100%);
-  
-  &:before {
-    content: "Ph";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-weight: bold;
-    color: #9900cc;
-  }
+  @include recipe-node(#9900cc, "Ph", polygon(0% 0%, 100% 0%, 95% 100%, 5% 100%));
 }
 
 .DirectedLink {

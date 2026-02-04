@@ -2,9 +2,11 @@
   <div class="property-window-content">
     <!-- Header with close, workspace, and delete actions -->
     <div class="property-window-header">
-      <slot name="header">
+      <slot name="header">        
+        <button @click="emitClose">
+          <span class="icon--light">>></span>
+        </button>
         <h2>{{ title }}</h2>
-        <button @click="emitClose" class="closeBtt">X</button>
         <button @click="emitOpenInWorkspace" class="openWorkspaceBtt">Open in Workspace</button>
         <button @click="emitDeleteElement" class="deleteBtt">Delete</button>
       </slot>
@@ -26,7 +28,7 @@ import { computed } from 'vue';
 const props = defineProps({
   title: {
     type: String,
-    default: 'Property Window'
+    default: 'Properties'
   },
   selectedElement: Object,
   mode: {

@@ -1,30 +1,32 @@
 <template>
   <div id="workspace" @dragenter.prevent @dragover.prevent>
-    <!-- Main workspace where the top level processes are located -->
-    <WorkspaceContent id="main_workspace" ref="mainWorkspaceContent" v-show="!showSecondaryWorkspace"
-      :main_workspace_items="main_workspace_items" :workspace_items="main_workspace_items"
-      @changeSelectedElement="selectedElement = $event" @openPropertyWindow="openPropertyWindow"
-      @update:workspace_items="main_workspace_items = $event" />
+    <div class="workspace-scroll">
+      <!-- Main workspace where the top level processes are located -->
+      <WorkspaceContent id="main_workspace" ref="mainWorkspaceContent" v-show="!showSecondaryWorkspace"
+        :main_workspace_items="main_workspace_items" :workspace_items="main_workspace_items"
+        @changeSelectedElement="selectedElement = $event" @openPropertyWindow="openPropertyWindow"
+        @update:workspace_items="main_workspace_items = $event" />
 
-    <!-- secondary workspace for when the inner steps of a single process are edited -->
-    <WorkspaceContent id="secondary_workspace" ref="secondaryWorkspaceContent" v-show="showSecondaryWorkspace"
-      :main_workspace_items="main_workspace_items" :workspace_items="secondary_workspace_items"
-      @saveWorkspace="saveSecondaryWorkspace" @changeSelectedElement="selectedElement = $event"
-      @openPropertyWindow="openPropertyWindow" @update:workspace_items="secondary_workspace_items = $event" />
+      <!-- secondary workspace for when the inner steps of a single process are edited -->
+      <WorkspaceContent id="secondary_workspace" ref="secondaryWorkspaceContent" v-show="showSecondaryWorkspace"
+        :main_workspace_items="main_workspace_items" :workspace_items="secondary_workspace_items"
+        @saveWorkspace="saveSecondaryWorkspace" @changeSelectedElement="selectedElement = $event"
+        @openPropertyWindow="openPropertyWindow" @update:workspace_items="secondary_workspace_items = $event" />
+    </div>
 
     <!-- Zoom Buttons-->
     <div class="buttons-container">
       <button class="buttons" @click="zoomIn">
-        <span class="icon icon--dark">+</span>
+        <span class="icon--dark">+</span>
       </button>
       <button class="buttons" @click="zoomOut">
-        <span class="icon icon--dark">-</span>
+        <span class="icon--dark">-</span>
       </button>
       <button class="buttons" v-show="showSecondaryWorkspace" @click="showSecondaryWorkspace = false">
-        <span class="icon icon--red">x</span>
+        <span class="icon--red">x</span>
       </button>
       <button class="buttons" v-show="showSecondaryWorkspace" @click="saveSecondaryWorkspace">
-        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon--dark" width="24" height="24" viewBox="0 0 24 24">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon--dark" width="24" height="24" viewBox="0 0 24 24">
           <path fill="currentColor"
             d="M21 7v12q0 .825-.588 1.413T19 21H5q-.825 0-1.413-.588T3 19V5q0-.825.588-1.413T5 3h12l4 4Zm-2 .85L16.15 5H5v14h14V7.85ZM12 18q1.25 0 2.125-.875T15 15q0-1.25-.875-2.125T12 12q-1.25 0-2.125.875T9 15q0 1.25.875 2.125T12 18Zm-6-8h9V6H6v4ZM5 7.85V19V5v2.85Z" />
         </svg>
@@ -289,7 +291,7 @@ function deleteElement(element) {
 #workspace {
   background-color: transparent;
   position: relative;
-  overflow: auto;
+  overflow: hidden;
   /* enable scrollbars */
   width: 100%;
   height: 100%;
@@ -299,6 +301,13 @@ function deleteElement(element) {
   border-width: 1px;
   border-style: solid;
   border-color: black;
+  z-index: 0;
+}
+
+.workspace-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
   z-index: 0;
 }
 

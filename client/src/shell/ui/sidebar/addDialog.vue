@@ -3,7 +3,7 @@
         <div class="dialog-header">
             <h3>Add {{ element_type }}</h3>
             <button class="close-btn" @click="close" title="Close">
-                <span class="icon icon--red">x</span>
+                <span class="icon--red">x</span>
             </button>
         </div>
         <div v-if="mode !== 'master'">

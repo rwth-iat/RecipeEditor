@@ -1,17 +1,21 @@
 <template>
-  <main>
-    <Topbar 
-    title="Master Recipe Editor" 
-    mode="master" 
-    style="background-color: var(--dark);"
-    @trigger-export="callExportMasterRecipeFunction" @trigger-save="triggerSaveWorkspace"
-    @trigger-exportJson="triggerExportWorkspace" @trigger-importJson="triggerImportWorkspace"
-    @trigger-reset="triggerResetWorkspace" @trigger-open-config="openMasterRecipeConfig"
-    @trigger-export-master-recipe="exportMasterRecipe" />
-    <div id="editor">
+  <RecipePageLayout>
+    <template #topbar>
+      <Topbar 
+      title="Master Recipe Editor" 
+      mode="master" 
+      style="background-color: var(--dark);"
+      @trigger-export="callExportMasterRecipeFunction" @trigger-save="triggerSaveWorkspace"
+      @trigger-exportJson="triggerExportWorkspace" @trigger-importJson="triggerImportWorkspace"
+      @trigger-reset="triggerResetWorkspace" @trigger-open-config="openMasterRecipeConfig"
+      @trigger-export-master-recipe="exportMasterRecipe" />
+    </template>
+    <template #sidebar>
       <Sidebar 
       id="side_bar" 
       mode="master" />
+    </template>
+    <template #workspace>
       <workspace 
       :key="workspaceKey" 
       :property-window-component="MasterPropertyWindow"
@@ -20,30 +24,38 @@
       id="workspace" 
       ref="workspaceRef"
       mode="master"  />
-    </div>
-
-    <!-- Master Recipe Configuration Modal -->
-    <div v-if="showConfigPanel" class="modal-overlay" @click="closeMasterRecipeConfig">
-      <MasterRecipeConfig v-model="masterRecipeConfig" @close="closeMasterRecipeConfig" @click.stop />
-    </div>
-  </main>
+    </template>
+    <template #overlay>
+      <!-- Master Recipe Configuration Modal -->
+      <div v-if="showConfigPanel" class="modal-overlay" @click="closeMasterRecipeConfig">
+        <MasterRecipeConfig v-model="masterRecipeConfig" @close="closeMasterRecipeConfig" @click.stop />
+      </div>
+    </template>
+  </RecipePageLayout>
 </template>
 
 <script setup>
+import RecipePageLayout from '@/shell/ui/RecipePageLayout.vue'
 import Topbar from '@/shell/ui/topbar/TopBar.vue'
 import Sidebar from '@/shell/ui/sidebar/SideBar.vue'
 import workspace from '@/shell/ui/workspace/WorkspaceContainer.vue'
 import MasterPropertyWindow from '@/features/master-recipe/ui/MasterPropertyWindow.vue'
 import MasterRecipeConfig from '@/features/master-recipe/ui/MasterRecipeConfig.vue'
-import { ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { useWorkspaceActions } from '@/shell/composables/useWorkspaceActions';
-import { create_validate_download_master_recipe_batchml } from '@/services/recipeExport/new_export_xml.js';
-import axios from 'axios';
+import { ref } from 'vue'
+import { useRecipeWorkspace } from '@/shell/composables/useRecipeWorkspace'
+import { create_validate_download_master_recipe_batchml } from '@/services/recipeExport/new_export_xml.js'
+import axios from 'axios'
 
-const route = useRoute()
-
-const workspaceRef = ref(null);
+const {
+  workspaceRef,
+  workspaceKey,
+  workspaceStorageKey,
+  callExportMasterRecipeFunction,
+  triggerResetWorkspace,
+  triggerSaveWorkspace,
+  triggerExportWorkspace,
+  triggerImportWorkspace
+} = useRecipeWorkspace('workspaceState_master')
 
 // Master Recipe Configuration (fully empty by default)
 const masterRecipeConfig = ref({
@@ -91,21 +103,6 @@ function closeMasterRecipeConfig() {
   showConfigPanel.value = false;
 }
 
-watch(() => route.fullPath, (newPath) => {
-  workspaceKey.value = newPath
-})
-
-const {
-  workspaceKey,
-  workspaceStorageKey,
-  callExportMasterRecipeFunction,
-  triggerResetWorkspace,
-  triggerSaveWorkspace,
-  triggerExportWorkspace,
-  triggerImportWorkspace
-} = useWorkspaceActions(workspaceRef, 'workspaceState_master');
-
-
 // --- Export Master Recipe ---
 const client = axios.create({ baseURL: '' });
 function exportMasterRecipe() {
@@ -137,44 +134,6 @@ function exportMasterRecipe() {
 </script>
 
 <style lang="scss">
-header {
-  background: var(--dark);
-}
-
-body {
-  background: var(--light);
-}
-
-button {
-  cursor: pointer;
-  appearance: none;
-  border: none;
-  outline: none;
-  background: none;
-}
-
-.app {
-  display: flex;
-}
-
-main {
-  display: flex;
-  /* Use flexbox to control child elements */
-  flex-direction: column;
-  /* Stack child elements vertically */
-  height: 100vh;
-  /* Make the parent container take the full screen height */
-  width: 100vw;
-}
-
-#editor {
-  overflow: hidden;
-  box-sizing: border-box;
-  width: 100%;
-  display: flex;
-  flex-grow: 1;
-}
-
 /* Modal overlay for configuration panel */
 .modal-overlay {
   position: fixed;
