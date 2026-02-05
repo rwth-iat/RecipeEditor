@@ -14,8 +14,8 @@
 }
 
 /*
-    Icons are used to represent actions by simple symbols
-    for example the +, -, x, <<, >> to open and close panels
+Icons are used to represent actions by simple symbols
+for example the +, -, x, <<, >> to open and close panels
 */
 %icon-base {
     font-size: 2rem;
@@ -42,9 +42,9 @@
 }
 
 /*
-    this file is a scss file meaning it is scripted css
-    this allows us in the following code to do:
-        for every button, if we hover over change for all icons inside that button the color
+Buttons that contain icons should change the color of the icon on hover to 
+indicate interactivity. The specific color change can be defined based on the 
+design requirements, such as changing to a primary color or a lighter/darker shade.
 */
 button:hover .icon--light,
 button:hover .icon--dark {
@@ -79,6 +79,11 @@ button:hover .icon--dark {
     //color: red; // Change text color on hover
   }
 }
+
+// Input fields that are locked for editing should be visually distinct
+  input.locked-input, textarea { 
+    background: lightslategrey; 
+  }
 
 // Recipe Element Types for Master Recipe
 @mixin recipe-node($border-color, $label, $clip-path: null) {

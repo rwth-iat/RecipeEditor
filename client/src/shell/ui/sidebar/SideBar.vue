@@ -135,8 +135,7 @@ aside {
 		}
 	}
 
-	@media (max-width: 1024px) {
-		position: absolute;
+	@media (max-width: 768px) {
 		z-index: 99;
 	}
 }

@@ -2,15 +2,24 @@
   <div class="property-window-content">
     <!-- Header with close, workspace, and delete actions -->
     <div class="property-window-header">
+      <div class="property-window-actions">
       <slot name="header">        
         <button @click="emitClose">
           <span class="icon--light">>></span>
+        </button>        
+        <button v-show='computedSelectedElement.type=="process"' @click="emitOpenInWorkspace" class="button-with-border">Open in Workspace</button>
+        <button class="button-with-border--red" @click="emitDeleteElement"> 
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M7 21q-.825 0-1.413-.588T5 19V6H4V4h5V3h6v1h5v2h-1v13q0 .825-.588 1.413T17 21H7ZM17 6H7v13h10V6ZM9 17h2V8H9v9Zm4 0h2V8h-2v9ZM7 6v13V6Z"/></svg>
         </button>
-        <h2>{{ title }}</h2>
-        <button @click="emitOpenInWorkspace" class="openWorkspaceBtt">Open in Workspace</button>
-        <button @click="emitDeleteElement" class="deleteBtt">Delete</button>
       </slot>
-    </div>
+      </div>
+      <h2>{{ title }}</h2>
+      <!--General Properties-->
+      <label for="id">Element ID:</label>
+      <input type="text" id="id" v-model="computedSelectedElement.id" readonly class="locked-input"/>
+      <label for="description">Description:</label>
+      <input type="text" id="description" v-model="computedSelectedElement.description"/>
+    </div>    
 
     <slot
       :selected-element="computedSelectedElement"
@@ -79,27 +88,6 @@ textarea {
   border-radius: 5px;
 }
 
-.deleteBtt {
-  margin-left: 15px;
-  padding: 5px;
-  color: red;
-  float: right;
-  background-color: var(--light);
-  border: 1px solid red;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
-.openWorkspaceBtt {
-  padding: 5px;
-  color: black;
-  float: right;
-  background-color: var(--light);
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
 .property-window-content h2 {
   margin-top: 0;
 }
@@ -132,12 +120,18 @@ select {
 /* Property Window Header */
 .property-window-header {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  justify-content: space-between;
+  align-items: left;
+}
+
+.property-window-actions {
+  width: 100%;
+  display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #dee2e6;
-  color: white;
 }
 
 .property-window-header h2 {
@@ -149,9 +143,8 @@ select {
 h3 {
   color: #ffffff;
   font-size: 16px;
-  margin: 20px 0 15px 0;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #dee2e6;
+  margin: 20px 0 0 0;
+  padding-bottom: 5px;
   font-weight: 600;
 }
 </style>

@@ -111,7 +111,7 @@ const triggerExportMasterRecipe = () => {
   color: white;
 }
 
-h3 {
+#topbar h3 {
   flex-grow: 1;
   text-align: center;
   margin: 0;

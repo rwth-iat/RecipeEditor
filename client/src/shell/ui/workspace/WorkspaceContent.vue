@@ -1384,7 +1384,7 @@ function getProcessClass(item) {
     if (item.type !== 'process') return '';
     const map = {
         'Process': 'process',
-        'Process Stage': 'ProcessStage',
+        'Process Stage': 'process',
         'Process Operation': 'ProcessOperation',
         'Process Action': 'ProcessAction',
         // For master recipe types, map to the same as recipe_element for visual consistency
