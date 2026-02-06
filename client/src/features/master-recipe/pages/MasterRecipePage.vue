@@ -11,9 +11,7 @@
       @trigger-export-master-recipe="exportMasterRecipe" />
     </template>
     <template #sidebar>
-      <Sidebar 
-      id="side_bar" 
-      mode="master" />
+      <MasterSideBar id="side_bar" />
     </template>
     <template #workspace>
       <workspace 
@@ -37,9 +35,9 @@
 <script setup>
 import RecipePageLayout from '@/shell/ui/RecipePageLayout.vue'
 import Topbar from '@/shell/ui/topbar/TopBar.vue'
-import Sidebar from '@/shell/ui/sidebar/SideBar.vue'
+import MasterSideBar from '@/features/master-recipe/ui/sidebar/MasterSideBar.vue'
 import workspace from '@/shell/ui/workspace/WorkspaceContainer.vue'
-import MasterPropertyWindow from '@/features/master-recipe/ui/MasterPropertyWindow.vue'
+import MasterPropertyWindow from '@/features/master-recipe/ui/property-window/MasterPropertyWindow.vue'
 import MasterRecipeConfig from '@/features/master-recipe/ui/MasterRecipeConfig.vue'
 import { ref } from 'vue'
 import { useRecipeWorkspace } from '@/shell/composables/useRecipeWorkspace'

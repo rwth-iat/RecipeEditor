@@ -63,7 +63,7 @@ import axios from 'axios'
 import { create_validate_download_general_recipe_batchml } from '@/services/recipeExport/new_export_xml.js';
 import { create_validate_download_master_recipe_batchml } from '@/services/recipeExport/new_export_xml.js';
 //import PropertyWindowContent from '@/shell/ui/workspace/PropertyWindow.vue'; // Import your property window content component
-import PropertyWindowBase from '@/shell/ui/workspace/PropertyWindowBase.vue';
+import PropertyWindowContainer from '@/shell/ui/workspace/PropertyWindowContainer.vue';
 import WorkspaceContent from '@/shell/ui/workspace/WorkspaceContent.vue';
 
 const props = defineProps({
@@ -75,7 +75,7 @@ const props = defineProps({
     default: null },
   propertyWindowComponent: {
     type: Object,
-    default: () => PropertyWindowBase
+    default: () => PropertyWindowContainer
   }
 });
 //variables for main workspace

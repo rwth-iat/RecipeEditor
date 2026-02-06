@@ -11,9 +11,7 @@
       @trigger-reset="triggerResetWorkspace" />
     </template>
     <template #sidebar>
-      <Sidebar 
-      id="side_bar" 
-      mode="general" />
+      <GeneralSideBar id="side_bar" />
     </template>
     <template #workspace>
       <workspace 
@@ -29,9 +27,9 @@
 <script setup>
 import RecipePageLayout from '@/shell/ui/RecipePageLayout.vue'
 import Topbar from '@/shell/ui/topbar/TopBar.vue'
-import Sidebar from '@/shell/ui/sidebar/SideBar.vue'
+import GeneralSideBar from '@/features/general-recipe/ui/sidebar/GeneralSideBar.vue'
 import workspace from '@/shell/ui/workspace/WorkspaceContainer.vue'
-import GeneralPropertyWindow from '@/features/general-recipe/ui/GeneralPropertyWindow.vue'
+import GeneralPropertyWindow from '@/features/general-recipe/ui/property-window/GeneralPropertyWindow.vue'
 import { useRecipeWorkspace } from '@/shell/composables/useRecipeWorkspace'
 
 const {

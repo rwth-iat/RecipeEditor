@@ -187,7 +187,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
-import ValueTypeProperty from '@/shell/ui/workspace/ValueTypeProperty.vue';
+import ValueTypeProperty from '@/features/general-recipe/ui/property-window/ValueTypeProperty.vue';
 
 const props = defineProps({
   selectedElement: {

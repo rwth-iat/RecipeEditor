@@ -11,7 +11,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
-import ConditionGroupEditor from '@/features/master-recipe/ui/ConditionGroupEditor.vue';
+import ConditionGroupEditor from '@/features/master-recipe/ui/property-window/ConditionGroupEditor.vue';
 
 /**
  * ConditionEditor Component

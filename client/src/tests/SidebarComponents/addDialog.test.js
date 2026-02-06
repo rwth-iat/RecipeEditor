@@ -1,5 +1,5 @@
 import { mount } from "@vue/test-utils";
-import addDialog from "@/shell/ui/sidebar/addDialog.vue";
+import GeneralAddDialog from "@/features/general-recipe/ui/sidebar/GeneralAddDialog.vue";
 import { expect, test, afterAll } from "vitest";
 import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
@@ -48,24 +48,24 @@ afterAll(() => mock.reset());
 
 
 test("mount Materials component", async () => {
-   const wrapper = mount(addDialog, {
+   const wrapper = mount(GeneralAddDialog, {
       propsData: {
          element_type: 'Materials'
       }
     })
    expect(wrapper.props().element_type).toBe('Materials')
-   expect(addDialog).toBeTruthy();
+   expect(GeneralAddDialog).toBeTruthy();
 
 });
 
 test("mount Processes component", async () => {
-   const wrapper = mount(addDialog, {
+   const wrapper = mount(GeneralAddDialog, {
       propsData: {
          element_type: 'Processes'
       }
     })
    expect(wrapper.props().element_type).toBe('Processes')
-   expect(addDialog).toBeTruthy();
+   expect(GeneralAddDialog).toBeTruthy();
 });
 
 // test("list available ontologies as options", async () => {
@@ -89,7 +89,7 @@ test("mount Processes component", async () => {
 //    expect(ontoSelect.element.options[2].textContent).toBe('add new to server');
 // });
 test("list available ontologies as options", async () => {
-  const wrapper = mount(addDialog, { propsData: { element_type: 'Processes' } });
+  const wrapper = mount(GeneralAddDialog, { propsData: { element_type: 'Processes' } });
   await flushPromises();              // wartet auf den GET /onto Mock
   const ontoSelect = wrapper.find('#ontoSelect');
   const numOptions = ontoSelect.element.options.length;
@@ -127,7 +127,7 @@ test("list available ontologies as options", async () => {
 //  });
 
 test("list classes of ontology as options", async () => {
-  const wrapper = mount(addDialog, { propsData: { element_type: 'Processes' } });
+  const wrapper = mount(GeneralAddDialog, { propsData: { element_type: 'Processes' } });
   await wrapper.vm.readServerOntoClasses('test_ontology.owl'); // löst den Mock aus
   await flushPromises();              // wartet auf den GET /onto/.../classes Mock
   const classSelect = wrapper.find('#super_class_select');
@@ -139,7 +139,7 @@ test("list classes of ontology as options", async () => {
 });
 
 test("add subclasses button", async () => {
-   const wrapper = mount(addDialog, {
+   const wrapper = mount(GeneralAddDialog, {
       propsData: {
         element_type: 'Processes'
       }

@@ -1,20 +1,12 @@
 <template>
-  <PropertyWindowBase
+  <PropertyWindowContainer
     v-bind="props"
+    :showOpenInWorkspace="computedSelectedElement?.type === 'process'"
     @close="emit('close')"
     @openInWorkspace="emit('openInWorkspace')"
     @deleteElement="emit('deleteElement', $event)"
     @update:selectedElement="emit('update:selectedElement', $event)"
   >
-    <template #header="{ emitClose, emitOpenInWorkspace, emitDeleteElement, computedSelectedElement }">
-      <PropertyWindowHeaderActions
-        :showOpenInWorkspace="computedSelectedElement?.type === 'process'"
-        @close="emitClose"
-        @openInWorkspace="emitOpenInWorkspace"
-        @deleteElement="emitDeleteElement"
-      />
-    </template>
-
     <!-- Validation Warning Display - Shows when parameters have validation errors -->
     <div v-if="hasValidationErrors" class="validation-warning-banner">
       <span class="warning-icon">⚠️</span>
@@ -264,7 +256,7 @@
         </div>
       </div>
     </div>
-  </PropertyWindowBase>
+  </PropertyWindowContainer>
 </template>
 
 <script setup>
@@ -284,9 +276,8 @@
  * - Real-time validation feedback
  */
 import { computed, ref, watch, watchEffect } from 'vue';
-import PropertyWindowBase from '@/shell/ui/workspace/PropertyWindowBase.vue';
-import PropertyWindowHeaderActions from '@/shell/ui/workspace/PropertyWindowHeaderActions.vue';
-import ConditionEditor from '@/features/master-recipe/ui/ConditionEditor.vue';
+import PropertyWindowContainer from '@/shell/ui/workspace/PropertyWindowContainer.vue';
+import ConditionEditor from '@/features/master-recipe/ui/property-window/ConditionEditor.vue';
 
 const props = defineProps({
   // The currently selected workspace element to edit
