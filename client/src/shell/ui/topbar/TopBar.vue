@@ -27,8 +27,10 @@
       </div>
     </div>
 
-    <h3 style="color: lightgray"> {{ title }}</h3>
-    <div class="dropdown">
+    <h3 class="topbar-title">{{ title }}</h3>
+    <div class="topbar-settings-group">
+      <img class="topbar-logo" :src="logoURL" alt="Logo" />
+      <div class="dropdown">
       <button class="button-with-border settings-button" @click="toggleSettingsDropdown">
         ⚙ Settings
       </button>
@@ -38,6 +40,7 @@
         <a :href="apiDocsLink" target="_blank" class="dropdown-item">API Docs</a>
       </div>
     </div>
+    </div>
     <input type="file" accept=".json,.xml" ref="importInput" style="display: none" @change="onImportSelected" />
   </header>
 </template>
@@ -45,6 +48,7 @@
 <script setup>
 const apiDocsLink = window.location.origin.replace(/:\d+$/, ":5000") + "/apidocs";
 import { ref } from "vue";
+import logoURL from '@/shell/assets/logo.png';
 
 defineProps({
   title: String,
@@ -109,13 +113,34 @@ const triggerExportMasterRecipe = () => {
   text-align: center;
   background-color: var(--primary);
   color: white;
+  position: relative;
 }
 
-#topbar h3 {
-  flex-grow: 1;
-  text-align: center;
+.topbar-title {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   margin: 0;
   border: 0 !important;
+  color: lightgray;
+  z-index: 1;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.topbar-settings-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.topbar-logo {
+  height: 30px;
+  width: auto;
+  display: block;
 }
 
 #exportBtt {

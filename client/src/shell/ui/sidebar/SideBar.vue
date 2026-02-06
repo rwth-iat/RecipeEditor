@@ -9,9 +9,6 @@
 
 
 		<div v-show="is_expanded">
-			<div class="logo">
-				<img :src="logoURL" alt="Logo" />
-			</div>
 			<div class="element_spacer"></div>
 
 			<!-- When recipe mode is 'master', ChartElements comes first -->
@@ -39,7 +36,6 @@
 <script setup>
 import '@/shell/assets/main.scss'; //import global css
 import { ref } from 'vue' //import vue from 'vue'
-import logoURL from '@/shell/assets/logo.png'
 import elementWindow from '@/shell/ui/sidebar/elementWindow.vue'
 
 defineProps({
@@ -76,14 +72,6 @@ aside {
 	//min-height: calc(100vh - var(--topbar-height));
 	padding: 1rem;
 	transition: 0.2s ease-in-out;
-
-	.logo {
-		margin-bottom: 1rem;
-
-		img {
-			width: 16rem;
-		}
-	}
 
 	.menu-toggle-wrap {
 		display: flex;
