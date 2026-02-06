@@ -604,8 +604,21 @@ readServerOntologies()
     background-color: #218838;
     box-shadow: 0 4px 16px rgba(40,167,69,0.13);
 }
-select, input[type="file"], input[type="url"], input[type="text"] {
-    background: #fff;
+select {
+    background-color: #fff;
+    border: 1.2px solid #bfc9d1;
+    border-radius: 5px;
+    padding: 7px 34px 7px 10px;
+    font-size: 1rem;
+    color: #222;
+    margin-top: 2px;
+    margin-bottom: 2px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border 0.2s;
+}
+input[type="file"], input[type="url"], input[type="text"] {
+    background-color: #fff;
     border: 1.2px solid #bfc9d1;
     border-radius: 5px;
     padding: 7px 10px;
@@ -721,7 +734,7 @@ label {
 
 // For selects and inputs, also adjust background and border for dark mode
 .dialog-form select {
-    background: #f4f6fa !important;
+    background-color: #f4f6fa !important;
     color: #23272f !important;
     border: 1px solid #444a58;
 }

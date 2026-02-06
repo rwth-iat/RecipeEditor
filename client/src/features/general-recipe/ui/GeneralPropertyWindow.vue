@@ -6,18 +6,27 @@
     @deleteElement="emit('deleteElement',$event)"
     @update:selectedElement="emit('update:selectedElement', $event)"
   >
+    <template #header="{ emitClose, emitOpenInWorkspace, emitDeleteElement, computedSelectedElement }">
+      <PropertyWindowHeaderActions
+        :showOpenInWorkspace="computedSelectedElement?.type === 'process'"
+        @close="emitClose"
+        @openInWorkspace="emitOpenInWorkspace"
+        @deleteElement="emitDeleteElement"
+      />
+    </template>
+
     <MaterialPropertySection
-      v-show="computedSelectedElement?.type === 'material'"
+      v-if="computedSelectedElement?.type === 'material'"
       v-model:selectedElement="computedSelectedElement"
     />
 
     <ProcessPropertySection
-      v-show="computedSelectedElement?.type === 'process'"
+      v-if="computedSelectedElement?.type === 'process'"
       v-model:selectedElement="computedSelectedElement"
     />
 
     <ChartElementPropertySection
-      v-show="computedSelectedElement?.type === 'chart_element'"
+      v-if="computedSelectedElement?.type === 'chart_element'"
       v-model:selectedElement="computedSelectedElement"
     />
   </PropertyWindowBase>
@@ -26,6 +35,7 @@
 <script setup>
 import { computed } from 'vue';
 import PropertyWindowBase from '@/shell/ui/workspace/PropertyWindowBase.vue';
+import PropertyWindowHeaderActions from '@/shell/ui/workspace/PropertyWindowHeaderActions.vue';
 import MaterialPropertySection from '@/features/general-recipe/ui/MaterialPropertySection.vue';
 import ProcessPropertySection from '@/features/general-recipe/ui/ProcessPropertySection.vue';
 import ChartElementPropertySection from '@/features/general-recipe/ui/ChartElementPropertySection.vue';

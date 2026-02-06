@@ -3,15 +3,13 @@
     <!-- Header with close, workspace, and delete actions -->
     <div class="property-window-header">
       <div class="property-window-actions">
-      <slot name="header">        
-        <button @click="emitClose">
-          <span class="icon--light">>></span>
-        </button>        
-        <button v-show='computedSelectedElement.type=="process"' @click="emitOpenInWorkspace" class="button-with-border">Open in Workspace</button>
-        <button class="button-with-border--red" @click="emitDeleteElement"> 
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M7 21q-.825 0-1.413-.588T5 19V6H4V4h5V3h6v1h5v2h-1v13q0 .825-.588 1.413T17 21H7ZM17 6H7v13h10V6ZM9 17h2V8H9v9Zm4 0h2V8h-2v9ZM7 6v13V6Z"/></svg>
-        </button>
-      </slot>
+      <slot
+        name="header"
+        :emitClose="emitClose"
+        :emitOpenInWorkspace="emitOpenInWorkspace"
+        :emitDeleteElement="emitDeleteElement"
+        :computedSelectedElement="computedSelectedElement"
+      />
       </div>
       <h2>{{ title }}</h2>
       <!--General Properties-->
@@ -117,6 +115,10 @@ select {
 
 }
 
+select {
+  padding-right: 34px;
+}
+
 /* Property Window Header */
 .property-window-header {
   display: flex;
@@ -130,8 +132,28 @@ select {
 .property-window-actions {
   width: 100%;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+}
+
+.property-window-actions-left {
+  display: flex;
+  align-items: center;
+}
+
+.property-window-actions-right {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  gap: 0px;
+}
+
+.property-window-actions-right .button-with-border,
+.property-window-actions-right .button-with-border--red {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 2px;
 }
 
 .property-window-header h2 {

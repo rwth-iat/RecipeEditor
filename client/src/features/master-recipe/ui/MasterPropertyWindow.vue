@@ -6,6 +6,15 @@
     @deleteElement="emit('deleteElement', $event)"
     @update:selectedElement="emit('update:selectedElement', $event)"
   >
+    <template #header="{ emitClose, emitOpenInWorkspace, emitDeleteElement, computedSelectedElement }">
+      <PropertyWindowHeaderActions
+        :showOpenInWorkspace="computedSelectedElement?.type === 'process'"
+        @close="emitClose"
+        @openInWorkspace="emitOpenInWorkspace"
+        @deleteElement="emitDeleteElement"
+      />
+    </template>
+
     <!-- Validation Warning Display - Shows when parameters have validation errors -->
     <div v-if="hasValidationErrors" class="validation-warning-banner">
       <span class="warning-icon">⚠️</span>
@@ -276,6 +285,7 @@
  */
 import { computed, ref, watch, watchEffect } from 'vue';
 import PropertyWindowBase from '@/shell/ui/workspace/PropertyWindowBase.vue';
+import PropertyWindowHeaderActions from '@/shell/ui/workspace/PropertyWindowHeaderActions.vue';
 import ConditionEditor from '@/features/master-recipe/ui/ConditionEditor.vue';
 
 const props = defineProps({
@@ -746,6 +756,7 @@ button.remove-condition:hover {
   color: #495057;
   font-weight: bold;
   min-width: 80px;
+  padding-right: 34px;
 }
 
 .always-true-container {
@@ -915,6 +926,7 @@ button.remove-condition:hover {
   border-radius: 4px;
   background-color: #f8f9fa;
   font-size: 14px;
+  padding-right: 34px;
 }
 
 .sensor-select:focus {
@@ -1207,6 +1219,10 @@ button.remove-condition:hover {
   border-radius: 4px;
   font-size: 14px;
   box-sizing: border-box;
+}
+
+.form-group select {
+  padding-right: 34px;
 }
 
 .form-group input:focus,

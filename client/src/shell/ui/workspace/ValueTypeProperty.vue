@@ -147,6 +147,10 @@ select {
   box-sizing: border-box;
 }
 
+select {
+  padding-right: 34px;
+}
+
 /* Validation error styling */
 input.validation-error {
   border: 2px solid #dc3545 !important;

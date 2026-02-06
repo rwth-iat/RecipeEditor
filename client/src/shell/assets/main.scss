@@ -14,6 +14,21 @@
 }
 
 /*
+Custom select arrow (applies globally to all selects)
+*/
+.select--arrow,
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24'><path fill='%23000000' d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 1px center;
+    background-size: 44px 44px;
+    padding-right: 34px;
+}
+
+/*
 Icons are used to represent actions by simple symbols
 for example the +, -, x, <<, >> to open and close panels
 */

@@ -388,6 +388,10 @@ defineExpose({
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.form-group select {
+    padding-right: 34px;
+}
+
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {

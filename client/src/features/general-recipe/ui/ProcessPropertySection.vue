@@ -10,13 +10,36 @@
   </div>
   <div>
     <!-- Process Element Parameters -->
-    <div v-if="(selectedElementModel.processElementParameter || []).length > 0">
-      <h3>Process Element Parameters</h3>
+    <div class="section">
+      <div class="section-header">
+        <h3>Process Element Parameters</h3>
+        <button
+          type="button"
+          class="section-add-button"
+          aria-label="Add process element parameter"
+          @click="addProcessElementParameter"
+        >
+          +
+        </button>
+      </div>
       <div
         v-for="(parameter, index) in (selectedElementModel.processElementParameter || [])"
         :key="`process_${index}`"
-        class="container-with-border"
+        class="container-with-border container-with-actions"
       >
+        <button
+          type="button"
+          class="button-with-border--red item-delete-button"
+          @click="removeProcessElementParameter(index)"
+          aria-label="Delete process element parameter"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24">
+            <path
+              fill="currentColor"
+              d="M7 21q-.825 0-1.413-.588T5 19V6H4V4h5V3h6v1h5v2h-1v13q0 .825-.588 1.413T17 21H7ZM17 6H7v13h10V6ZM9 17h2V8H9v9Zm4 0h2V8h-2v9ZM7 6v13V6Z"
+            />
+          </svg>
+        </button>
         <label :for="'parameter_' + index + '_id'">ID:</label>
         <input type="text" :id="'parameter_' + index + '_id'" v-model="parameter.id" />
         <label :for="'parameter_' + index + '_description'">Description:</label>
@@ -34,42 +57,37 @@
       </div>
     </div>
 
-    <!-- Other Information -->
-    <div v-if="selectedElementModel.otherInformation && selectedElementModel.otherInformation.length > 0">
-      <h3>Other Information</h3>
-      <div
-        v-for="(otherInformation, index) in (selectedElementModel.otherInformation || [])"
-        :key="`other_${index}`"
-        class="container-with-border"
-      >
-        <label :for="'otherInformation_' + index + '_otherInfoID'">ID:</label>
-        <input
-          type="text"
-          :id="'otherInformation_' + index + '_otherInfoID'"
-          v-model="otherInformation.otherInfoID"
-        />
-        <label :for="'otherInformation_' + index + '_description'">Description:</label>
-        <input
-          type="text"
-          :id="'otherInformation_' + index + '_description'"
-          v-model="otherInformation.description[0]"
-        />
-        <label :for="'otherInformation_' + index + '_otherValue'">OtherValue:</label>
-        <ValueTypeProperty
-          :valueType="otherInformation.otherValue[0]"
-          @update:valueType="otherInformation.otherValue[0] = $event"
-        />
-      </div>
-    </div>
-
     <!-- Resource Constraints -->
-    <div v-if="selectedElementModel.resourceConstraint && selectedElementModel.resourceConstraint.length > 0">
-      <h3>Resource Constraints</h3>
+    <div class="section">
+      <div class="section-header">
+        <h3>Resource Constraints</h3>
+        <button
+          type="button"
+          class="section-add-button"
+          aria-label="Add resource constraint"
+          @click="addResourceConstraint"
+        >
+          +
+        </button>
+      </div>
       <div
         v-for="(resourceConstraint, index) in (selectedElementModel.resourceConstraint || [])"
         :key="`resource_${index}`"
-        class="container-with-border"
+        class="container-with-border container-with-actions"
       >
+        <button
+          type="button"
+          class="button-with-border--red item-delete-button"
+          @click="removeResourceConstraint(index)"
+          aria-label="Delete resource constraint"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24">
+            <path
+              fill="currentColor"
+              d="M7 21q-.825 0-1.413-.588T5 19V6H4V4h5V3h6v1h5v2h-1v13q0 .825-.588 1.413T17 21H7ZM17 6H7v13h10V6ZM9 17h2V8H9v9Zm4 0h2V8h-2v9ZM7 6v13V6Z"
+            />
+          </svg>
+        </button>
         <label :for="'resourceConstraint_' + index + '_constrainedID'">ID:</label>
         <input
           type="text"
@@ -114,16 +132,55 @@
       </div>
     </div>
 
-    <div class="add-buttons-container">
-      <button @click="addProcessElementParameter" id="addProcessElementParameter" class="add-button">
-        <span class="icon--light">+</span> Add Process Parameter
-      </button>
-      <button @click="addOtherInformation" id="addOtherValue" class="add-button">
-        <span class="icon--light">+</span> Add Other Information
-      </button>
-      <button @click="addResourceConstraint" id="addResourceConstraint" class="add-button">
-        <span class="icon--light">+</span> Add Resource Constraint
-      </button>
+    <!-- Other Information -->
+    <div class="section">
+      <div class="section-header">
+        <h3>Other Information</h3>
+        <button
+          type="button"
+          class="section-add-button"
+          aria-label="Add other information"
+          @click="addOtherInformation"
+        >
+          +
+        </button>
+      </div>
+      <div
+        v-for="(otherInformation, index) in (selectedElementModel.otherInformation || [])"
+        :key="`other_${index}`"
+        class="container-with-border container-with-actions"
+      >
+        <button
+          type="button"
+          class="button-with-border--red item-delete-button"
+          @click="removeOtherInformation(index)"
+          aria-label="Delete other information"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24">
+            <path
+              fill="currentColor"
+              d="M7 21q-.825 0-1.413-.588T5 19V6H4V4h5V3h6v1h5v2h-1v13q0 .825-.588 1.413T17 21H7ZM17 6H7v13h10V6ZM9 17h2V8H9v9Zm4 0h2V8h-2v9ZM7 6v13V6Z"
+            />
+          </svg>
+        </button>
+        <label :for="'otherInformation_' + index + '_otherInfoID'">ID:</label>
+        <input
+          type="text"
+          :id="'otherInformation_' + index + '_otherInfoID'"
+          v-model="otherInformation.otherInfoID"
+        />
+        <label :for="'otherInformation_' + index + '_description'">Description:</label>
+        <input
+          type="text"
+          :id="'otherInformation_' + index + '_description'"
+          v-model="otherInformation.description[0]"
+        />
+        <label :for="'otherInformation_' + index + '_otherValue'">OtherValue:</label>
+        <ValueTypeProperty
+          :valueType="otherInformation.otherValue[0]"
+          @update:valueType="otherInformation.otherValue[0] = $event"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -243,41 +300,77 @@ function addResourceConstraint() {
     resourceConstraintProperty: ''
   });
 }
+
+function removeProcessElementParameter(index) {
+  if (!Array.isArray(selectedElementModel.value.processElementParameter)) return;
+  selectedElementModel.value.processElementParameter.splice(index, 1);
+}
+
+function removeOtherInformation(index) {
+  if (!Array.isArray(selectedElementModel.value.otherInformation)) return;
+  selectedElementModel.value.otherInformation.splice(index, 1);
+}
+
+function removeResourceConstraint(index) {
+  if (!Array.isArray(selectedElementModel.value.resourceConstraint)) return;
+  selectedElementModel.value.resourceConstraint.splice(index, 1);
+}
 </script>
 
 <style>
-/* Unified Parameters Section */
-.add-buttons-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 20px;
-  padding: 15px;
-  background-color: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
+.section {
+  margin-top: 16px;
 }
 
-.add-button {
+.section-header {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 8px 12px;
-  background-color: #007bff;
-  color: white;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+
+.section-add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
   border: none;
-  border-radius: 4px;
+  background: transparent;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  transition: background-color 0.2s ease;
+  padding: 0 2px;
+  transition: color 0.2s ease;
 }
 
-.add-button:hover {
-  background-color: #0056b3;
+.section-add-button:hover {
+  color: #28a745;
 }
 
-.add-button .icon {
-  font-size: 14px;
+.section-add-button:focus-visible {
+  outline: 2px solid #28a745;
+  outline-offset: 2px;
 }
+
+.container-with-actions {
+  position: relative;
+}
+
+.item-delete-button {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  padding: 0px 0px;
+  line-height: 1;
+}
+
 </style>
