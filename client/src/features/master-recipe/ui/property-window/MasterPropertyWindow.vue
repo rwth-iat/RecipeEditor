@@ -1,7 +1,6 @@
 <template>
   <PropertyWindowContainer
     v-bind="props"
-    :showOpenInWorkspace="computedSelectedElement?.type === 'process'"
     @close="emit('close')"
     @openInWorkspace="emit('openInWorkspace')"
     @deleteElement="emit('deleteElement', $event)"
@@ -24,9 +23,9 @@
       </span>
     </div>
 
-    <!-- Basic Process Element Properties -->
+    <!-- Basic Procedure Element Properties -->
     <div>
-      <h2>ProcessElement</h2>
+      <h2>Procedure Element</h2>
       <label for="id">ID:</label>
       <input type="text" id="id" v-model="computedSelectedElement.id" readonly class="locked-input" />
       <label for="name">Name:</label>
@@ -93,12 +92,12 @@
       </div>
     </div>
 
-    <!--Process Properties-->
-    <!-- Only show processElementType dropdown for process elements -->
-    <div v-show='computedSelectedElement.type == "process"'>
-      <label for="processElementType">Process Type:</label>
+    <!--Procedure Properties-->
+    <!-- Only show processElementType dropdown for procedure elements -->
+    <div v-show='isProcedureType(computedSelectedElement)'>
+      <label for="processElementType">Procedure Type:</label>
       <select id="processElementType" v-model="computedSelectedElement.processElementType">
-        <option value="" disabled selected>Select process type</option>
+        <option value="" disabled selected>Select procedure type</option>
         <option v-if="props.mode === 'master'" value="Recipe Procedure Containing Lower Level PFC">
           Recipe Procedure
         </option>
@@ -116,7 +115,7 @@
 
         <!-- Show target process if available (for filtered MTP data) -->
         <div v-if="computedSelectedElement.equipmentInfo.target_process" class="target-process">
-          <label>Target Process:</label>
+          <label>Target Procedure:</label>
           <input type="text" :value="computedSelectedElement.equipmentInfo.target_process" readonly
             class="locked-input" />
         </div>
@@ -317,6 +316,8 @@ const computedSelectedElement = computed({
   },
 });
 
+const isProcedureType = (item) => item?.type === 'procedure';
+
 /**
  * WatchEffect to ensure conditionGroup is always properly initialized
  * This prevents the "Cannot read properties of undefined" error when
@@ -400,7 +401,7 @@ const availableSensors = computed(() => {
  */
 const availableSteps = computed(() => {
   return props.workspaceItems
-    .filter(item => item.type === 'process' || item.type === 'recipe_element')
+    .filter(item => isProcedureType(item) || item.type === 'recipe_element')
     .map(item => ({ id: item.id, name: item.name || item.id }));
 });
 
@@ -638,11 +639,11 @@ watch(
   { deep: true }
 );
 
-// In the script section, set the default value for processElementType when in master mode and the selected element is a process
+// Set the default value for processElementType when in master mode and the selected element is a procedure
 watch(
   () => [computedSelectedElement.value, props.mode],
   ([selected, currentMode]) => {
-    if (selected && selected.type === 'process' && currentMode === 'master' && !selected.processElementType) {
+    if (selected && isProcedureType(selected) && currentMode === 'master' && !selected.processElementType) {
       computedSelectedElement.value.processElementType = 'Recipe Procedure Containing Lower Level PFC';
     }
   },

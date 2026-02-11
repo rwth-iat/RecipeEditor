@@ -175,7 +175,7 @@ async function addElementsFromFile(fileType, fileName) {
       results.forEach(({ proc, equipmentData }) => {
         mtpProcesses.push({
           name: proc.name,
-          type: 'process',
+          type: 'procedure',
           processElementType: 'MTP Operation',
           procId: proc.procId,
           serviceId: proc.serviceId,
@@ -207,7 +207,7 @@ async function addElementsFromFile(fileType, fileName) {
         .filter(item => item.realized_by && item.realized_by.length > 0)
         .map(item => ({
           name: item.capability[0].capability_name,
-          type: 'process',
+          type: 'procedure',
           processElementType: 'AAS Capability',
           equipmentInfo: equipmentResponse.data
         }));

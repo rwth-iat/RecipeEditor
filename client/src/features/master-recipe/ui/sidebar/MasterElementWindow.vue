@@ -29,7 +29,7 @@ const elementClass = computed(() => {
     case 'RecipeElements':
       return 'recipe_element sidebar_element';
     case 'Procedures':
-      return 'process_element sidebar_element';
+      return 'procedure_element sidebar_element';
     default:
       return '';
   }

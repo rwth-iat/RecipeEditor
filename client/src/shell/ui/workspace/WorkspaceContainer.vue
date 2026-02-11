@@ -2,16 +2,26 @@
   <div id="workspace" @dragenter.prevent @dragover.prevent>
     <div class="workspace-scroll">
       <!-- Main workspace where the top level processes are located -->
-      <WorkspaceContent id="main_workspace" ref="mainWorkspaceContent" v-show="!showSecondaryWorkspace"
+      <component
+        :is="mainWorkspaceContentComponent"
+        id="main_workspace"
+        ref="mainWorkspaceContent"
+        v-show="!isSecondaryVisible"
         :main_workspace_items="main_workspace_items" :workspace_items="main_workspace_items"
         @changeSelectedElement="selectedElement = $event" @openPropertyWindow="openPropertyWindow"
-        @update:workspace_items="main_workspace_items = $event" />
+        @update:workspace_items="main_workspace_items = $event"
+      />
 
       <!-- secondary workspace for when the inner steps of a single process are edited -->
-      <WorkspaceContent id="secondary_workspace" ref="secondaryWorkspaceContent" v-show="showSecondaryWorkspace"
+      <component
+        :is="secondaryWorkspaceContentComponent"
+        id="secondary_workspace"
+        ref="secondaryWorkspaceContent"
+        v-show="isSecondaryVisible"
         :main_workspace_items="main_workspace_items" :workspace_items="secondary_workspace_items"
         @saveWorkspace="saveSecondaryWorkspace" @changeSelectedElement="selectedElement = $event"
-        @openPropertyWindow="openPropertyWindow" @update:workspace_items="secondary_workspace_items = $event" />
+        @openPropertyWindow="openPropertyWindow" @update:workspace_items="secondary_workspace_items = $event"
+      />
     </div>
 
     <!-- Zoom Buttons-->
@@ -22,10 +32,10 @@
       <button class="buttons" @click="zoomOut">
         <span class="icon--dark">-</span>
       </button>
-      <button class="buttons" v-show="showSecondaryWorkspace" @click="showSecondaryWorkspace = false">
+      <button class="buttons" v-show="isSecondaryVisible" @click="showSecondaryWorkspace = false">
         <span class="icon--red">x</span>
       </button>
-      <button class="buttons" v-show="showSecondaryWorkspace" @click="saveSecondaryWorkspace">
+      <button class="buttons" v-show="isSecondaryVisible" @click="saveSecondaryWorkspace">
         <svg xmlns="http://www.w3.org/2000/svg" class="icon--dark" width="24" height="24" viewBox="0 0 24 24">
           <path fill="currentColor"
             d="M21 7v12q0 .825-.588 1.413T19 21H5q-.825 0-1.413-.588T3 19V5q0-.825.588-1.413T5 3h12l4 4Zm-2 .85L16.15 5H5v14h14V7.85ZM12 18q1.25 0 2.125-.875T15 15q0-1.25-.875-2.125T12 12q-1.25 0-2.125.875T9 15q0 1.25.875 2.125T12 18Zm-6-8h9V6H6v4ZM5 7.85V19V5v2.85Z" />
@@ -44,8 +54,8 @@
           :is="props.propertyWindowComponent"
           v-model:selectedElement="selectedElement" 
           :mode="mode"
-          :workspaceItems="showSecondaryWorkspace ? secondary_workspace_items : main_workspace_items"
-          :connections="showSecondaryWorkspace ? secondaryWorkspaceContent?.getConnections() || [] : mainWorkspaceContent?.getConnections() || []"
+          :workspaceItems="isSecondaryVisible ? secondary_workspace_items : main_workspace_items"
+          :connections="isSecondaryVisible ? secondaryWorkspaceContent?.getConnections() || [] : mainWorkspaceContent?.getConnections() || []"
           @close="closePropertyWindow" 
           @openInWorkspace="openInWorkspace" 
           @deleteElement="deleteElement($event)" />
@@ -58,13 +68,14 @@
 
 
 <script setup>
-import { ref, nextTick } from 'vue';
+import { computed, ref, nextTick } from 'vue';
 import axios from 'axios'
 import { create_validate_download_general_recipe_batchml } from '@/services/recipeExport/new_export_xml.js';
 import { create_validate_download_master_recipe_batchml } from '@/services/recipeExport/new_export_xml.js';
 //import PropertyWindowContent from '@/shell/ui/workspace/PropertyWindow.vue'; // Import your property window content component
 import PropertyWindowContainer from '@/shell/ui/workspace/PropertyWindowContainer.vue';
-import WorkspaceContent from '@/shell/ui/workspace/WorkspaceContent.vue';
+import GeneralWorkspaceContent from '@/features/general-recipe/ui/workspace/GeneralWorkspaceContent.vue';
+import MasterWorkspaceContent from '@/features/master-recipe/ui/workspace/MasterWorkspaceContent.vue';
 
 const props = defineProps({
   mode: { 
@@ -78,6 +89,15 @@ const props = defineProps({
     default: () => PropertyWindowContainer
   }
 });
+
+const showSecondaryWorkspace = ref(false)
+const canUseSecondaryWorkspace = computed(() => props.mode === 'general');
+const isSecondaryVisible = computed(() => canUseSecondaryWorkspace.value && showSecondaryWorkspace.value);
+const mainWorkspaceContentComponent = computed(() =>
+  props.mode === 'master' ? MasterWorkspaceContent : GeneralWorkspaceContent
+);
+// Secondary workspace is currently general-only, but remains centralized in the shell container.
+const secondaryWorkspaceContentComponent = computed(() => GeneralWorkspaceContent);
 //variables for main workspace
 const main_workspace_items = ref([]); //containing processes and materials of the main workspace
 const mainWorkspaceContent = ref(null) //reference to the mainWorkspace Component
@@ -95,8 +115,6 @@ const client = axios.create({
   baseURL: ''
 });
 
-const showSecondaryWorkspace = ref(false)
-
 //handle opening and closing the property window
 const isPropertyWindowOpen = ref(false);
 function openPropertyWindow() {
@@ -111,17 +129,17 @@ function closePropertyWindow() {
   to zoom the workspace you use the zoomin and zoomout buttons in the upper left corner
 */
 function zoomIn() {
-  if (!showSecondaryWorkspace.value) {
-    mainWorkspaceContent.value.zoomIn()
-  } else {
+  if (isSecondaryVisible.value && secondaryWorkspaceContent.value) {
     secondaryWorkspaceContent.value.zoomIn()
+  } else if (mainWorkspaceContent.value) {
+    mainWorkspaceContent.value.zoomIn()
   }
 }
 function zoomOut() {
-  if (!showSecondaryWorkspace.value) {
-    mainWorkspaceContent.value.zoomOut()
-  } else {
+  if (isSecondaryVisible.value && secondaryWorkspaceContent.value) {
     secondaryWorkspaceContent.value.zoomOut()
+  } else if (mainWorkspaceContent.value) {
+    mainWorkspaceContent.value.zoomOut()
   }
 }
 
@@ -204,6 +222,9 @@ defineExpose({
 
 
 async function openInWorkspace() {
+  if (!canUseSecondaryWorkspace.value || !secondaryWorkspaceContent.value) {
+    return;
+  }
   await secondaryWorkspaceContent.value.clearWorkspace() //reset secondary workspace
   // check if this element already has children processes else define empty list
   if (!Array.isArray(selectedElement.value.processElement)) {
@@ -248,6 +269,9 @@ function updateObjectByID(id, newobj) {
 
 
 function saveSecondaryWorkspace() {
+  if (!canUseSecondaryWorkspace.value || !secondaryWorkspaceContent.value || !secondaryWorkspaceParent.value) {
+    return;
+  }
   //build the parent object
   console.debug("Saving secondary Workspace: ", secondary_workspace_items.value)
   secondaryWorkspaceParent.value.materials = []
@@ -282,8 +306,8 @@ function saveSecondaryWorkspace() {
 
 function deleteElement(element) {
   //try to delete it in both workspaces. As ids are unique and only toplevel of elements are searched this will delete only in one of the two
-  mainWorkspaceContent.value.deleteElement(element)
-  secondaryWorkspaceContent.value.deleteElement(element)
+  mainWorkspaceContent.value?.deleteElement(element)
+  secondaryWorkspaceContent.value?.deleteElement(element)
 }
 </script>
 

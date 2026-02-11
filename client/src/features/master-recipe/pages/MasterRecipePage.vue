@@ -117,8 +117,8 @@ function exportMasterRecipe() {
     alert('Please fill out all required fields in the Master Recipe configuration (Product ID, Product Name, Version).');
     return;
   }
-  if (!workspaceItems.some(item => item.type === 'process')) {
-    alert('Please add at least one process step to the workspace.');
+  if (!workspaceItems.some(item => item.type === 'procedure')) {
+    alert('Please add at least one procedure step to the workspace.');
     return;
   }
 

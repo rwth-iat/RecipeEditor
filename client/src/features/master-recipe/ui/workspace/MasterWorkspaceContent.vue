@@ -4,16 +4,9 @@
         <!--Draw all workspace elements. Connections are drawn by jsplumb in the background-->
         <div :class="'workspace_element'" v-for="item in computedWorkspaceItems" :key="item.id"
             :ref="skipUnwrap.jsplumbElements" :id="item.id" @click="handleClick(item)">
-            <!-- Render material node -->
-            <template v-if="item.type === 'material'">
-                <div class="material" :class="item.materialType">
-                    <span>{{ item.id }}</span>
-                    <span v-if="item.description">: {{ item.description }}</span>
-                </div>
-            </template>
-            <!-- For process, use getProcessClass for shape (reactive to processElementType) -->
-            <template v-else-if="item.type === 'process'">
-                <div :class="getProcessClass(item)">
+            <!-- For procedure, use getProcedureClass for shape (reactive to processElementType) -->
+            <template v-if="isProcedureItem(item)">
+                <div :class="getProcedureClass(item)">
                     <span>{{ item.id }}</span>
                 </div>
             </template>
@@ -104,7 +97,7 @@ onMounted(async () => {
                     const workspaceState = JSON.parse(savedState);
 
                     // Add the saved items to the workspace (this should be plain data)
-                    await addElements(workspaceState.items);
+                    await addElements(Array.isArray(workspaceState.items) ? workspaceState.items : []);
 
                     // Wait for the DOM to update and for endpoints to be created
                     await nextTick();
@@ -224,36 +217,17 @@ function onDrop(event) {
     let type;
     let x_offset;
     console.log(classes);
-    if (classes.includes("material_element")) {
-        type = "material";
-
-        // Set the material type based on the material name (Educt, Intermediate, Product)
-        if (item.name === "Educt") {
-            item.materialType = "Input";
-            x_offset = 200;
-        } else if (item.name === "Intermediate") {
-            item.materialType = "Intermediate";
-            x_offset = 200;
-        } else if (item.name === "Product") {
-            item.materialType = "Output";
-            x_offset = 200;
-        } else {
-            console.error("Unknown material type: " + item.name);
-            return;
-        }
-    } else if (classes.includes("process_element")) {
-        type = "process";
+    if (classes.includes("procedure_element")) {
+        type = "procedure";
         x_offset = 100;
-    } else if (classes.includes("chart_element")) {
-        type = "chart_element";
-        x_offset = 100; // or whatever is visually appropriate
     } else if (classes.includes("recipe_element")) {
         type = "recipe_element";
         x_offset = 100; // or whatever is visually appropriate
     }
 
     else {
-        console.error("neither material nor process dropped into workspace");
+        console.error("neither procedure nor recipe element dropped into workspace");
+        return;
     }
 
     let rect = event.target.getBoundingClientRect();
@@ -286,12 +260,8 @@ function onDrop(event) {
         item.type = type;
         item.description = item.name;
         item.id = uniqueId;
-        item.processElementType = "Process";
-        if (item.procedureChartElementType === undefined) {
-            item.procedureChartElementType = "";
-        }
-        if (item.processElementType === undefined) {
-            item.processElementType = "";
+        if (type === "procedure" && (item.processElementType === undefined || item.processElementType === null || item.processElementType === "")) {
+            item.processElementType = "Recipe Procedure Containing Lower Level PFC";
         }
         item.amount = {};
 
@@ -343,35 +313,16 @@ function addEndpoint(instance, element, options) {
 function addJsPlumbEndpoints(instance, element, item) {
     console.log("Adding JS Endpoints to new Element", element);
 
-    // Ensure materialType is set for materials
-    if (item.type === "material" && !item.materialType) {
-        item.materialType = "Intermediate";  // Set a default material type if it's undefined
-    }
-
     if (element) {
         console.log("iselement", item.type)
         console.log("item itself", item)
         let sourceEndpoints = [];
         let targetEndpoints = [];
 
-        if (item.type === "material") {
-            if (item.materialType === "Input") {
-                sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
-                console.log("added SourceEndpoint to Input material");
-            } else if (item.materialType === "Intermediate") {
-                sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
-                targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
-                console.debug("added Source- and Target-Endpoint to Intermediate material");
-            } else if (item.materialType === "Output") {
-                targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
-                console.log("added TargetEndpoint to Output material");
-            } else {
-                console.error("unknown material type: " + item.materialType);
-            }
-        } else if (item.type === "process") {
+        if (isProcedureItem(item)) {
             sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
             targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
-            console.debug("added Source and Target Endpoint to process");
+            console.debug("added Source and Target Endpoint to procedure");
         }
         else if (item.type === "recipe_element") {
             console.log("Adding endpoints to recipe_element:", item.id);
@@ -384,11 +335,11 @@ function addJsPlumbEndpoints(instance, element, item) {
                 sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
                 targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
                 console.debug(`Added source and target endpoints to ${type}`);
-            } else if (type === "Begin" || type === "Previous Operation Indicator") {
+            } else if (type === "Begin") {
                 // Begin elements only have outputs
                 sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
                 console.log(`Added source endpoint to ${type}`);
-            } else if (type === "End" || type === "Next Operation Indicator") {
+            } else if (type === "End") {
                 // End elements only have inputs
                 targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
                 console.debug(`Added target endpoint to ${type}`);
@@ -437,49 +388,7 @@ function addJsPlumbEndpoints(instance, element, item) {
 function checkEndpoints(instance, elementRef, item) {
     //this function checks if the input/output endpoints of a given item are still correct and adds/deletes some if needed
     console.debug("check endpoints")
-    if (item.type === "material") {
-        console.debug("element is material")
-        //for materials we check the materialType and and add/delete accordingly
-        if (item.materialType === "Input") {
-            console.debug("element is input material")
-            if (item.targetEndpoints.length !== 0) {
-                console.debug("deleting endpoints of source element:", item.id)
-                for (let endpoint of item.targetEndpoints) {
-                    console.debug("delete endpoint:", endpoint)
-                    deleteEndpoint(item, endpoint)
-                    item.targetEndpoints = item.targetEndpoints.filter(listEndpoint => listEndpoint.id !== endpoint.id);
-                }
-            }
-            if (item.sourceEndpoints.length === 0) {
-                console.debug("add endpoint:")
-                item.sourceEndpoints.push(addEndpoint(instance, elementRef, { source: true, target: false }))
-            }
-        } else if (item.materialType === "Intermediate") {
-            console.debug("element is intermediate material")
-            if (item.sourceEndpoints.length === 0) {
-                console.debug("add Endpoint")
-                item.sourceEndpoints.push(addEndpoint(instance, elementRef, { source: true, target: false }))
-            }
-            if (item.targetEndpoints.length === 0) {
-                console.debug("add Endpoint:")
-                item.targetEndpoints.push(addEndpoint(instance, elementRef, { source: false, target: true }))
-            }
-        } else if (item.materialType === "Output") {
-            console.debug("element is output material")
-            if (item.sourceEndpoints.length !== 0) {
-                console.log("deleting endpoints of source element:", item.id)
-                for (let endpoint of item.sourceEndpoints) {
-                    console.debug("delete Endpoint:", endpoint)
-                    deleteEndpoint(item, endpoint)
-                    item.sourceEndpoints = item.sourceEndpoints.filter(listEndpoint => listEndpoint.id !== endpoint.id);
-                }
-            }
-            if (item.targetEndpoints.length === 0) {
-                console.debug("add endpoint:")
-                item.targetEndpoints.push(addEndpoint(instance, elementRef, { source: false, target: true }))
-            }
-        }
-    } else if (item.type === "recipe_element") {
+    if (item.type === "recipe_element") {
         console.debug("element is recipe_element")
         const type = item.recipeElementType;
         
@@ -492,7 +401,7 @@ function checkEndpoints(instance, elementRef, item) {
             if (item.targetEndpoints.length === 0) {
                 item.targetEndpoints.push(addEndpoint(instance, elementRef, { source: false, target: true }))
             }
-        } else if (type === "Begin" || type === "Previous Operation Indicator") {
+        } else if (type === "Begin") {
             // Begin elements only have outputs
             if (item.sourceEndpoints.length === 0) {
                 item.sourceEndpoints.push(addEndpoint(instance, elementRef, { source: true, target: false }))
@@ -504,7 +413,7 @@ function checkEndpoints(instance, elementRef, item) {
                 }
                 item.targetEndpoints = []
             }
-        } else if (type === "End" || type === "Next Operation Indicator") {
+        } else if (type === "End") {
             // End elements only have inputs
             if (item.targetEndpoints.length === 0) {
                 item.targetEndpoints.push(addEndpoint(instance, elementRef, { source: false, target: true }))
@@ -591,17 +500,11 @@ function createUpdateItemListHandler(instance, jsplumbElements, managedElements)
 }
 
 function getItemSize(item) {
-    if (item?.type === "material") {
-        return { width: 50, height: 50 };
-    }
     if (item?.type === "recipe_element") {
         // recipe elements vary; use a safe default
         return { width: 200, height: 80 };
     }
-    if (item?.type === "chart_element") {
-        return { width: 200, height: 80 };
-    }
-    if (item?.type === "process") {
+    if (isProcedureItem(item)) {
         return { width: 200, height: 80 };
     }
     return { width: 200, height: 80 };
@@ -733,27 +636,10 @@ function deduplicateItems(items) {
 
 async function addElements(list) {
     console.log('addElements received:', list.map(i => ({id: i.id, type: i.type})));
-    const dedupedList = deduplicateItems(list);
+    const masterElements = list.filter(item => item.type === 'procedure' || item.type === 'recipe_element');
+    const dedupedList = deduplicateItems(masterElements);
     console.log('dedupedList:', dedupedList.map(i => ({id: i.id, type: i.type})));
-    // Log all materials in the deduped list
-    const materialItems = dedupedList.filter(i => i.type === 'material');
-    console.log('MATERIALS IN WORKSPACE:', materialItems.map(i => ({id: i.id, description: i.description, materialType: i.materialType})));
     for (let element of dedupedList) {
-        // Only set materialType if not already set
-        if (element.type === 'material' && !element.materialType) {
-            // Try to infer from description as fallback
-            const d = (element.description || '').toLowerCase();
-            if (d.includes('educt')) {
-                element.materialType = "Input";
-            } else if (d.includes('intermediate')) {
-                element.materialType = "Intermediate";
-            } else if (d.includes('product')) {
-                element.materialType = "Output";
-            } else {
-                element.materialType = undefined;
-            }
-        }
-
         if (!(computedWorkspaceItems.value.some(({ id }) => id === element.id))) { // Check if element already exists
             console.log("add element to second workspace programmatically: ", element);
 
@@ -953,10 +839,10 @@ function exportWorkspace() {
         x: item.x,
         y: item.y,
         description: item.description,
-        materialID: item.materialID,
         amount: item.amount,
         processElementType: item.processElementType,
-        procedureChartElementType: item.procedureChartElementType
+        recipeElementType: item.recipeElementType,
+        conditionGroup: item.conditionGroup
     }));
 
     // 2) grab and dedupe connections
@@ -1059,17 +945,17 @@ async function importWorkspace(event) {
 
             // 2b) Recipe JSON? (has steps[])
         } else if (Array.isArray(data.steps)) {
-            // Convert recipe steps into process nodes laid out in a row
+            // Convert recipe steps into procedure nodes laid out in a row
             const hSpacing = 300, vPos = 100, margin = 50;
             items = data.steps.map((step, idx) => ({
                 id: `step_${idx + 1}`,
-                type: 'process',
+                type: 'procedure',
                 x: margin + idx * hSpacing,
                 y: vPos,
                 description: `${step.type} ${step.target}${step.unit}`,
                 amount: {},
                 processElementType: 'Process',
-                procedureChartElementType: ''
+                recipeElementType: ''
             }));
             connections = items.slice(0, -1).map((from, i) => ({
                 sourceId: from.id,
@@ -1167,30 +1053,6 @@ function parseXmlToState(xmlText) {
     const connections = [];
     flattenProcessElements(fullTree, null, items, connections);
 
-    // Explicitly extract all materials from Formula.ProcessInputs, ProcessOutputs, ProcessIntermediates
-    if (fullTree.Formula) {
-        ['ProcessInputs', 'ProcessOutputs', 'ProcessIntermediates'].forEach(section => {
-            const group = fullTree.Formula[section];
-            if (group && group.Material) {
-                const materials = Array.isArray(group.Material) ? group.Material : [group.Material];
-                for (const mat of materials) {
-                    // Only add if not already present (by id)
-                    const id = typeof mat.ID === 'string' ? mat.ID : (mat.ID?.['#text'] || '');
-                    if (!items.some(i => i.id === id)) {
-                        items.push({
-                            ...mat,
-                            id,
-                            type: 'material',
-                            parentId: section,
-                            x: typeof mat.x === 'number' ? mat.x : 0,
-                            y: typeof mat.y === 'number' ? mat.y : 0,
-                        });
-                    }
-                }
-            }
-        });
-    }
-
     // Debug logging
     console.log('Parsed items:', items);
     console.log('Parsed connections:', connections);
@@ -1199,50 +1061,28 @@ function parseXmlToState(xmlText) {
     return { items, connections, fullTree };
 }
 
-function flattenProcessElements(obj, parentId = null, items = [], connections = [], materialsTypeHint = undefined) {
+function flattenProcessElements(obj, parentId = null, items = [], connections = []) {
     if (!obj) return;
 
     // Handle ProcessProcedure as a root process
     if (obj['ProcessProcedure']) {
-        flattenProcessElements(obj['ProcessProcedure'], parentId, items, connections, materialsTypeHint);
+        flattenProcessElements(obj['ProcessProcedure'], parentId, items, connections);
     }
 
     // Handle ProcessElement (single or array)
     if (obj['ProcessElement']) {
         const children = Array.isArray(obj['ProcessElement']) ? obj['ProcessElement'] : [obj['ProcessElement']];
         for (const child of children) {
-            flattenProcessElements(child, obj['ID'] || parentId, items, connections, materialsTypeHint);
+            flattenProcessElements(child, obj['ID'] || parentId, items, connections);
         }
     }
 
-    // Handle Material (single or array)
-    if (obj['Material']) {
-        const materials = Array.isArray(obj['Material']) ? obj['Material'] : [obj['Material']];
-        // Try to get MaterialsType from parent group
-        const groupMaterialsType = obj['MaterialsType'] || materialsTypeHint;
-        for (const mat of materials) {
-            // Always add materials as top-level items
-            if (mat['ID']) {
-                items.push({
-                    ...mat,
-                    id: typeof mat['ID'] === 'string' ? mat['ID'] : (mat['ID']?.['#text'] || ''),
-                    type: 'material',
-                    parentId: obj['ID'] || parentId,
-                    x: typeof mat.x === 'number' ? mat.x : 0,
-                    y: typeof mat.y === 'number' ? mat.y : 0,
-                    materialType: mat.materialType || groupMaterialsType || undefined,
-                });
-            }
-            flattenProcessElements(mat, obj['ID'] || parentId, items, connections, groupMaterialsType);
-        }
-    }
-
-    // Add this node as a process if it has an ID and ProcessElementType
+    // Add this node as a procedure if it has an ID and ProcessElementType
     if (obj['ID'] && obj['ProcessElementType']) {
         const processItem = {
             ...obj,
             id: typeof obj['ID'] === 'string' ? obj['ID'] : (obj['ID']?.['#text'] || ''),
-            type: 'process',
+            type: 'procedure',
             parentId,
             x: typeof obj.x === 'number' ? obj.x : 0,
             y: typeof obj.y === 'number' ? obj.y : 0,
@@ -1253,24 +1093,6 @@ function flattenProcessElements(obj, parentId = null, items = [], connections = 
                 : []
         };
         items.push(processItem);
-    }
-
-    // Add this node as a material if it has an ID and (MaterialID or is a child of a known materials container)
-    // Known containers: ProcessInputs, ProcessOutputs, ProcessIntermediates, Materials
-    const knownMaterialParents = ['ProcessInputs', 'ProcessOutputs', 'ProcessIntermediates', 'Materials'];
-    if (
-        obj['ID'] &&
-        (obj['MaterialID'] || knownMaterialParents.includes(parentId) || parentId)
-    ) {
-        items.push({
-            ...obj,
-            id: typeof obj['ID'] === 'string' ? obj['ID'] : (obj['ID']?.['#text'] || ''),
-            type: 'material',
-            parentId,
-            x: typeof obj.x === 'number' ? obj.x : 0,
-            y: typeof obj.y === 'number' ? obj.y : 0,
-            materialType: obj.materialType || materialsTypeHint || undefined,
-        });
     }
 
     // Handle DirectedLink(s) for connections
@@ -1294,14 +1116,13 @@ function saveWorkspaceToLocal() {
         return {
             id: item.id,
             type: item.type,
-            materialType: item.materialType,
             x: item.x,
             y: item.y,
             description: item.description,
-            materialID: item.materialID,
             amount: item.amount,
             processElementType: item.processElementType,
-            procedureChartElementType: item.procedureChartElementType
+            recipeElementType: item.recipeElementType,
+            conditionGroup: item.conditionGroup
         };
     });
 
@@ -1376,17 +1197,20 @@ function getRecipeElementClass(item) {
         'Recipe Phase that references an equipment phase': 'RecipePhaseThatReferencesEquipmentPhase',
         'Directed Link': 'DirectedLink',
     };
-    return map[item.recipeElementType] || 'Other';
+    return map[item.recipeElementType] || 'RecipeElementFallback';
 }
 
 // Add this function to map processElementType to the correct CSS class for process elements
-function getProcessClass(item) {
-    if (item.type !== 'process') return '';
+function isProcedureItem(item) {
+    return item?.type === 'procedure';
+}
+
+function getProcedureClass(item) {
+    if (!isProcedureItem(item)) return '';
     const map = {
-        'Process': 'process',
-        'Process Stage': 'process',
-        'Process Operation': 'ProcessOperation',
-        'Process Action': 'ProcessAction',
+        // Sidebar-imported master procedures should render like "Recipe Procedure"
+        'MTP Operation': 'RecipeProcedureContainingALowerLevelPFC',
+        'AAS Capability': 'RecipeProcedureContainingALowerLevelPFC',
         // For master recipe types, map to the same as recipe_element for visual consistency
         'Recipe Procedure Containing Lower Level PFC': 'RecipeProcedureContainingALowerLevelPFC',
         'Recipe Unit Procedure Containing Lower Level PFC': 'RecipeUnitProcedureContainingALowerLevelPFC',
@@ -1397,7 +1221,7 @@ function getProcessClass(item) {
         'Recipe Phase Referencing Equipment Phase': 'RecipePhaseThatReferencesEquipmentPhase',
     };
     // Try both original and no-case versions for robustness
-    return map[item.processElementType] || map[item.processElementType?.replace(/\s+/g, ' ')] || 'process';
+    return map[item.processElementType] || map[item.processElementType?.replace(/\s+/g, ' ')] || 'RecipeProcedureContainingALowerLevelPFC';
 }
 
 function stringifyConditionGroup(group) {
@@ -1473,112 +1297,6 @@ function generateConditionText(item) {
     align-items: center;
 }
 
-/*
-################## here is the visual appearance of the material elements defined ############################
-    the process visual is the normal process element and sets a normal border
-    -all materials are circles
-    -inputs have two borders realized by border shadow
-    -intermediates have one thin border
-    -outputs have one thick border
-    
-    label
-    -on the left there is a label with a rectangular border
-    -we put the same on the right but invisible(spacer) so that the jsplumb endpoint is still at the material circle
-*/
-.material {
-    text-align: center;
-    /* Centers the content horizontally */
-    background-color: white;
-    height: 50px;
-    width: 50px;
-    border-radius: 50%;
-    -moz-border-radius: 50%;
-    -webkit-border-radius: 50%;
-}
-
-.Input {
-    border: 1px solid black;
-    box-shadow: inset 0 0 0 1px black, inset 0 0 0 5px white, inset 0 0 0 7px black;
-}
-
-.Output {
-    border: 5px solid black;
-}
-
-.Intermediate {
-    border: 1px solid black;
-}
-
-.flowChartLabel {
-    border: 1px solid black;
-    background-color: white;
-    border-radius: 5px;
-    padding: 5px;
-    display: flex;
-    text-align: center;
-}
-
-.flowChartLabelSpacer {
-    color: transparent;
-    /*this label is only for centering the material therefore text_color white*/
-    padding: 6px;
-    display: flex;
-    text-align: center;
-}
-
-
-/*
-################## here is the visual appearance of the process element defined ############################
-    the process visual is the normal process element and sets a normal border
-    with the ::before and :: after we are able to set the other two horizontal lines
-*/
-.process {
-    display: flex;
-    text-align: center;
-    align-items: center;
-    justify-content: center;
-    background-color: #fff;
-    width: 200px;
-    height: 80px;
-    border-width: 1px;
-    border-style: solid;
-    border-color: black;
-}
-
-.process::before,
-.process::after {
-    content: "";
-    position: absolute;
-    width: 100%;
-    height: 1px;
-    /* Adjust the thickness of the lines */
-    background-color: #000;
-    /* Line color */
-}
-
-.process::before {
-    top: 0;
-    margin-top: 10px;
-    /* Adjust as needed */
-}
-
-.process::after {
-    bottom: 0;
-    margin-bottom: 10px;
-    /* Adjust as needed */
-}
-
-.ProcessOperation::after {
-    display: none;
-    /* Hide the bottom line */
-}
-
-.ProcessAction::before,
-.ProcessAction::after {
-    display: none;
-    /* Hide both lines */
-}
-
 
 .RecipeProcedureContainingALowerLevelPFC,
 .RecipeUnitProcedureContainingALowerLevelPFC,
@@ -1647,129 +1365,6 @@ function generateConditionText(item) {
     border: 2px solid black;
     margin: 10px auto;
     border-radius: 4px;
-}
-
-/*######### css for procedure chart elements ##################*/
-/* PreviousOperationIndicator */
-.PreviousOperationIndicator {
-    position: relative;
-    width: 0;
-    height: 0;
-    border-style: solid;
-    border-width: 50px 50px 0 50px;
-    border-color: white transparent transparent transparent;
-}
-
-.PreviousOperationIndicator::before {
-    content: '';
-    position: absolute;
-    left: -60px;
-    top: -54px;
-    width: 0;
-    z-index: -1;
-    height: 0;
-    border-style: solid;
-    border-width: 60px 60px 0 60px;
-    border-color: black transparent transparent transparent;
-}
-
-.NextOperationIndicator {
-    position: relative;
-    width: 0;
-    height: 0;
-    border-style: solid;
-    border-width: 0 50px 50px 50px;
-    border-color: transparent transparent white transparent;
-}
-
-.NextOperationIndicator::before {
-    content: '';
-    position: absolute;
-    left: -60px;
-    top: -6px;
-    width: 0;
-    z-index: -1;
-    height: 0;
-    border-style: solid;
-    border-width: 0 60px 60px 60px;
-    border-color: transparent transparent black transparent;
-}
-
-/* StartParallelIndicator */
-.StartParallelIndicator {
-    width: 300px;
-    height: 20px;
-    /* Adjust the height as needed */
-    border-top: 2px dashed #000;
-    /* Change the color to your desired color */
-    border-bottom: 2px dashed #000;
-    /* Change the color to your desired color */
-    background-color: white;
-}
-
-/* StartParallelIndicator */
-.EndParallelIndicator {
-    width: 300px;
-    height: 20px;
-    /* Adjust the height as needed */
-    border-top: 2px dashed #000;
-    /* Change the color to your desired color */
-    border-bottom: 2px dashed #000;
-    /* Change the color to your desired color */
-    background-color: white;
-}
-
-/* StartParallelIndicator */
-.StartOptionalParallelIndicator {
-    width: 300px;
-    height: 20px;
-    /* Adjust the height as needed */
-    border-top: 2px dashed #000;
-    /* Change the color to your desired color */
-    border-bottom: 2px dashed #000;
-    /* Change the color to your desired color */
-    background-color: white;
-}
-
-/* StartParallelIndicator */
-.EndOptionalParallelIndicator {
-    width: 400px;
-    height: 20px;
-    /* Adjust the height as needed */
-    border-top: 2px dashed #000;
-    /* Change the color to your desired color */
-    border-bottom: 2px dashed #000;
-    /* Change the color to your desired color */
-    background-color: white;
-}
-
-.Annotation {
-    min-height: 20px;
-    border: 1px solid black;
-    background-color: white;
-    padding: 5px;
-    display: inline-block;
-    white-space: normal;
-    /* Allow text to wrap */
-}
-
-#AnnotationSpan {
-    display: inline-block;
-    width: 200px;
-    /* Adjust the width to your desired fixed width */
-    white-space: normal;
-    /* Allow text to wrap */
-}
-
-.Other {
-    min-width: 100px;
-    min-height: 20px;
-    border: 1px solid black;
-    background-color: white;
-    border-radius: 5px;
-    padding: 5px;
-    display: flex;
-    text-align: center;
 }
 
 .Begin {
@@ -1902,6 +1497,17 @@ function generateConditionText(item) {
     height: 60px;
     background-color: black;
     margin: 10px auto;
+}
+
+.RecipeElementFallback {
+    min-width: 100px;
+    min-height: 20px;
+    border: 1px solid black;
+    background-color: white;
+    border-radius: 5px;
+    padding: 5px;
+    display: flex;
+    text-align: center;
 }
 
 /* Condition - two separate horizontal lines with 'Condition' text (handle text outside of CSS) */

@@ -255,7 +255,7 @@ export function create_process_element_type(
 
   //add Process Elements
   workspace_items.forEach(function (child_item) {
-    if (child_item.type == "process") {
+    if (child_item.type == "process" || child_item.type == "procedure") {
       let child_workspace_items = [];
       if (child_item.materials) {
         child_workspace_items.push(...child_item.materials);
@@ -431,7 +431,7 @@ export function create_validate_download_general_recipe_batchml(
   const validationErrors = [];
 
   workspaceItems.forEach((item) => {
-    if (item.type === "process" && item.processElementParameter) {
+    if ((item.type === "process" || item.type === "procedure") && item.processElementParameter) {
       item.processElementParameter.forEach((parameter) => {
         // Check if parameter has equipment constraints
         if (
@@ -1039,7 +1039,7 @@ export function create_validate_download_master_recipe_batchml(
   const validationErrors = [];
 
   workspaceItems.forEach((item) => {
-    if (item.type === "process" && item.processElementParameter) {
+    if ((item.type === "process" || item.type === "procedure") && item.processElementParameter) {
       item.processElementParameter.forEach((parameter) => {
         // Check if parameter has equipment constraints defined
         if (
@@ -1105,7 +1105,7 @@ export function create_validate_download_master_recipe_batchml(
 
   // Collect equipment and parameter information from all workspace items
   workspaceItems.forEach((item) => {
-    if (item.type === "process" && item.equipmentInfo) {
+    if ((item.type === "process" || item.type === "procedure") && item.equipmentInfo) {
       console.log(
         "Processing equipment info for item:",
         item.id,
@@ -1308,7 +1308,7 @@ export function create_validate_download_master_recipe_batchml(
       procedureLogic: (() => {
         // --- Step 1: Generate unique, prefixed IDs for each RecipeElement use ---
         const elementUseCount = {};
-        const recipeElements = workspaceItems.filter(i => i.type === "process" || i.type === "recipe_element");
+        const recipeElements = workspaceItems.filter(i => i.type === "process" || i.type === "procedure" || i.type === "recipe_element");
         const stepIdMap = {}; // Define stepIdMap here
         
         // First, count occurrences of each ID
@@ -1501,7 +1501,7 @@ export function create_validate_download_master_recipe_batchml(
         return { step: steps, transition: transitions, link: links };
       })(),
       recipeElement: workspaceItems
-        .filter((i) => i.type === "process" || i.type === "recipe_element")
+        .filter((i) => i.type === "process" || i.type === "procedure" || i.type === "recipe_element")
         .map((i) => {
           // Get the appropriate equipment ID and parameters
           let actualEquipmentID = `${i.id}Instance`;
@@ -1675,7 +1675,7 @@ export function create_validate_download_master_recipe_batchml(
 
           // Map recipe element type to BatchML standard with enhanced support
           const mappedRecipeElementType = recipeElementTypeMap[i.recipeElementType] || 
-            (i.type === "process" ? "Operation" : "Other");
+            ((i.type === "process" || i.type === "procedure") ? "Operation" : "Other");
 
           return {
             "b2mml:ID": recipeElementID,
