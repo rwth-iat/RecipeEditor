@@ -17,9 +17,7 @@
   --light: #f1f5f9;
   --red: red;
 
-  --sidebar-width: 300px;
-  --topbar-height: auto;
-  --element-height: 10px;
+  --sidebar-width: auto;
 }
 
 * {
@@ -27,18 +25,6 @@
   padding: 0;
   box-sizing: border-box;
   font-family: 'Fira sans', sans-serif;
-}
-
-nav {
-  background: var(--dark);
-  padding: 10px;
-  text-align: center;
-}
-
-nav a {
-  color: white;
-  text-decoration: none;
-  margin: 0 10px;
 }
 
 #app {

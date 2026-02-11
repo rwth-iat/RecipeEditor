@@ -1,7 +1,9 @@
 <template>
   <ElementWindowContainer
-    :elementType="element_type"
+    :elementType="normalizedElementType"
+    :displayTitle="displayTitle"
     :elementClass="elementClass"
+    :allowAddDialog="allowAddDialog"
     :initialPackages="initialPackages"
   >
     <template #dialog="{ open, close, addElements, elementType }">
@@ -24,8 +26,22 @@ const props = defineProps({
   element_type: String
 });
 
+const normalizedElementType = computed(() => {
+  if (props.element_type === 'Chart Elements') return 'RecipeElements';
+  return props.element_type;
+});
+
+const displayTitle = computed(() => {
+  if (normalizedElementType.value === 'RecipeElements') return 'Chart Elements';
+  return normalizedElementType.value || '';
+});
+
+const allowAddDialog = computed(() => {
+  return normalizedElementType.value === 'Procedures';
+});
+
 const elementClass = computed(() => {
-  switch (props.element_type) {
+  switch (normalizedElementType.value) {
     case 'RecipeElements':
       return 'recipe_element sidebar_element';
     case 'Procedures':
@@ -36,7 +52,7 @@ const elementClass = computed(() => {
 });
 
 const initialPackages = computed(() => {
-  switch (props.element_type) {
+  switch (normalizedElementType.value) {
     case 'RecipeElements':
       return [
         { name: 'Begin', type: 'recipe_element', recipeElementType: 'Begin' },

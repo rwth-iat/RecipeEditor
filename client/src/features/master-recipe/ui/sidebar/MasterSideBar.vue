@@ -1,8 +1,7 @@
 <template>
   <SideBarContainer>
-    <MasterElementWindow element_type="RecipeElements" />
-    <div class="element_spacer"></div>
     <MasterElementWindow element_type="Procedures" />
+    <MasterElementWindow element_type="RecipeElements" />
   </SideBarContainer>
 </template>
 

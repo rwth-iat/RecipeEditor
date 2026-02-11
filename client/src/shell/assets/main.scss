@@ -34,6 +34,11 @@ for example the +, -, x, <<, >> to open and close panels
 */
 %icon-base {
     font-size: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    vertical-align: middle;
     transition: background-color 0.3s, color 0.3s;
 }
 

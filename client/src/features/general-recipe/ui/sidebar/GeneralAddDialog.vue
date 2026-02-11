@@ -83,6 +83,12 @@ const client = axios.create({
   baseURL: ''
 });
 
+function getFileNameWithoutExtension(name) {
+  if (!name || typeof name !== 'string') return 'Imported Elements';
+  const normalized = name.replace(/\\/g, '/').split('/').pop() || '';
+  return normalized.replace(/\.[^/.]+$/, '') || normalized || 'Imported Elements';
+}
+
 function readServerOntologies() {
   client.get('/onto')
     .then(response => {
@@ -136,7 +142,10 @@ function addOnto(ontoName, className) {
   client.get('/onto/' + ontoName + '/' + className + '/subclasses')
     .then(response => {
       console.log(response.data);
-      emit('add', response.data);
+      emit('add', {
+        title: getFileNameWithoutExtension(ontoName),
+        items: response.data
+      });
     })
     .catch(error => {
       console.log(error.response);
@@ -146,9 +155,7 @@ function addOnto(ontoName, className) {
 function addElements(ontoName, className) {
   console.log("adding started");
   console.log(ontoName + className);
-  let elements_json = addOnto(ontoName, className);
-  console.log(elements_json);
-  emit('add', elements_json);
+  addOnto(ontoName, className);
 }
 
 readServerOntologies();

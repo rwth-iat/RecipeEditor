@@ -348,7 +348,7 @@ function removeResourceConstraint(index) {
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
-  padding: 0 2px;
+  padding: 0;
   transition: color 0.2s ease;
 }
 

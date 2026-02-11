@@ -75,6 +75,12 @@ const client = axios.create({
   baseURL: ''
 });
 
+function getFileNameWithoutExtension(name) {
+  if (!name || typeof name !== 'string') return 'Imported Elements';
+  const normalized = name.replace(/\\/g, '/').split('/').pop() || '';
+  return normalized.replace(/\.[^/.]+$/, '') || normalized || 'Imported Elements';
+}
+
 async function readServerFiles(fileType) {
   if (!fileType) {
     serverFiles.value = [];
@@ -195,7 +201,10 @@ async function addElementsFromFile(fileType, fileName) {
 
       processingProgress.value = 'Adding processes to sidebar...';
       console.log('Adding parsed MTP processes:', mtpProcesses);
-      emit('add', mtpProcesses);
+      emit('add', {
+        title: getFileNameWithoutExtension(fileName),
+        items: mtpProcesses
+      });
     }
 
     if (fileType === 'aas' && Array.isArray(response.data)) {
@@ -214,7 +223,10 @@ async function addElementsFromFile(fileType, fileName) {
 
       processingProgress.value = 'Adding processes to sidebar...';
       console.log('Adding parsed AAS processes:', parsedProcesses);
-      emit('add', parsedProcesses);
+      emit('add', {
+        title: getFileNameWithoutExtension(fileName),
+        items: parsedProcesses
+      });
     }
 
   } catch (error) {

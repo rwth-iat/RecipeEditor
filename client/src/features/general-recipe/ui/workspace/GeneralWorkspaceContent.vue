@@ -4,31 +4,20 @@
         <!--Draw all workspace elements. Connections are drawn by jsplumb in the background-->
         <div :class="'workspace_element'" v-for="item in computedWorkspaceItems" :key="item.id"
             :ref="skipUnwrap.jsplumbElements" :id="item.id" @click="handleClick(item)">
-            <!-- Render material node -->
-            <template v-if="item.type === 'material'">
-                <div class="material" :class="item.materialType">
-                    <span>{{ item.id }}</span>
-                    <span v-if="item.description">: {{ item.description }}</span>
-                </div>
-            </template>
-            <!-- For process, use getProcessClass for shape (reactive to processElementType) -->
-            <template v-else-if="item.type === 'process'">
-                <div :class="getProcessClass(item)">
-                    <span>{{ item.id }}</span>
-                </div>
-            </template>
-            <!-- For chart_element, use procedureChartElementType for shape -->
-            <template v-else-if="item.type === 'chart_element'">
-                <div :class="getChartElementClass(item)">
-                    <span>{{ item.id }}</span>
-                </div>
-            </template>
-            <!-- Fallback for other types -->
-            <template v-else>
-                <div>
-                    <span>{{ item.id }}</span>
-                </div>
-            </template>
+            <div v-if="item.type === 'material'" class="flowChartLabel" style="float: right;">
+                <span>{{ getMaterialLabel(item) }}</span>
+            </div>
+            <div :class="getWorkspaceElementClass(item)">
+                <span v-if="item.type === 'process'">
+                    {{ item.id }}
+                </span>
+                <span id="AnnotationSpan" v-if="item.procedureChartElementType === 'Annotation'">
+                    {{ item.description }}
+                </span>
+            </div>
+            <div v-if="item.type === 'material'" class="flowChartLabelSpacer">
+                <span>{{ getMaterialLabel(item) }}</span>
+            </div>
         </div>
     </div>
 </template>
@@ -105,6 +94,10 @@ onMounted(async () => {
                         const sourceItem = computedWorkspaceItems.value.find(item => item.id === connection.sourceId);
                         const targetItem = computedWorkspaceItems.value.find(item => item.id === connection.targetId);
                         if (sourceItem && targetItem) {
+                            if (!sourceItem.sourceEndpoints?.length || !targetItem.targetEndpoints?.length) {
+                                console.warn("Skipping initial connection due to missing endpoints:", connection);
+                                return;
+                            }
                             jsplumbInstance.value.connect({
                                 source: sourceItem.sourceEndpoints[0],
                                 target: targetItem.targetEndpoints[0]
@@ -361,6 +354,23 @@ function addJsPlumbEndpoints(instance, element, item) {
             sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
             targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
             console.debug("added Source and Target Endpoint to process");
+        } else if (item.type === "chart_element") {
+            if (item.procedureChartElementType === "Previous Operation Indicator") {
+                sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
+                console.debug("added Source Endpoint to previous Operation Indicator");
+            } else if (item.procedureChartElementType === "Next Operation Indicator") {
+                targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
+                console.debug("added Target Endpoint to Next operation Indicator");
+            } else if (item.procedureChartElementType === "Annotation") {
+                sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
+                console.debug("added Source Endpoint to Annotation");
+            } else {
+                sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
+                targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
+                console.debug("added Source and Target Endpoint to chart_element of type:", item.procedureChartElementType);
+            }
+        } else {
+            console.warn("unknown type:", item.type);
         }
         item.sourceEndpoints = sourceEndpoints;
         item.targetEndpoints = targetEndpoints;
@@ -660,6 +670,10 @@ async function addConnectionsFromState() {
                 const targetItem = computedWorkspaceItems.value.find(item => item.id === connection.targetId);
 
                 if (sourceItem && targetItem) {
+                    if (!sourceItem.sourceEndpoints?.length || !targetItem.targetEndpoints?.length) {
+                        console.warn("Skipping restore connection due to missing endpoints:", connection);
+                        return;
+                    }
                     jsplumbInstance.value.connect({
                         source: sourceItem.sourceEndpoints[0],
                         target: targetItem.targetEndpoints[0]
@@ -723,6 +737,10 @@ function addConnections(connections) {
         }
         if (!sourceElementRef.sourceEndpoints || !targetElementRef.targetEndpoints) {
             console.warn("either sourceEndpoint: ", sourceElementRef.sourceEndpoints, " or targetEndpoint:", targetElementRef.targetEndpoints, " is undefined");
+            continue;
+        }
+        if (!sourceElementRef.sourceEndpoints.length || !targetElementRef.targetEndpoints.length) {
+            console.warn("Skipping connection due to empty endpoint list:", connection);
             continue;
         }
         nextTick();
@@ -1208,32 +1226,25 @@ defineExpose({
     }))
 });
 
-function getChartElementClass(item) {
-    if (item.type !== 'chart_element') return '';
-    const map = {
-        'Previous Operation Indicator': 'PreviousOperationIndicator',
-        'Next Operation Indicator': 'NextOperationIndicator',
-        'Start Parallel Indicator': 'StartParallelIndicator',
-        'End Parallel Indicator': 'EndParallelIndicator',
-        'Start Optional Parallel Indicator': 'StartOptionalParallelIndicator',
-        'End Optional Parallel Indicator': 'EndOptionalParallelIndicator',
-        'Annotation': 'Annotation',
-        'Other': 'Other'
-    };
-    return map[item.procedureChartElementType] || 'Other';
+function toCssToken(value) {
+    return (value || '').toString().replace(/\s+/g, '');
 }
 
-// Add this function to map processElementType to the correct CSS class for process elements
-function getProcessClass(item) {
-    if (item.type !== 'process') return '';
-    const map = {
-        'Process': 'process',
-        'Process Stage': 'process',
-        'Process Operation': 'ProcessOperation',
-        'Process Action': 'ProcessAction'
-    };
-    // Try both original and no-case versions for robustness
-    return map[item.processElementType] || map[item.processElementType?.replace(/\s+/g, ' ')] || 'process';
+function getWorkspaceElementClass(item) {
+    return [
+        item?.type || '',
+        item?.materialType || '',
+        toCssToken(item?.processElementType),
+        toCssToken(item?.procedureChartElementType)
+    ].filter(Boolean).join(' ');
+}
+
+function getMaterialLabel(item) {
+    const id = item?.id || '';
+    const materialID = item?.materialID || '';
+    const valueString = item?.amount?.valueString || '';
+    const unitOfMeasure = item?.amount?.unitOfMeasure || '';
+    return `${id} ${materialID} = ${valueString} ${unitOfMeasure}`.replace(/\s+/g, ' ').trim();
 }
 </script>
 

@@ -46,9 +46,12 @@
              - an new recursive component containing the list of their children if not empty
       -->
       <div :style="getIndentationStyle(indentationLevel)" :class="{ expandable: hasChildItems(item) }">
-        <div class="icon--light" v-show="!item.expanded">+</div>
-        <div class="icon--light" v-show="item.expanded">-</div>
-        <div class="icon--light" style="width:10px;"></div>
+        <span class="tree-prefix">
+          <span v-if="hasChildItems(item)" class="icon--light tree-toggle-icon">
+            {{ item.expanded ? '-' : '+' }}
+          </span>
+          <span v-else class="tree-bullet" aria-hidden="true"></span>
+        </span>
         <span>{{ item.name }}</span> 
       </div> 
       <!--
@@ -95,7 +98,7 @@ export default defineComponent({
         return item.children && item.children.length > 0;
       },
       handleItemClick(item, event) {
-        console.log('Clicked:', item.name);
+        if (!state.hasChildItems(item)) return;
         state.toggleItem(item);
         event.stopPropagation();
       },
@@ -141,4 +144,27 @@ ul {
       transition: 0.2s ease-in-out;
       display: inline-block;
   }
+
+.tree-prefix {
+  display: inline-flex;
+  width: 28px;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.tree-toggle-icon {
+  width: 18px;
+  text-align: center;
+}
+
+.tree-bullet {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: currentColor;
+  display: inline-block;
+  margin-left: 10px;
+  position: relative;
+  top: -5px;
+}
 </style>

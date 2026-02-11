@@ -1,7 +1,9 @@
 <template>
   <ElementWindowContainer
-    :elementType="element_type"
+    :elementType="normalizedElementType"
+    :displayTitle="displayTitle"
     :elementClass="elementClass"
+    :allowAddDialog="allowAddDialog"
     :initialPackages="initialPackages"
   >
     <template #dialog="{ open, close, addElements, elementType }">
@@ -24,8 +26,22 @@ const props = defineProps({
   element_type: String
 });
 
+const normalizedElementType = computed(() => {
+  if (props.element_type === 'Chart Elements') return 'ChartElements';
+  return props.element_type;
+});
+
+const displayTitle = computed(() => {
+  if (normalizedElementType.value === 'ChartElements') return 'Chart Elements';
+  return normalizedElementType.value || '';
+});
+
+const allowAddDialog = computed(() => {
+  return normalizedElementType.value === 'Materials' || normalizedElementType.value === 'Processes';
+});
+
 const elementClass = computed(() => {
-  switch (props.element_type) {
+  switch (normalizedElementType.value) {
     case 'Materials':
       return 'material_element sidebar_element';
     case 'Processes':
@@ -38,46 +54,31 @@ const elementClass = computed(() => {
 });
 
 const initialPackages = computed(() => {
-  switch (props.element_type) {
+  switch (normalizedElementType.value) {
     case 'Materials':
       return [
-        {
-          name: 'Basic-Materials',
-          type: 'material',
-          children: [
-            { type: 'material', name: 'Educt' },
-            { type: 'material', name: 'Intermediate' },
-            { type: 'material', name: 'Product' }
-          ]
-        }
+        { type: 'material', name: 'Educt', materialElementType: 'Input'},
+        { type: 'material', name: 'Intermediate', materialElementType: 'Intermediate'},
+        { type: 'material', name: 'Product', materialElementType: 'Output'},        
       ];
     case 'Processes':
       return [
-        { name: 'Dosage Prep Stage:', type: 'process', processElementType: 'Process Stage' },
-        { name: 'Packaging Stage:', type: 'process', processElementType: 'Process Stage' },
-        { name: 'Wet Mixing Operation:', type: 'process', processElementType: 'Process Operation' },
-        { name: 'Dry Mixing Operation:', type: 'process', processElementType: 'Process Operation' },
-        { name: 'Tableting Operation:', type: 'process', processElementType: 'Process Operation' },
-        { name: 'Charge:', type: 'process', processElementType: 'Process Action' },
-        { name: 'Charge with Agitation:', type: 'process', processElementType: 'Process Action' },
-        { name: 'Charge to adjust pH:', type: 'process', processElementType: 'Process Action' }
+        { type: 'process', name: 'Process', processElementType: 'Process' },
+        { type: 'process', name: 'Process Stage', processElementType: 'Process Stage' },
+        { type: 'process', name: 'Process Operation', processElementType: 'Process Operation' },
+        { type: 'process', name: 'Process Action', processElementType: 'Process Action' },
+
       ];
     case 'ChartElements':
       return [
-        {
-          name: 'Basic',
-          type: 'chart_element',
-          children: [
-            { type: 'chart_element', name: 'Previous Operation Indicator', procedureChartElementType: 'Previous Operation Indicator' },
-            { type: 'chart_element', name: 'Next Operation Indicator', procedureChartElementType: 'Next Operation Indicator' },
-            { type: 'chart_element', name: 'Start Parallel Indicator', procedureChartElementType: 'Start Parallel Indicator' },
-            { type: 'chart_element', name: 'End Parallel Indicator', procedureChartElementType: 'End Parallel Indicator' },
-            { type: 'chart_element', name: 'Start Optional Parallel Indicator', procedureChartElementType: 'Start Optional Parallel Indicator' },
-            { type: 'chart_element', name: 'End Optional Parallel Indicator', procedureChartElementType: 'End Optional Parallel Indicator' },
-            { type: 'chart_element', name: 'Annotation', procedureChartElementType: 'Annotation' },
-            { type: 'chart_element', name: 'Other', procedureChartElementType: 'Other' }
-          ]
-        }
+          { type: 'chart_element', name: 'Previous Operation Indicator', procedureChartElementType: 'Previous Operation Indicator' },
+          { type: 'chart_element', name: 'Next Operation Indicator', procedureChartElementType: 'Next Operation Indicator' },
+          { type: 'chart_element', name: 'Start Parallel Indicator', procedureChartElementType: 'Start Parallel Indicator' },
+          { type: 'chart_element', name: 'End Parallel Indicator', procedureChartElementType: 'End Parallel Indicator' },
+          { type: 'chart_element', name: 'Start Optional Parallel Indicator', procedureChartElementType: 'Start Optional Parallel Indicator' },
+          { type: 'chart_element', name: 'End Optional Parallel Indicator', procedureChartElementType: 'End Optional Parallel Indicator' },
+          { type: 'chart_element', name: 'Annotation', procedureChartElementType: 'Annotation' },
+          { type: 'chart_element', name: 'Other', procedureChartElementType: 'Other' }
       ];
     default:
       return [];

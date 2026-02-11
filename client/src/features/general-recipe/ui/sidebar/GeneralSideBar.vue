@@ -1,9 +1,7 @@
 <template>
   <SideBarContainer>
     <GeneralElementWindow element_type="Materials" />
-    <div class="element_spacer"></div>
     <GeneralElementWindow element_type="Processes" />
-    <div class="element_spacer"></div>
     <GeneralElementWindow element_type="ChartElements" />
   </SideBarContainer>
 </template>
