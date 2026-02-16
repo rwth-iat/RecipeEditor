@@ -823,14 +823,20 @@ function exportWorkspace() {
     const itemsToSave = computedWorkspaceItems.value.map(item => ({
         id: item.id,
         type: item.type,
+        materialType: item.materialType,
         x: item.x,
         y: item.y,
         description: item.description,
-        materialID: item.materialID,
-        amount: item.amount,
-        processElementType: item.processElementType,
-        procedureChartElementType: item.procedureChartElementType
-    }));
+         materialID: item.materialID,
+         order: item.order,
+         amount: item.amount,
+         materialSpecificationProperty: item.materialSpecificationProperty,
+         processElementParameter: item.processElementParameter,
+         resourceConstraint: item.resourceConstraint,
+         otherInformation: item.otherInformation,
+         processElementType: item.processElementType,
+         procedureChartElementType: item.procedureChartElementType
+     }));
 
     // 2) grab and dedupe connections
     const rawConns = jsplumbInstance.value.getConnections().map(conn => ({
@@ -1171,12 +1177,17 @@ function saveWorkspaceToLocal() {
             x: item.x,
             y: item.y,
             description: item.description,
-            materialID: item.materialID,
-            amount: item.amount,
-            processElementType: item.processElementType,
-            procedureChartElementType: item.procedureChartElementType
-        };
-    });
+             materialID: item.materialID,
+             order: item.order,
+             amount: item.amount,
+             materialSpecificationProperty: item.materialSpecificationProperty,
+             processElementParameter: item.processElementParameter,
+             resourceConstraint: item.resourceConstraint,
+             otherInformation: item.otherInformation,
+             processElementType: item.processElementType,
+             procedureChartElementType: item.procedureChartElementType
+         };
+     });
 
     const rawConns = jsplumbInstance.value.getConnections().map(conn => ({
         sourceId: conn.sourceId,

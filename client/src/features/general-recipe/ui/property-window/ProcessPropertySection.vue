@@ -44,16 +44,47 @@
         <input type="text" :id="'parameter_' + index + '_id'" v-model="parameter.id" />
         <label :for="'parameter_' + index + '_description'">Description:</label>
         <input type="text" :id="'parameter_' + index + '_description'" v-model="parameter.description[0]" />
-        <label :for="'parameter_' + index + '_valueType'">ParameterValue:</label>
-        <ValueTypeProperty
-          :id="'parameter_' + index + '_valueType'"
-          :valueType="parameter.value"
-          :minValue="getParameterMinValue(parameter)"
-          :maxValue="getParameterMaxValue(parameter)"
-          :unit="getParameterUnit(parameter)"
-          @update:valueType="parameter.value = $event"
-          @validation-error="handleParameterValidationError(index, $event)"
-        />
+        <div class="value-type-header">
+          <label>ParameterValue:</label>
+          <button
+            type="button"
+            class="section-add-button"
+            aria-label="Add ParameterValue"
+            @click="addParameterValueType(parameter)"
+          >
+            +
+          </button>
+        </div>
+
+        <div
+          v-for="(valueType, valueIndex) in getValueTypes(parameter, 'value')"
+          :key="`parameter_${index}_value_${valueIndex}`"
+          class="container-with-actions value-type-block"
+        >
+          <button
+            v-if="valueIndex > 0"
+            type="button"
+            class="button-with-border--red item-delete-button"
+            @click="removeParameterValueType(parameter, valueIndex)"
+            aria-label="Delete ParameterValue"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24">
+              <path
+                fill="currentColor"
+                d="M7 21q-.825 0-1.413-.588T5 19V6H4V4h5V3h6v1h5v2h-1v13q0 .825-.588 1.413T17 21H7ZM17 6H7v13h10V6ZM9 17h2V8H9v9Zm4 0h2V8h-2v9ZM7 6v13V6Z"
+              />
+            </svg>
+          </button>
+
+          <ValueTypeProperty
+            :valueType="valueType"
+            :minValue="getParameterMinValue(parameter)"
+            :maxValue="getParameterMaxValue(parameter)"
+            :unit="getParameterUnit(parameter)"
+            @update:valueType="updateParameterValueType(parameter, valueIndex, $event)"
+            @validation-error="handleParameterValidationError(index, valueIndex, $event)"
+          />
+        </div>
       </div>
     </div>
 
@@ -88,11 +119,11 @@
             />
           </svg>
         </button>
-        <label :for="'resourceConstraint_' + index + '_constrainedID'">ID:</label>
+        <label :for="'resourceConstraint_' + index + '_constraintID'">ID:</label>
         <input
           type="text"
-          :id="'resourceConstraint_' + index + '_constrainedID'"
-          v-model="resourceConstraint.constrinedID"
+          :id="'resourceConstraint_' + index + '_constraintID'"
+          v-model="resourceConstraint.constraintID"
         />
         <label :for="'resourceConstraint_' + index + '_description'">Description:</label>
         <input
@@ -115,12 +146,43 @@
           :id="'resourceConstraint_' + index + '_lifeCycleState'"
           v-model="resourceConstraint.lifeCycleState"
         />
-        <label :for="'resourceConstraint_' + index + '_range'">Range:</label>
-        <ValueTypeProperty
-          :id="'resourceConstraint_' + index + '_range'"
-          :valueType="resourceConstraint.range"
-          @update:valueType="resourceConstraint.valueType = $event"
-        />
+        <div class="value-type-header">
+          <label>Range:</label>
+          <button
+            type="button"
+            class="section-add-button"
+            aria-label="Add Range"
+            @click="addResourceConstraintRangeValueType(resourceConstraint)"
+          >
+            +
+          </button>
+        </div>
+
+        <div
+          v-for="(valueType, valueIndex) in getValueTypes(resourceConstraint, 'range')"
+          :key="`resourceConstraint_${index}_range_${valueIndex}`"
+          class="container-with-actions value-type-block"
+        >
+          <button
+            v-if="valueIndex > 0"
+            type="button"
+            class="button-with-border--red item-delete-button"
+            @click="removeResourceConstraintRangeValueType(resourceConstraint, valueIndex)"
+            aria-label="Delete Range"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24">
+              <path
+                fill="currentColor"
+                d="M7 21q-.825 0-1.413-.588T5 19V6H4V4h5V3h6v1h5v2h-1v13q0 .825-.588 1.413T17 21H7ZM17 6H7v13h10V6ZM9 17h2V8H9v9Zm4 0h2V8h-2v9ZM7 6v13V6Z"
+              />
+            </svg>
+          </button>
+
+          <ValueTypeProperty
+            :valueType="valueType"
+            @update:valueType="updateResourceConstraintRangeValueType(resourceConstraint, valueIndex, $event)"
+          />
+        </div>
         <label :for="'resourceConstraint_' + index + '_resourceConstraintProperty'">
           ResourceConstraintProperty:
         </label>
@@ -175,11 +237,43 @@
           :id="'otherInformation_' + index + '_description'"
           v-model="otherInformation.description[0]"
         />
-        <label :for="'otherInformation_' + index + '_otherValue'">OtherValue:</label>
-        <ValueTypeProperty
-          :valueType="otherInformation.otherValue[0]"
-          @update:valueType="otherInformation.otherValue[0] = $event"
-        />
+        <div class="value-type-header">
+          <label>OtherValue:</label>
+          <button
+            type="button"
+            class="section-add-button"
+            aria-label="Add OtherValue"
+            @click="addOtherInformationValueType(otherInformation)"
+          >
+            +
+          </button>
+        </div>
+
+        <div
+          v-for="(valueType, valueIndex) in getValueTypes(otherInformation, 'otherValue')"
+          :key="`otherInformation_${index}_otherValue_${valueIndex}`"
+          class="container-with-actions value-type-block"
+        >
+          <button
+            v-if="valueIndex > 0"
+            type="button"
+            class="button-with-border--red item-delete-button"
+            @click="removeOtherInformationValueType(otherInformation, valueIndex)"
+            aria-label="Delete OtherValue"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24">
+              <path
+                fill="currentColor"
+                d="M7 21q-.825 0-1.413-.588T5 19V6H4V4h5V3h6v1h5v2h-1v13q0 .825-.588 1.413T17 21H7ZM17 6H7v13h10V6ZM9 17h2V8H9v9Zm4 0h2V8h-2v9ZM7 6v13V6Z"
+              />
+            </svg>
+          </button>
+
+          <ValueTypeProperty
+            :valueType="valueType"
+            @update:valueType="updateOtherInformationValueType(otherInformation, valueIndex, $event)"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -216,6 +310,73 @@ watch(
 /* From now probably used for Parameters in Maste Recipe not General Recipe*/
 // Try to find matching parameter in equipment data
 const validationErrors = ref(new Set());
+
+function emptyValueType() {
+  return { valueString: '', dataType: '', unitOfMeasure: '', key: '' };
+}
+
+function getValueTypes(holder, fieldName) {
+  const values = ensureValueTypes(holder, fieldName);
+  return values.length > 0 ? values : [emptyValueType()];
+}
+
+function ensureValueTypes(holder, fieldName) {
+  if (!holder || typeof holder !== 'object') {
+    return [];
+  }
+
+  const value = holder[fieldName];
+  if (!Array.isArray(value) || value.length === 0) {
+    holder[fieldName] = [emptyValueType()];
+  }
+
+  return holder[fieldName];
+}
+
+function addParameterValueType(parameter) {
+  ensureValueTypes(parameter, 'value').push(emptyValueType());
+}
+
+function removeParameterValueType(parameter, valueIndex) {
+  const values = ensureValueTypes(parameter, 'value');
+  if (values.length <= 1) return;
+  values.splice(valueIndex, 1);
+}
+
+function updateParameterValueType(parameter, valueIndex, newValue) {
+  const values = ensureValueTypes(parameter, 'value');
+  values[valueIndex] = newValue;
+}
+
+function addResourceConstraintRangeValueType(resourceConstraint) {
+  ensureValueTypes(resourceConstraint, 'range').push(emptyValueType());
+}
+
+function removeResourceConstraintRangeValueType(resourceConstraint, valueIndex) {
+  const values = ensureValueTypes(resourceConstraint, 'range');
+  if (values.length <= 1) return;
+  values.splice(valueIndex, 1);
+}
+
+function updateResourceConstraintRangeValueType(resourceConstraint, valueIndex, newValue) {
+  const values = ensureValueTypes(resourceConstraint, 'range');
+  values[valueIndex] = newValue;
+}
+
+function addOtherInformationValueType(otherInformation) {
+  ensureValueTypes(otherInformation, 'otherValue').push(emptyValueType());
+}
+
+function removeOtherInformationValueType(otherInformation, valueIndex) {
+  const values = ensureValueTypes(otherInformation, 'otherValue');
+  if (values.length <= 1) return;
+  values.splice(valueIndex, 1);
+}
+
+function updateOtherInformationValueType(otherInformation, valueIndex, newValue) {
+  const values = ensureValueTypes(otherInformation, 'otherValue');
+  values[valueIndex] = newValue;
+}
 
 const getParameterMinValue = (parameter) => {
   if (!selectedElementModel.value.equipmentInfo ||
@@ -255,11 +416,12 @@ const getParameterUnit = (parameter) => {
   return equipmentParam ? equipmentParam.unit : '';
 };
 
-const handleParameterValidationError = (index, hasError) => {
+const handleParameterValidationError = (parameterIndex, valueIndex, hasError) => {
+  const key = `parameter_${parameterIndex}_value_${valueIndex}`;
   if (hasError) {
-    validationErrors.value.add(`parameter_${index}`);
+    validationErrors.value.add(key);
   } else {
-    validationErrors.value.delete(`parameter_${index}`);
+    validationErrors.value.delete(key);
   }
 };
 
@@ -272,7 +434,7 @@ function addProcessElementParameter() {
   selectedElementModel.value.processElementParameter.push({
     id: '',
     description: [''],
-    value: [{ valueString: '', dataType: '', unitOfMeasure: '', key: '' }]
+    value: [emptyValueType()]
   });
 }
 
@@ -281,9 +443,9 @@ function addOtherInformation() {
     selectedElementModel.value.otherInformation = [];
   }
   selectedElementModel.value.otherInformation.push({
-    otherInfoId: '',
+    otherInfoID: '',
     description: [''],
-    otherValue: [{ valueString: '', dataType: '', unitOfMeasure: '', key: '' }]
+    otherValue: [emptyValueType()]
   });
 }
 
@@ -296,7 +458,7 @@ function addResourceConstraint() {
     description: [''],
     constraintType: '',
     lifeCycleState: '',
-    range: [{ valueString: '', dataType: '', unitOfMeasure: '', key: '' }],
+    range: [emptyValueType()],
     resourceConstraintProperty: ''
   });
 }
@@ -371,6 +533,22 @@ function removeResourceConstraint(index) {
   right: 2px;
   padding: 0px 0px;
   line-height: 1;
+}
+
+.value-type-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.value-type-header label {
+  margin: 0;
+}
+
+.value-type-block + .value-type-block {
+  margin-top: 10px;
 }
 
 </style>

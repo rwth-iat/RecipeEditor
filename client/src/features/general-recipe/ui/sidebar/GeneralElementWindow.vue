@@ -74,11 +74,12 @@ const initialPackages = computed(() => {
           { type: 'chart_element', name: 'Previous Operation Indicator', procedureChartElementType: 'Previous Operation Indicator' },
           { type: 'chart_element', name: 'Next Operation Indicator', procedureChartElementType: 'Next Operation Indicator' },
           { type: 'chart_element', name: 'Start Parallel Indicator', procedureChartElementType: 'Start Parallel Indicator' },
-          { type: 'chart_element', name: 'End Parallel Indicator', procedureChartElementType: 'End Parallel Indicator' },
+          { type: 'chart_element', name: 'End Parallel Indicator', procedureChartElementType: 'End Parallel Indicator' }/*,
           { type: 'chart_element', name: 'Start Optional Parallel Indicator', procedureChartElementType: 'Start Optional Parallel Indicator' },
           { type: 'chart_element', name: 'End Optional Parallel Indicator', procedureChartElementType: 'End Optional Parallel Indicator' },
           { type: 'chart_element', name: 'Annotation', procedureChartElementType: 'Annotation' },
           { type: 'chart_element', name: 'Other', procedureChartElementType: 'Other' }
+           */
       ];
     default:
       return [];

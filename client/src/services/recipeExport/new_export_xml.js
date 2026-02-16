@@ -53,6 +53,142 @@ function createAmount(valueType) {
   return newAmount;
 }
 
+function cleanUpObject(obj) {
+  for (var attrKey in obj) {
+    var attrValue = obj[attrKey];
+    if (attrValue === null || attrValue === "" || attrValue === undefined) {
+      delete obj[attrKey];
+    } else if (Object.prototype.toString.call(attrValue) === "[object Object]") {
+      if (Object.keys(attrValue).length === 0) {
+        delete obj[attrKey];
+      } else {
+        cleanUpObject(attrValue);
+        if (Object.keys(attrValue).length === 0) {
+          delete obj[attrKey];
+        }
+      }
+    } else if (Array.isArray(attrValue)) {
+      if (attrValue.length === 0) {
+        delete obj[attrKey];
+      } else {
+        attrValue.forEach(function (arrayValue) {
+          if (Object.prototype.toString.call(arrayValue) === "[object Object]") {
+            cleanUpObject(arrayValue);
+          }
+        });
+        if (attrValue.length === 0) {
+          delete obj[attrKey];
+        }
+      }
+    }
+  }
+}
+
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function hasValueTypeContent(valueType) {
+  if (!valueType || typeof valueType !== "object") {
+    return false;
+  }
+
+  return (
+    isNonEmptyString(valueType.valueString) ||
+    isNonEmptyString(valueType.dataType) ||
+    isNonEmptyString(valueType.unitOfMeasure) ||
+    isNonEmptyString(valueType.key)
+  );
+}
+
+function hasValueTypeExportableContent(valueType) {
+  if (!valueType || typeof valueType !== "object") {
+    return false;
+  }
+
+  // ValueType requires ValueString in the XSD (minOccurs=1).
+  return isNonEmptyString(valueType.valueString);
+}
+
+function normalizeValueTypeArray(valueTypes) {
+  return Array.isArray(valueTypes) ? valueTypes : [];
+}
+
+function hasAnyValueTypeContent(valueTypes) {
+  return normalizeValueTypeArray(valueTypes).some(hasValueTypeContent);
+}
+
+function createValueTypeList(valueTypes) {
+  const valueTypeList = normalizeValueTypeArray(valueTypes)
+    .filter((valueType) => hasValueTypeExportableContent(valueType))
+    .map((valueType) => createValueType(valueType));
+
+  return valueTypeList.length > 0 ? valueTypeList : undefined;
+}
+
+function getFirstExportableValueString(valueTypes) {
+  for (const valueType of normalizeValueTypeArray(valueTypes)) {
+    if (hasValueTypeExportableContent(valueType)) {
+      return valueType.valueString.trim();
+    }
+  }
+  return null;
+}
+
+function parseFiniteNumber(value) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (!isNonEmptyString(value)) {
+    return null;
+  }
+
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isMaterialSpecificationPropertyIncomplete(property) {
+  if (!property || typeof property !== "object") {
+    return false;
+  }
+
+  const hasId = isNonEmptyString(property.materialDefinitionPropertyID);
+  const hasDescription = isNonEmptyString(property.description);
+  const hasValue = hasAnyValueTypeContent(property.value);
+
+  return !hasId && (hasDescription || hasValue);
+}
+
+function isMaterialSpecificationPropertyComplete(property) {
+  if (!property || typeof property !== "object") {
+    return false;
+  }
+
+  return isNonEmptyString(property.materialDefinitionPropertyID);
+}
+
+function getMaterialSpecificationProperties(item) {
+  if (!Array.isArray(item.materialSpecificationProperty)) {
+    return [];
+  }
+
+  return item.materialSpecificationProperty.filter((property) =>
+    isMaterialSpecificationPropertyComplete(property)
+  );
+}
+
+function createMaterialDefinitionProperty(property) {
+  const propertyId = property.materialDefinitionPropertyID.trim();
+  return {
+    "b2mml:ID": propertyId,
+    "b2mml:Description": isNonEmptyString(property.description)
+      ? [property.description.trim()]
+      : undefined,
+    "b2mml:Value": createValueTypeList(property.value),
+  };
+}
+
 /**
  * Creates a B2MML Material object from a workspace item
  * @param {Object} item - The workspace material item
@@ -66,6 +202,7 @@ function create_material(item) {
     "b2mml:Order": item.order,
     "b2mml:Amount": createAmount(item.amount),
   };
+
   return materials;
 }
 
@@ -150,10 +287,16 @@ function create_formula(workspace_items) {
  * @returns {Object} - B2MML-compliant ProcessElementParameter structure
  */
 function create_process_element_parameter(item) {
+  const descriptions = Array.isArray(item.description)
+    ? item.description.filter(isNonEmptyString).map((value) => value.trim())
+    : isNonEmptyString(item.description)
+      ? [item.description.trim()]
+      : undefined;
+
   let parameter = {
     "b2mml:ID": item.id,
-    "b2mml:Description": [item.description],
-    "b2mml:Value": createValueType(item.value),
+    "b2mml:Description": descriptions,
+    "b2mml:Value": createValueTypeList(item.value),
   };
   console.debug("processParameter:", parameter);
   return parameter;
@@ -165,21 +308,33 @@ function create_process_element_parameter(item) {
  * @returns {Object} - B2MML-compliant OtherInformation structure
  */
 function createOtherInformation(item) {
+  const descriptions = Array.isArray(item.description)
+    ? item.description.filter(isNonEmptyString).map((value) => value.trim())
+    : isNonEmptyString(item.description)
+      ? [item.description.trim()]
+      : undefined;
+
   let otherInformation = {
     "b2mml:OtherInfoID": item.otherInfoID,
-    "b2mml:Description": item.description,
-    "b2mml:OtherValue": [createValueType(item.otherValue[0])],
+    "b2mml:Description": descriptions,
+    "b2mml:OtherValue": createValueTypeList(item.otherValue),
   };
   return otherInformation;
 }
 
 function createResourceConstraint(item) {
+  const descriptions = Array.isArray(item.description)
+    ? item.description.filter(isNonEmptyString).map((value) => value.trim())
+    : isNonEmptyString(item.description)
+      ? [item.description.trim()]
+      : undefined;
+
   let resourceConstraint = {
-    "b2mml:ConstraintID": item.id,
-    "b2mml:Description": [item.description[0]], // put in array as array input is not implemented in editor yet
+    "b2mml:ConstraintID": item.constraintID,
+    "b2mml:Description": descriptions,
     //"b2mml:ConstraintType": [item.constraintType],
     "b2mml:LifeCycleState": {},
-    "b2mml:Range": createValueType(item.range), //put in array as array input is not implemented in editor yet
+    "b2mml:Range": createValueTypeList(item.range),
     //"b2mml:ResourceConstraintProperty": [{}] //put it in array as array inputs are not implemented into editor yet. Object not implemented yet
   };
   return resourceConstraint;
@@ -352,44 +507,7 @@ export function generate_batchml(workspace_items, connections) {
     },
   };
 
-  //function to delete all ["", null, undefined, {}, []] values
-  function cleanUp(obj) {
-    for (var attrKey in obj) {
-      var attrValue = obj[attrKey];
-      if (attrValue === null || attrValue === "" || attrValue === undefined) {
-        //delete "", null, undefined
-        delete obj[attrKey];
-      } else if (
-        Object.prototype.toString.call(attrValue) === "[object Object]"
-      ) {
-        if (Object.keys(attrValue).length === 0) {
-          //delete empty objects
-          delete obj[attrKey];
-        } else {
-          cleanUp(attrValue); //if not empty recursivly check children
-          if (Object.keys(attrValue).length === 0) {
-            //check if all children were deleted and object is empty now
-            delete obj[attrKey];
-          }
-        }
-      } else if (Array.isArray(attrValue)) {
-        if (attrValue.length === 0) {
-          //delete empty arrays
-          delete obj[attrKey];
-        } else {
-          attrValue.forEach(function (arrayValue) {
-            //if not empty go through elements
-            cleanUp(arrayValue);
-          });
-          if (attrValue.length === 0) {
-            //check if every element was deleted and list is empty now
-            delete obj[attrKey];
-          }
-        }
-      }
-    }
-  }
-  cleanUp(gRecipe);
+  cleanUpObject(gRecipe);
 
   const jsonSchema = new Draft04(allSchemas);
   const errors = jsonSchema.validate(gRecipe);
@@ -406,6 +524,82 @@ export function generate_batchml(workspace_items, connections) {
   return xmlString;
 }
 
+function create_material_information(workspace_items) {
+  const materialDefinitionsById = new Map();
+
+  workspace_items.forEach((item, index) => {
+    if (item.type !== "material") {
+      return;
+    }
+
+    const properties = getMaterialSpecificationProperties(item);
+    if (properties.length === 0) {
+      return;
+    }
+
+    const materialDefinitionId = isNonEmptyString(item.materialID)
+      ? item.materialID.trim()
+      : isNonEmptyString(item.id)
+        ? item.id.trim()
+        : `MaterialDefinition_${index + 1}`;
+
+    if (!materialDefinitionsById.has(materialDefinitionId)) {
+      materialDefinitionsById.set(materialDefinitionId, {
+        "b2mml:ID": materialDefinitionId,
+        "b2mml:Description": isNonEmptyString(item.description)
+          ? [item.description.trim()]
+          : undefined,
+        "b2mml:MaterialDefinitionProperty": [],
+      });
+    }
+
+    const materialDefinition = materialDefinitionsById.get(materialDefinitionId);
+    properties.forEach((property) => {
+      materialDefinition["b2mml:MaterialDefinitionProperty"].push(
+        createMaterialDefinitionProperty(property)
+      );
+    });
+  });
+
+  const materialDefinitions = Array.from(materialDefinitionsById.values()).filter(
+    (materialDefinition) =>
+      Array.isArray(materialDefinition["b2mml:MaterialDefinitionProperty"]) &&
+      materialDefinition["b2mml:MaterialDefinitionProperty"].length > 0
+  );
+
+  if (materialDefinitions.length === 0) {
+    return null;
+  }
+
+  return {
+    "b2mml:MaterialInformation": {
+      $: {
+        "xmlns:b2mml": "http://www.mesa.org/xml/B2MML",
+      },
+      "b2mml:ID": "MaterialInformationFromGeneralRecipe",
+      "b2mml:Description": [
+        "Material definitions and properties referenced by the General Recipe",
+      ],
+      "b2mml:MaterialDefinition": materialDefinitions,
+    },
+  };
+}
+
+export function generate_material_information_batchml(workspace_items) {
+  const materialInformation = create_material_information(workspace_items);
+  if (!materialInformation) {
+    return null;
+  }
+
+  cleanUpObject(materialInformation);
+
+  const builder = new Builder();
+  const xmlString = builder.buildObject(materialInformation);
+  console.log("json to xml material information:", materialInformation);
+  console.log("material information xml String", xmlString);
+  return xmlString;
+}
+
 export function start_download(filename, file_string) {
   //automatically start download
   let pom = document.createElement("a");
@@ -417,6 +611,84 @@ export function start_download(filename, file_string) {
   pom.classList.add("dragout");
   pom.click();
   return;
+}
+
+function resolveHttpStatus(error) {
+  return error?.response?.status || error?.request?.status || null;
+}
+
+function validate_and_download_material_information(client, materialInformationXml) {
+  client
+    .get("/material/validate", {
+      params: {
+        xml_string: materialInformationXml,
+      },
+    })
+    .then((response) => {
+      if (response.status == 200) {
+        console.log("MaterialInformation is valid!");
+        start_download("MaterialInformation.xml", materialInformationXml);
+      }
+    })
+    .catch((error) => {
+      const status = resolveHttpStatus(error);
+      if (status == 400) {
+        console.log("MaterialInformation is not valid!");
+        start_download("invalid_MaterialInformation.xml", materialInformationXml);
+        window.alert(
+          "CAUTION: The generated MaterialInformation is invalid, but is nevertheless downloaded."
+        );
+      } else if (status == 404) {
+        console.log(
+          "Unable to reach the server while validating MaterialInformation, are you maybe only running the client code?"
+        );
+        console.log(error);
+        start_download("unchecked_MaterialInformation.xml", materialInformationXml);
+        window.alert(
+          "Error 404: Unable to reach the server when validating the MaterialInformation. Are you maybe only running the client code? For complete error message look into the browser devtools console"
+        );
+      } else {
+        console.log("error trying to validate the MaterialInformation file:");
+        console.log(error);
+        window.alert(
+          "Error: The MaterialInformation could not be validated. For complete error message look into the browser devtools console."
+        );
+      }
+    });
+}
+
+function analyzeMaterialInformationExportEligibility(workspaceItems) {
+  const incompleteEntries = [];
+  let completeCount = 0;
+
+  workspaceItems.forEach((item, itemIndex) => {
+    if (!item || item.type !== "material") {
+      return;
+    }
+
+    if (!Array.isArray(item.materialSpecificationProperty)) {
+      return;
+    }
+
+    item.materialSpecificationProperty.forEach((property, propertyIndex) => {
+      if (isMaterialSpecificationPropertyIncomplete(property)) {
+        incompleteEntries.push({
+          itemIndex,
+          propertyIndex,
+          itemId: item.id,
+          materialId: item.materialID,
+          description: item.description,
+        });
+        return;
+      }
+
+      if (isMaterialSpecificationPropertyComplete(property)) {
+        completeCount += 1;
+      }
+    });
+  });
+
+  return { completeCount, incompleteEntries };
 }
 
 export function create_validate_download_general_recipe_batchml(
@@ -444,15 +716,24 @@ export function create_validate_download_general_recipe_batchml(
               (p) => p.id === parameter.id || p.name === parameter.id
             );
           if (equipmentParam) {
+            const parameterValueString = getFirstExportableValueString(parameter.value);
+            const parameterNumericValue = parseFiniteNumber(parameterValueString);
+            if (parameterNumericValue === null) {
+              return;
+            }
+
+            const minValue = parseFiniteNumber(equipmentParam.min);
+            const maxValue = parseFiniteNumber(equipmentParam.max);
+
             // Validate parameter constraints
-            if (equipmentParam.min && parameter.value < equipmentParam.min) {
+            if (minValue !== null && parameterNumericValue < minValue) {
               validationErrors.push(
-                `Parameter ${parameter.id} value ${parameter.value} is below minimum ${equipmentParam.min}`
+                `Parameter ${parameter.id} value ${parameterValueString} is below minimum ${equipmentParam.min}`
               );
             }
-            if (equipmentParam.max && parameter.value > equipmentParam.max) {
+            if (maxValue !== null && parameterNumericValue > maxValue) {
               validationErrors.push(
-                `Parameter ${parameter.id} value ${parameter.value} is above maximum ${equipmentParam.max}`
+                `Parameter ${parameter.id} value ${parameterValueString} is above maximum ${equipmentParam.max}`
               );
             }
           }
@@ -483,6 +764,46 @@ export function create_validate_download_general_recipe_batchml(
   };
 
   let xml_string = generate_batchml(workspaceItems, connections);
+
+  const materialInformationAnalysis = analyzeMaterialInformationExportEligibility(workspaceItems);
+  let materialInformationXml = null;
+
+  if (materialInformationAnalysis.incompleteEntries.length > 0) {
+    const preview = materialInformationAnalysis.incompleteEntries
+      .slice(0, 5)
+      .map((entry) => {
+        const materialLabel =
+          (typeof entry.materialId === "string" && entry.materialId.trim()) ||
+          (typeof entry.itemId === "string" && entry.itemId.trim()) ||
+          `#${entry.itemIndex + 1}`;
+        return `- Material ${materialLabel}: Property row ${entry.propertyIndex + 1}`;
+      })
+      .join("\n");
+
+    const remainingCount = materialInformationAnalysis.incompleteEntries.length - 5;
+    const remainingText =
+      remainingCount > 0 ? `\n...and ${remainingCount} more.` : "";
+
+    window.alert(
+      `WARNING: MaterialInformation.xml will NOT be exported.\n\n` +
+        `Reason: At least one MaterialDefinitionProperty has a Description and/or Value but the Property ID (MaterialDefinitionProperty.ID) is empty.\n\n` +
+        `Please fill the Property ID or clear the row.\n\n` +
+        `${preview}${remainingText}\n\n` +
+        `The General Recipe export will continue.`
+    );
+  } else if (materialInformationAnalysis.completeCount > 0) {
+    materialInformationXml = generate_material_information_batchml(workspaceItems);
+    if (!materialInformationXml) {
+      console.log(
+        "MaterialInformation generation returned null despite complete properties; skipping MaterialInformation export."
+      );
+    }
+  } else {
+    console.log(
+      "No material property entries found in MaterialPropertySection, skipping MaterialInformation export."
+    );
+  }
+
   client
     .get("/grecipe/validate", {
       params: {
@@ -498,14 +819,15 @@ export function create_validate_download_general_recipe_batchml(
       }
     })
     .catch((error) => {
-      if (error.request.status == 400) {
+      const status = resolveHttpStatus(error);
+      if (status == 400) {
         // handle success
         console.log("BatchML is not valid!");
         start_download("invalid_Verfahrensrezept.xml", xml_string);
         window.alert(
           "CAUTION: The generated Batchml is invalid, but is nevertheless downloaded."
         );
-      } else if (error.request.status == 404) {
+      } else if (status == 404) {
         console.log(
           "Unable to reach the server, are you maybe only running the client code?"
         );
@@ -521,6 +843,11 @@ export function create_validate_download_general_recipe_batchml(
         window.alert(
           "Error: The Batchml could not be validated. For complete error message look into the browser devtools console."
         );
+      }
+    })
+    .finally(() => {
+      if (materialInformationXml) {
+        validate_and_download_material_information(client, materialInformationXml);
       }
     });
 }
@@ -1054,16 +1381,25 @@ export function create_validate_download_master_recipe_batchml(
             );
           
           if (equipmentParam) {
+            const parameterValueString = getFirstExportableValueString(parameter.value);
+            const parameterNumericValue = parseFiniteNumber(parameterValueString);
+            if (parameterNumericValue === null) {
+              return;
+            }
+
+            const minValue = parseFiniteNumber(equipmentParam.min);
+            const maxValue = parseFiniteNumber(equipmentParam.max);
+
             // Validate parameter value against minimum constraint
-            if (equipmentParam.min && parameter.value < equipmentParam.min) {
+            if (minValue !== null && parameterNumericValue < minValue) {
               validationErrors.push(
-                `Parameter ${parameter.id} value ${parameter.value} is below minimum ${equipmentParam.min}`
+                `Parameter ${parameter.id} value ${parameterValueString} is below minimum ${equipmentParam.min}`
               );
             }
             // Validate parameter value against maximum constraint
-            if (equipmentParam.max && parameter.value > equipmentParam.max) {
+            if (maxValue !== null && parameterNumericValue > maxValue) {
               validationErrors.push(
-                `Parameter ${parameter.id} value ${parameter.value} is above maximum ${equipmentParam.max}`
+                `Parameter ${parameter.id} value ${parameterValueString} is above maximum ${equipmentParam.max}`
               );
             }
           }

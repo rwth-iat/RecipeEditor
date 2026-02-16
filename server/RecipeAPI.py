@@ -101,6 +101,40 @@ def validate_batchml():
         print('Not valid! :(')
         response = make_response(error, 400)
         return response
+
+@recipe_api.route('/material/validate')
+def validate_material_information():
+    """Endpoint to validate a xml string against B2MML Material schema.
+    ---
+    tags:
+      - Recipes
+    parameters:
+      - name: xml_string
+        in: query
+        type: string
+        required: true
+        default: ""
+    responses:
+      "200":
+        description: Given String is valid.
+      "400":
+        description: Given String is not valid.
+    """
+    args = request.args
+    xml_string = args.get("xml_string", type=str)
+    if not xml_string:
+        xml_string = ""
+
+    valid, error = validate(xml_string, "batchml_schemas/schemas/B2MML-Material.xsd")
+    if valid:
+        response = make_response("valid!", 200)
+        return response
+    elif error.startswith("XSD load") or error.startswith("XML parse"):
+        response = make_response(error, 500)
+        return response
+    else:
+        response = make_response(error, 400)
+        return response
       
 @recipe_api.route('/mrecipe/validate', methods=['POST'])
 def validate_mrecipe_post():

@@ -1,18 +1,31 @@
 <template>
   <div v-if="computedValueType" class="container-with-border">
-    <label :for="'valueString'">ValueString:</label>
-    <input type="text" :id="'valueString'" v-model="computedValueType.valueString" @input="validateInput"
-      :class="{ 'validation-error': hasValidationError }" :title="validationMessage" />
+    <label>
+      ValueString:
+      <input
+        type="text"
+        v-model="computedValueType.valueString"
+        @input="validateInput"
+        :class="{ 'validation-error': hasValidationError }"
+        :title="validationMessage"
+      />
+    </label>
     <span v-if="hasValidationError" class="validation-error-message">
       {{ validationMessage }}
     </span>
-    <label :for="'dataType'">DataType:</label>
-    <input type="text" :id="'dataType'" v-model="computedValueType.dataType" default="Text" />
+    <label>
+      DataType:
+      <input type="text" v-model="computedValueType.dataType" default="Text" />
+    </label>
     <!--allowed Datatypes['Amount', 'BinaryObject', 'Code', 'DateTime', 'Identifier', 'Indicator', 'Measure', 'Numeric', 'Quantity', 'Text', 'string', 'byte', 'unsignedByte', 'binary', 'integer', 'positiveInteger', 'negativeInteger', 'nonNegativeInteger', 'nonPositiveInteger', 'int', 'unsignedInt', 'long', 'unsignedLong', 'short', 'unsignedShort', 'decimal', 'float', 'double', 'boolean', 'time', 'timeInstant', 'timePeriod', 'duration', 'date', 'dateTime', 'month', 'year', 'century', 'recurringDay', 'recurringDate', 'recurringDuration', 'Name', 'QName', 'NCName', 'uriReference', 'language', 'ID', 'IDREF', 'IDREFS', 'ENTITY', 'ENTITIES', 'NOTATION', 'NMTOKEN', 'NMTOKENS', 'Enumeration', 'SVG', 'Other']-->
-    <label :for="'unitOfMeasure'">UnitOfMeasure:</label>
-    <input type="text" :id="'unitOfMeasure'" v-model="computedValueType.unitOfMeasure" />
-    <label :for="'key'">Key:</label>
-    <input type="text" :id="'key'" v-model="computedValueType.key" />
+    <label>
+      UnitOfMeasure:
+      <input type="text" v-model="computedValueType.unitOfMeasure" />
+    </label>
+    <label>
+      Key:
+      <input type="text" v-model="computedValueType.key" />
+    </label>
   </div>
 </template>
 
@@ -135,6 +148,14 @@ if (!hasValidationError.value && computedValueType.value.valueString) {
 </script>
 
 <style>
+label {
+  display: block;
+}
+
+label input[type=text] {
+  display: block;
+}
+
 /* Style inputs */
 input[type=text],
 select {
