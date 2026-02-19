@@ -236,10 +236,10 @@ async function openInWorkspace() {
     console.debug("no child materials: ", selectedElement.value.materials)
     //if no materials exist yet add an input and output knot
     selectedElement.value.materials = [];
-    let unique_id = secondaryWorkspaceContent.value.findNextAvailableId(main_workspace_items.value, "Educt")
-    selectedElement.value.materials.push({ id: unique_id, description: unique_id, name: "Educt", type: "material", x: 300, y: 100, amount: {}, processElementType: "", procedureChartElementType: "" })
-    unique_id = secondaryWorkspaceContent.value.findNextAvailableId(main_workspace_items.value, "Product")
-    selectedElement.value.materials.push({ id: unique_id, description: unique_id, name: "Product", type: "material", x: 300, y: 400, amount: {}, processElementType: "", procedureChartElementType: "" })
+    let unique_id = secondaryWorkspaceContent.value.findNextAvailableId(main_workspace_items.value, "Previous Operation Indicator")
+    selectedElement.value.materials.push({ id: unique_id, description: unique_id, name: "Previous Operation Indicator", type: "chart_element", x: 300, y: 100, amount: {}, processElementType: "", procedureChartElementType: "Previous Operation Indicator" })
+    unique_id = secondaryWorkspaceContent.value.findNextAvailableId(main_workspace_items.value, "Next Operation Indicator")
+    selectedElement.value.materials.push({ id: unique_id, description: unique_id, name: "Next Operation Indicator", type: "chart_element", x: 300, y: 600, amount: {}, processElementType: "", procedureChartElementType: "Next Operation Indicator" })
   }
 
   await nextTick();

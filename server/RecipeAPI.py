@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 from lxml import etree
 from django.utils.encoding import iri_to_uri, uri_to_iri
 import json
+from xml.sax.saxutils import escape
 try:
     from dicttoxml import dicttoxml
 except ImportError:
@@ -13,6 +14,14 @@ except ImportError:
 from typing import Tuple
 
 recipe_api = Blueprint('recipe_api', __name__)
+
+
+def build_error_xml(message: str) -> str:
+    safe_message = escape(message or "")
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        f"<Error><Message>{safe_message}</Message></Error>"
+    )
 
 def validate(xml_string: str, xsd_relpath: str) -> Tuple[bool, str]:
     # 1) Locate the XSD file next to this .py
@@ -428,7 +437,10 @@ def create_master_recipe():
         # Get JSON payload from request
         json_data = request.get_json()
         if not json_data:
-            return make_response("No JSON payload provided", 400)
+            response = make_response(build_error_xml("No JSON payload provided"), 400)
+            response.headers['Content-Type'] = 'application/xml'
+            response.headers['X-Validation-Error'] = "No JSON payload provided"
+            return response
         
         print("Received master recipe payload:", json.dumps(json_data, indent=2))
         
@@ -441,18 +453,20 @@ def create_master_recipe():
             "batchml_schemas/schemas/BatchML-BatchInformation.xsd"
         )
         
-        if ok:
-            # Return the generated XML for download
-            response = make_response(xml_string, 200)
-            response.headers['Content-Type'] = 'application/xml'
-            return response
-        else:
-            # Return validation error
-            return make_response(f"Validation error: {err}", 400)
+        status_code = 200 if ok else 400
+        response = make_response(xml_string, status_code)
+        response.headers['Content-Type'] = 'application/xml'
+        if not ok:
+            # Include schema details separately so clients can show a clear error message.
+            response.headers['X-Validation-Error'] = " ".join(str(err).split())[:2000]
+        return response
             
     except Exception as e:
         print(f"Error creating master recipe: {str(e)}")
-        return make_response(f"Internal error: {str(e)}", 500)
+        response = make_response(build_error_xml(f"Internal error: {str(e)}"), 500)
+        response.headers['Content-Type'] = 'application/xml'
+        response.headers['X-Validation-Error'] = "Internal error while creating master recipe"
+        return response
 
 def convert_enhanced_json_to_batchml_xml(json_data):
     """Convert the enhanced JSON payload to B2MML XML format with proper structure"""

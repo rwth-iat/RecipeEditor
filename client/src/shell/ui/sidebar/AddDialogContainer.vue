@@ -186,13 +186,7 @@ defineEmits(['close']);
   height: 100%;
   background-color: #007bff;
   width: 0%;
-  animation: progress-animation 2s ease-in-out infinite;
-}
-
-@keyframes progress-animation {
-  0% { width: 0%; }
-  50% { width: 70%; }
-  100% { width: 100%; }
+  transition: width 0.2s ease;
 }
 
 :deep(.processing-progress p) {
@@ -200,6 +194,19 @@ defineEmits(['close']);
   color: #495057;
   font-weight: 500;
   text-align: center;
+}
+
+:deep(.progress-meta) {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.92rem;
+}
+
+:deep(.dialog-form .processing-progress span) {
+  color: #495057 !important;
+  font-weight: 500;
 }
 
 :deep(.uploader-section) {

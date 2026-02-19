@@ -1298,75 +1298,6 @@ function generateConditionText(item) {
 }
 
 
-.RecipeProcedureContainingALowerLevelPFC,
-.RecipeUnitProcedureContainingALowerLevelPFC,
-.RecipeOperationContainingALowerLevelPFC {
-    position: relative;
-    width: 200px;
-    height: 80px;
-    background: white;
-    border: 2px solid black;
-    border-radius: 4px;
-    margin: 10px auto;
-}
-
-.RecipeProcedureContainingALowerLevelPFC::before,
-.RecipeUnitProcedureContainingALowerLevelPFC::before,
-.RecipeOperationContainingALowerLevelPFC::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    /* size of the cut */
-    border-top: 16px solid black;
-    border-right: 16px solid transparent;
-}
-
-.RecipeProcedureContainingALowerLevelPFC::after,
-.RecipeUnitProcedureContainingALowerLevelPFC::after,
-.RecipeOperationContainingALowerLevelPFC::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    border-bottom: 16px solid black;
-    border-left: 16px solid transparent;
-}
-
-/* 2) References an equipment procedure/unit/op (one cut corner top-left) */
-.RecipeProcedureThatReferencesEquipmentProcedure,
-.RecipeUnitProcedureThatReferencesEquipmentUnitProcedure,
-.RecipeOperationThatReferencesEquipmentOperation {
-    position: relative;
-    width: 200px;
-    height: 80px;
-    background: white;
-    border: 2px solid black;
-    border-radius: 4px;
-    margin: 10px auto;
-}
-
-.RecipeProcedureThatReferencesEquipmentProcedure::before,
-.RecipeUnitProcedureThatReferencesEquipmentUnitProcedure::before,
-.RecipeOperationThatReferencesEquipmentOperation::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    border-top: 16px solid black;
-    border-right: 16px solid transparent;
-}
-
-/* 3) Phase that references an equipment phase (plain rectangle) */
-.RecipePhaseThatReferencesEquipmentPhase {
-    width: 200px;
-    height: 80px;
-    background: white;
-    border: 2px solid black;
-    margin: 10px auto;
-    border-radius: 4px;
-}
-
 .Begin {
     position: relative;
     width: 0;
@@ -1426,13 +1357,18 @@ function generateConditionText(item) {
 .RecipeProcedureContainingALowerLevelPFC,
 .RecipeUnitProcedureContainingALowerLevelPFC,
 .RecipeOperationContainingALowerLevelPFC {
-    width: 200px;
-    height: 80px;
+    --hype-half: 1px; /* 2px total line thickness */
+    width: 300px;
+    height: 120px;
     background: white;
     border: 2px solid black;
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
     margin: 10px auto;
-    border-radius: 4px;
+    border-radius: 0px;
 }
 
 .RecipeProcedureContainingALowerLevelPFC::before,
@@ -1441,11 +1377,25 @@ function generateConditionText(item) {
     content: "";
     position: absolute;
     top: 0;
-    left: 0;
+    right: 0;
+    /*
     border-top: 20px solid black;
     border-right: 20px solid transparent;
+    */
+    width: 25px;
+    height: 25px;
+    background:
+        linear-gradient(
+            to bottom left,
+            transparent calc(50% - var(--hype-half)),
+            #000 calc(50% - var(--hype-half)) calc(50% + var(--hype-half)),
+            transparent calc(50% + var(--hype-half))
+        ),
+        linear-gradient(#000, #000) top / 100% 0px no-repeat,
+        linear-gradient(#000, #000) right / 0px 100% no-repeat;
+    clip-path: polygon(100% 0, 0 0, 100% 100%);
 }
-
+/*
 .RecipeProcedureContainingALowerLevelPFC::after,
 .RecipeUnitProcedureContainingALowerLevelPFC::after,
 .RecipeOperationContainingALowerLevelPFC::after {
@@ -1456,7 +1406,7 @@ function generateConditionText(item) {
     border-bottom: 20px solid black;
     border-left: 20px solid transparent;
 }
-
+*/
 /* Recipe Procedure that references an equipment procedure (rectangle with small angled corner top-left) */
 .RecipeProcedureThatReferencesEquipmentProcedure,
 .RecipeUnitProcedureThatReferencesEquipmentUnitProcedure,
@@ -1519,6 +1469,7 @@ function generateConditionText(item) {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    background-color: black;
 }
 
 .Condition::before {

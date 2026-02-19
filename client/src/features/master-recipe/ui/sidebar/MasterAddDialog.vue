@@ -1,21 +1,22 @@
 <template>
   <AddDialogContainer :elementType="element_type" @close="$emit('close')">
     <form class="dialog-form">
-      <span>Select MTP/AAS: </span>
+      <span>Select MTP/AAS:</span>
       <div class="row-flex">
         <select v-model="current_file_type" name="FileType" id="fileTypeSelect"
-          @change="readServerFiles(current_file_type)">
-          <option value="">Select file type</option>
+          :disabled="isProcessingFile" @change="readServerFiles(current_file_type)">
+          <!--<option value="">Select file type</option>-->
           <option value="mtp">MTP Files</option>
           <option value="aas">AAS Files</option>
         </select>
-        <button type="button" class="icon-btn" @click="readServerFiles(current_file_type)" title="Reload files">
+        <button type="button" class="icon-btn" @click="readServerFiles(current_file_type)" title="Reload files"
+          :disabled="isProcessingFile || isLoadingFiles">
           <span class="reload">&#x21bb;</span>
         </button>
       </div>
       <div v-if="current_file_type && serverFiles.length > 0">
         <label for="file_select">Select File: </label>
-        <select id="file_select" v-model="current_file_name" name="file">
+        <select id="file_select" v-model="current_file_name" name="file" :disabled="isProcessingFile">
           <option v-for="item in serverFiles" :value="item" :key="item">{{ item }}</option>
         </select>
         <div class="row-flex">
@@ -26,20 +27,26 @@
           </button>
         </div>
         <div v-if="isProcessingFile" class="processing-progress">
-          <div class="progress-bar">
-            <div class="progress-fill"></div>
+          <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+            :aria-valuenow="progressPercent">
+            <div class="progress-fill" :style="{ width: `${progressPercent}%` }"></div>
           </div>
           <p>{{ processingProgress }}</p>
+          <div class="progress-meta">
+            <span>{{ progressCounterText }}</span>
+            <span>{{ progressPercent }}%</span>
+          </div>
         </div>
       </div>
       <div v-if="current_file_type" class="uploader-section">
         <span>Upload new {{ current_file_type.toUpperCase() }} file:</span>
         <div>
           <input ref="fileInput" @change="onFileChange" type="file"
-            :accept="getFileAcceptTypes(current_file_type)" style="width:100%;" />
+            :accept="getFileAcceptTypes(current_file_type)" style="width:100%;"
+            :disabled="isProcessingFile || isLoadingFiles" />
           <div class="row-flex" style="margin-top: 8px;">
             <button class="button" type="button" @click="uploadFileToServer(current_file_type)"
-              :disabled="isLoadingFiles">
+              :disabled="isLoadingFiles || isProcessingFile">
               <span v-if="isLoadingFiles">Uploading...</span>
               <span v-else>Upload {{ current_file_type.toUpperCase() }} to Server</span>
             </button>
@@ -51,7 +58,7 @@
 </template>
 
 <script setup>
-import { ref, toRefs } from 'vue';
+import { computed, onMounted, ref, toRefs } from 'vue';
 import axios from 'axios';
 import AddDialogContainer from '@/shell/ui/sidebar/AddDialogContainer.vue';
 
@@ -62,7 +69,7 @@ const { element_type } = toRefs(props);
 
 const emit = defineEmits(['close', 'add']);
 
-const current_file_type = ref('');
+const current_file_type = ref('mtp');
 const current_file_name = ref('');
 const serverFiles = ref([]);
 const fileInput = ref(null);
@@ -70,15 +77,61 @@ const fileInput = ref(null);
 const isLoadingFiles = ref(false);
 const isProcessingFile = ref(false);
 const processingProgress = ref('');
+const progressTotalProcedures = ref(0);
+const progressLoadedProcedures = ref(0);
+const progressParseDone = ref(false);
 
 const client = axios.create({
   baseURL: ''
+});
+
+const progressPercent = computed(() => {
+  const totalUnits = progressTotalProcedures.value + 1;
+  const doneUnits = (progressParseDone.value ? 1 : 0) + progressLoadedProcedures.value;
+  const rawPercent = Math.round((doneUnits / totalUnits) * 100);
+  if (!Number.isFinite(rawPercent)) return 0;
+  return Math.max(0, Math.min(100, rawPercent));
+});
+
+const progressCounterText = computed(
+  () => `${progressLoadedProcedures.value}/${progressTotalProcedures.value}`
+);
+
+onMounted(() => {
+  readServerFiles(current_file_type.value);
 });
 
 function getFileNameWithoutExtension(name) {
   if (!name || typeof name !== 'string') return 'Imported Elements';
   const normalized = name.replace(/\\/g, '/').split('/').pop() || '';
   return normalized.replace(/\.[^/.]+$/, '') || normalized || 'Imported Elements';
+}
+
+function resetProgressState() {
+  progressTotalProcedures.value = 0;
+  progressLoadedProcedures.value = 0;
+  progressParseDone.value = false;
+  processingProgress.value = '';
+}
+
+function initializeProgress(totalProcedures) {
+  progressTotalProcedures.value = Math.max(0, Number(totalProcedures) || 0);
+  progressLoadedProcedures.value = 0;
+  progressParseDone.value = false;
+}
+
+function markParseDone() {
+  progressParseDone.value = true;
+}
+
+function markProcedureLoaded() {
+  if (progressLoadedProcedures.value < progressTotalProcedures.value) {
+    progressLoadedProcedures.value += 1;
+  }
+}
+
+function setProgressMessage(message) {
+  processingProgress.value = message || '';
 }
 
 async function readServerFiles(fileType) {
@@ -146,20 +199,25 @@ async function addElementsFromFile(fileType, fileName) {
   }
 
   isProcessingFile.value = true;
-  processingProgress.value = 'Parsing file...';
+  initializeProgress(0);
+  setProgressMessage('Parsing file...');
 
   try {
-    processingProgress.value = 'Fetching process data...';
+    setProgressMessage('Fetching process data...');
     const response = await client.get(`/${fileType}/${encodeURIComponent(fileName)}/parse`);
     console.log(`Parsed ${fileType} result:`, response.data);
 
     if (fileType === 'mtp' && Array.isArray(response.data.procs)) {
-      const mtpProcesses = [];
+      const procedures = response.data.procs;
+      initializeProgress(procedures.length);
+      markParseDone();
+      if (procedures.length > 0) {
+        setProgressMessage(`Loading procedures ${progressCounterText.value}...`);
+      } else {
+        setProgressMessage('No procedures found.');
+      }
 
-      processingProgress.value = 'Processing processes and equipment data...';
-
-      const equipmentPromises = response.data.procs.map(async (proc, index) => {
-        processingProgress.value = `Fetching equipment data for ${proc.name} (${index + 1}/${response.data.procs.length})...`;
+      const equipmentPromises = procedures.map(async (proc) => {
         try {
           const equipmentResponse = await client.get(`/${fileType}/${encodeURIComponent(fileName)}/master-recipe-equipment/${encodeURIComponent(proc.name)}`);
           return {
@@ -172,14 +230,16 @@ async function addElementsFromFile(fileType, fileName) {
             proc,
             equipmentData: null
           };
+        } finally {
+          markProcedureLoaded();
+          setProgressMessage(`Loading procedures ${progressCounterText.value}...`);
         }
       });
 
       const results = await Promise.all(equipmentPromises);
 
-      processingProgress.value = 'Building process objects...';
-      results.forEach(({ proc, equipmentData }) => {
-        mtpProcesses.push({
+      setProgressMessage('Building process objects...');
+      const mtpProcesses = results.map(({ proc, equipmentData }) => ({
           name: proc.name,
           type: 'procedure',
           processElementType: 'MTP Operation',
@@ -196,10 +256,9 @@ async function addElementsFromFile(fileType, fileName) {
             dataType: p.paramElem?.Type,
           })),
           equipmentInfo: equipmentData
-        });
-      });
+        }));
 
-      processingProgress.value = 'Adding processes to sidebar...';
+      setProgressMessage('Adding processes to sidebar...');
       console.log('Adding parsed MTP processes:', mtpProcesses);
       emit('add', {
         title: getFileNameWithoutExtension(fileName),
@@ -208,20 +267,33 @@ async function addElementsFromFile(fileType, fileName) {
     }
 
     if (fileType === 'aas' && Array.isArray(response.data)) {
-      processingProgress.value = 'Processing AAS capabilities...';
+      const importableCapabilities = response.data
+        .filter(item => item.realized_by && item.realized_by.length > 0);
+
+      initializeProgress(importableCapabilities.length);
+      setProgressMessage('Fetching equipment info...');
       const equipmentResponse = await client.get(`/${fileType}/${encodeURIComponent(fileName)}/equipment-info`);
       console.log(`Equipment info for ${fileType}:`, equipmentResponse.data);
 
-      const parsedProcesses = response.data
-        .filter(item => item.realized_by && item.realized_by.length > 0)
-        .map(item => ({
+      markParseDone();
+      if (importableCapabilities.length > 0) {
+        setProgressMessage(`Loading procedures ${progressCounterText.value}...`);
+      } else {
+        setProgressMessage('No procedures found.');
+      }
+
+      const parsedProcesses = importableCapabilities.map(item => {
+        markProcedureLoaded();
+        setProgressMessage(`Loading procedures ${progressCounterText.value}...`);
+        return {
           name: item.capability[0].capability_name,
           type: 'procedure',
           processElementType: 'AAS Capability',
           equipmentInfo: equipmentResponse.data
-        }));
+        };
+      });
 
-      processingProgress.value = 'Adding processes to sidebar...';
+      setProgressMessage('Adding processes to sidebar...');
       console.log('Adding parsed AAS processes:', parsedProcesses);
       emit('add', {
         title: getFileNameWithoutExtension(fileName),
@@ -231,15 +303,10 @@ async function addElementsFromFile(fileType, fileName) {
 
   } catch (error) {
     console.error(`Error parsing ${fileType} file:`, error);
-    processingProgress.value = `Error: ${error.response?.data?.message || error.message || 'Unknown error occurred'}`;
-    setTimeout(() => {
-      if (isProcessingFile.value) {
-        processingProgress.value = '';
-      }
-    }, 3000);
+    setProgressMessage(`Error: ${error.response?.data?.message || error.message || 'Unknown error occurred'}`);
   } finally {
     isProcessingFile.value = false;
-    processingProgress.value = '';
+    resetProgressState();
   }
 }
 

@@ -729,4 +729,4 @@ if __name__ == '__main__':
     app = create_app()
     swagger = Swagger(app)
     #serve(app, host='0.0.0.0', port=8080) #this starts the production server
-    app.run(debug=True, port=5001) #this starts the development server
+    app.run(debug=True, port=5000) #this starts the development server

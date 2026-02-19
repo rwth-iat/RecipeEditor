@@ -2170,10 +2170,29 @@ export function create_validate_download_master_recipe_batchml(
       if (error.response) {
         if (error.response.status === 400) {
           // Validation error
-          alert(`❌ Master Recipe validation failed!\n\nXSD Schema Error: ${error.response.data}\n\nThe XML file will still download, but it may not be valid.`);
-          // Still download the file even if validation failed
-          if (error.response.data && typeof error.response.data === 'string' && error.response.data.includes('<?xml')) {
-            start_download("invalid_master_recipe.xml", error.response.data);
+          const responseData = error.response.data;
+          const responseIsXml =
+            typeof responseData === "string" && responseData.includes("<?xml");
+          const validationErrorHeader =
+            error.response?.headers?.["x-validation-error"];
+          const responseText =
+            validationErrorHeader ||
+            (responseIsXml
+              ? "The server returned XML with schema validation errors."
+              : typeof responseData === "string"
+                ? responseData
+                : JSON.stringify(responseData, null, 2));
+
+          alert(`❌ Master Recipe validation failed!\n\nXSD Schema Error: ${responseText}\n\nA fallback file will now download.`);
+
+          // Always trigger a fallback download for 400 responses.
+          if (responseIsXml) {
+            start_download("invalid_master_recipe.xml", responseData);
+          } else {
+            start_download(
+              "invalid_master_recipe_validation_error.txt",
+              `Master Recipe validation failed (HTTP 400).\n\nServer response:\n${responseText}`
+            );
           }
         } else if (error.response.status === 500) {
           // Server error
