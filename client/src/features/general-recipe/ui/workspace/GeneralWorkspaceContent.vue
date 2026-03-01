@@ -25,6 +25,13 @@
 <script setup>
 import { onMounted, ref, computed, watch, nextTick } from 'vue';
 import { newInstance, ready, EVENT_DRAG_STOP } from "@jsplumb/browser-ui";
+import { downloadTextFile } from "@/services/common/fileDownload";
+import {
+    WorkspaceMode,
+    buildWorkspaceState,
+    exportWorkspaceJson,
+    importWorkspaceFile,
+} from "@/services/workspace";
 const props = defineProps({
     main_workspace_items: Array,
     workspace_items: Array,
@@ -818,51 +825,24 @@ function findNextAvailableId(nestedList, basename) {
     return nextId;
 }
 
-function exportWorkspace() {
-    // 1) only the minimal properties for each item
-    const itemsToSave = computedWorkspaceItems.value.map(item => ({
-        id: item.id,
-        type: item.type,
-        materialType: item.materialType,
-        x: item.x,
-        y: item.y,
-        description: item.description,
-         materialID: item.materialID,
-         order: item.order,
-         amount: item.amount,
-         materialSpecificationProperty: item.materialSpecificationProperty,
-         processElementParameter: item.processElementParameter,
-         resourceConstraint: item.resourceConstraint,
-         otherInformation: item.otherInformation,
-         processElementType: item.processElementType,
-         procedureChartElementType: item.procedureChartElementType
-     }));
-
-    // 2) grab and dedupe connections
-    const rawConns = jsplumbInstance.value.getConnections().map(conn => ({
-        sourceId: conn.sourceId,
-        targetId: conn.targetId
+function getJsPlumbConnections() {
+    return (jsplumbInstance.value?.getConnections?.() || []).map((connection) => ({
+        sourceId: connection.sourceId,
+        targetId: connection.targetId,
     }));
-    const seen = new Set();
-    const uniqueConns = [];
-    rawConns.forEach(conn => {
-        const key = `${conn.sourceId}|${conn.targetId}`;
-        if (!seen.has(key)) {
-            seen.add(key);
-            uniqueConns.push(conn);
-        }
-    });
+}
 
-    // 3) assemble and download
-    const workspaceState = { items: itemsToSave, connections: uniqueConns };
-    const dataStr = "data:text/json;charset=utf-8," +
-        encodeURIComponent(JSON.stringify(workspaceState, null, 2));
-    const a = document.createElement('a');
-    a.setAttribute("href", dataStr);
-    a.setAttribute("download", "workspace.json");
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+function exportWorkspace() {
+    const exportResult = exportWorkspaceJson({
+        items: computedWorkspaceItems.value,
+        connections: getJsPlumbConnections(),
+        mode: WorkspaceMode.GENERAL,
+    });
+    downloadTextFile({
+        filename: exportResult.filename,
+        content: exportResult.content,
+        mimeType: exportResult.mimeType,
+    });
 }
 
 async function importWorkspace(event) {
@@ -873,342 +853,30 @@ async function importWorkspace(event) {
     // 1) Clear existing
     await clearWorkspace();
 
-    let items = [], connections = [];
-
-    if (file.name.endsWith('.xml')) {
-        // B2MML XML → parse
-        ({ items, connections } = parseXmlToState(text));
-
-        // —— layout exactly as before for XML imports ——
-        // 3) Build adjacency & indegree for topo sort
-        const adj = {}, indegree = {};
-        items.forEach(i => { adj[i.id] = []; indegree[i.id] = 0; });
-        (connections || []).forEach(c => {
-            if (adj[c.sourceId]) {
-                adj[c.sourceId].push(c.targetId);
-                indegree[c.targetId] = (indegree[c.targetId] || 0) + 1;
-            }
-        });
-
-        // 4) Kahn's algorithm → assign layer numbers
-        const queue = [], layer = {};
-        items.forEach(i => {
-            if (!indegree[i.id]) {
-                queue.push(i.id);
-                layer[i.id] = 0;
-            }
-        });
-        while (queue.length) {
-            const u = queue.shift();
-            (adj[u] || []).forEach(v => {
-                indegree[v]--;
-                layer[v] = Math.max(layer[v] || 0, layer[u] + 1);
-                if (!indegree[v]) queue.push(v);
-            });
-        }
-
-        // 5) Group by layer & set x/y with spacing
-        const hSpacing = 300, vSpacing = 120, margin = 50;
-        const byLayer = [];
-        items.forEach(item => {
-            const L = layer[item.id] || 0;
-            (byLayer[L] = byLayer[L] || []).push(item);
-        });
-        (byLayer || []).forEach((col, ci) => {
-            (col || []).forEach((item, ri) => {
-                item.x = margin + ci * hSpacing;
-                item.y = margin + ri * vSpacing;
-            });
-        });
-        // —— end layout for XML ——
-
-
-    } else if (file.name.endsWith('.json')) {
-        const data = JSON.parse(text);
-
-        // 2a) Workspace JSON? (has items[] + connections[])
-        const looksLikeWorkspace = Array.isArray(data.items)
-            && data.items.every(it => typeof it.x === 'number' && typeof it.y === 'number')
-            && Array.isArray(data.connections);
-
-        if (looksLikeWorkspace) {
-            // use the exact saved positions
-            items = data.items;
-            connections = data.connections;
-
-            // 2b) Recipe JSON? (has steps[])
-        } else if (Array.isArray(data.steps)) {
-            // Convert recipe steps into process nodes laid out in a row
-            const hSpacing = 300, vPos = 100, margin = 50;
-            items = data.steps.map((step, idx) => ({
-                id: `step_${idx + 1}`,
-                type: 'process',
-                x: margin + idx * hSpacing,
-                y: vPos,
-                description: `${step.type} ${step.target}${step.unit}`,
-                amount: {},
-                processElementType: 'Process',
-                procedureChartElementType: ''
-            }));
-            connections = items.slice(0, -1).map((from, i) => ({
-                sourceId: from.id,
-                targetId: items[i + 1].id
-            }));
-        } else {
-            console.warn("JSON not recognized as workspace or recipe; import aborted.");
-            return;
-        }
-
-    } else {
-        console.warn('Unsupported import format');
+    const importResult = importWorkspaceFile({
+        filename: file.name,
+        content: text,
+        mode: WorkspaceMode.GENERAL,
+    });
+    if (importResult.warnings.length > 0) {
+        importResult.warnings.forEach((warning) => console.warn(warning));
+    }
+    if (importResult.items.length === 0 && importResult.connections.length === 0) {
         return;
     }
-
-    // 6) Render & save
-    await addElements(items);
+    await addElements(importResult.items);
     await nextTick();
-    addConnections(connections);
+    addConnections(importResult.connections);
     saveWorkspaceToLocal();
-}
-
-/**
- * Recursively parse an XML element and all its children into a JS object.
- * Handles arrays, text content, and attributes.
- */
-function parseXmlNode(node) {
-    // If the node is a text node, return its value
-    if (node.nodeType === Node.TEXT_NODE) {
-        const text = node.nodeValue.trim();
-        if (text) return text;
-        return undefined;
-    }
-    // If the node is an element
-    const obj = {};
-    // Add attributes
-    if (node.attributes) {
-        for (let attr of node.attributes) {
-            obj[`@${attr.name}`] = attr.value;
-        }
-    }
-    // Add child elements
-    for (let child of node.childNodes) {
-        if (child.nodeType === Node.TEXT_NODE) {
-            const text = child.nodeValue.trim();
-            if (text) {
-                // If the element has only text, set as value
-                if (Object.keys(obj).length === 0) {
-                    return text;
-                } else {
-                    obj['#text'] = text;
-                }
-            }
-        } else if (child.nodeType === Node.ELEMENT_NODE) {
-            const tag = child.localName;
-            const parsedChild = parseXmlNode(child);
-            if (parsedChild !== undefined) {
-                if (obj[tag]) {
-                    // Already exists: convert to array
-                    if (!Array.isArray(obj[tag])) obj[tag] = [obj[tag]];
-                    obj[tag].push(parsedChild);
-                } else {
-                    obj[tag] = parsedChild;
-                }
-            }
-        }
-    }
-    return obj;
-}
-
-/**
- * Parse a B2MML GRecipe XML string into a tree of workspace items and a list of directed connections.
- * This version preserves all fields and nested children.
- */
-function parseXmlToState(xmlText) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(xmlText, 'application/xml');
-    const ns = 'http://www.mesa.org/xml/B2MML';
-
-    // Helper to query namespaced tags
-    // Find the root GRecipe or BatchInformation
-    let root = doc.documentElement;
-    if (root.localName === 'BatchInformation') {
-        // Drill down to GRecipe if present
-        const gRecipe = root.getElementsByTagNameNS(ns, 'GRecipe')[0];
-        if (gRecipe) root = gRecipe;
-    }
-
-    // Recursively parse the root node
-    const fullTree = parseXmlNode(root);
-
-    // For workspace rendering, you may want to flatten the tree into items and connections
-    // We'll provide a utility for that:
-    const items = [];
-    const connections = [];
-    flattenProcessElements(fullTree, null, items, connections);
-
-    // Explicitly extract all materials from Formula.ProcessInputs, ProcessOutputs, ProcessIntermediates
-    if (fullTree.Formula) {
-        ['ProcessInputs', 'ProcessOutputs', 'ProcessIntermediates'].forEach(section => {
-            const group = fullTree.Formula[section];
-            if (group && group.Material) {
-                const materials = Array.isArray(group.Material) ? group.Material : [group.Material];
-                for (const mat of materials) {
-                    // Only add if not already present (by id)
-                    const id = typeof mat.ID === 'string' ? mat.ID : (mat.ID?.['#text'] || '');
-                    if (!items.some(i => i.id === id)) {
-                        items.push({
-                            ...mat,
-                            id,
-                            type: 'material',
-                            parentId: section,
-                            x: typeof mat.x === 'number' ? mat.x : 0,
-                            y: typeof mat.y === 'number' ? mat.y : 0,
-                        });
-                    }
-                }
-            }
-        });
-    }
-
-    // Debug logging
-    console.log('Parsed items:', items);
-    console.log('Parsed connections:', connections);
-    console.log('Full parsed tree:', fullTree);
-
-    return { items, connections, fullTree };
-}
-
-function flattenProcessElements(obj, parentId = null, items = [], connections = [], materialsTypeHint = undefined) {
-    if (!obj) return;
-
-    // Handle ProcessProcedure as a root process
-    if (obj['ProcessProcedure']) {
-        flattenProcessElements(obj['ProcessProcedure'], parentId, items, connections, materialsTypeHint);
-    }
-
-    // Handle ProcessElement (single or array)
-    if (obj['ProcessElement']) {
-        const children = Array.isArray(obj['ProcessElement']) ? obj['ProcessElement'] : [obj['ProcessElement']];
-        for (const child of children) {
-            flattenProcessElements(child, obj['ID'] || parentId, items, connections, materialsTypeHint);
-        }
-    }
-
-    // Handle Material (single or array)
-    if (obj['Material']) {
-        const materials = Array.isArray(obj['Material']) ? obj['Material'] : [obj['Material']];
-        // Try to get MaterialsType from parent group
-        const groupMaterialsType = obj['MaterialsType'] || materialsTypeHint;
-        for (const mat of materials) {
-            // Always add materials as top-level items
-            if (mat['ID']) {
-                items.push({
-                    ...mat,
-                    id: typeof mat['ID'] === 'string' ? mat['ID'] : (mat['ID']?.['#text'] || ''),
-                    type: 'material',
-                    parentId: obj['ID'] || parentId,
-                    x: typeof mat.x === 'number' ? mat.x : 0,
-                    y: typeof mat.y === 'number' ? mat.y : 0,
-                    materialType: mat.materialType || groupMaterialsType || undefined,
-                });
-            }
-            flattenProcessElements(mat, obj['ID'] || parentId, items, connections, groupMaterialsType);
-        }
-    }
-
-    // Add this node as a process if it has an ID and ProcessElementType
-    if (obj['ID'] && obj['ProcessElementType']) {
-        const processItem = {
-            ...obj,
-            id: typeof obj['ID'] === 'string' ? obj['ID'] : (obj['ID']?.['#text'] || ''),
-            type: 'process',
-            parentId,
-            x: typeof obj.x === 'number' ? obj.x : 0,
-            y: typeof obj.y === 'number' ? obj.y : 0,
-            processElementParameter: obj['ProcessElementParameter']
-                ? Array.isArray(obj['ProcessElementParameter'])
-                    ? obj['ProcessElementParameter']
-                    : [obj['ProcessElementParameter']]
-                : []
-        };
-        items.push(processItem);
-    }
-
-    // Add this node as a material if it has an ID and (MaterialID or is a child of a known materials container)
-    // Known containers: ProcessInputs, ProcessOutputs, ProcessIntermediates, Materials
-    const knownMaterialParents = ['ProcessInputs', 'ProcessOutputs', 'ProcessIntermediates', 'Materials'];
-    if (
-        obj['ID'] &&
-        (obj['MaterialID'] || knownMaterialParents.includes(parentId) || parentId)
-    ) {
-        items.push({
-            ...obj,
-            id: typeof obj['ID'] === 'string' ? obj['ID'] : (obj['ID']?.['#text'] || ''),
-            type: 'material',
-            parentId,
-            x: typeof obj.x === 'number' ? obj.x : 0,
-            y: typeof obj.y === 'number' ? obj.y : 0,
-            materialType: obj.materialType || materialsTypeHint || undefined,
-        });
-    }
-
-    // Handle DirectedLink(s) for connections
-    if (obj['DirectedLink']) {
-        const links = Array.isArray(obj['DirectedLink']) ? obj['DirectedLink'] : [obj['DirectedLink']];
-        for (const link of links) {
-            const fromId = link['FromID']?.['#text'] || link['FromID'] || '';
-            const toId = link['ToID']?.['#text'] || link['ToID'] || '';
-            if (fromId && toId) {
-                connections.push({ sourceId: fromId, targetId: toId });
-            }
-        }
-    }
 }
 
 function saveWorkspaceToLocal() {
     console.log("saveWorkspaceToLocal called");
-
-    // Extract only the necessary properties from each workspace item
-    const itemsToSave = computedWorkspaceItems.value.map(item => {
-        return {
-            id: item.id,
-            type: item.type,
-            materialType: item.materialType,
-            x: item.x,
-            y: item.y,
-            description: item.description,
-             materialID: item.materialID,
-             order: item.order,
-             amount: item.amount,
-             materialSpecificationProperty: item.materialSpecificationProperty,
-             processElementParameter: item.processElementParameter,
-             resourceConstraint: item.resourceConstraint,
-             otherInformation: item.otherInformation,
-             processElementType: item.processElementType,
-             procedureChartElementType: item.procedureChartElementType
-         };
-     });
-
-    const rawConns = jsplumbInstance.value.getConnections().map(conn => ({
-        sourceId: conn.sourceId,
-        targetId: conn.targetId
-    }));
-
-    // Deduplicate by "sourceId|targetId"
-    const seen = new Set();
-    const connectionsToSave = [];
-    rawConns.forEach(conn => {
-        const key = `${conn.sourceId}|${conn.targetId}`;
-        if (!seen.has(key)) {
-            seen.add(key);
-            connectionsToSave.push(conn);
-        }
+    const workspaceState = buildWorkspaceState({
+        items: computedWorkspaceItems.value,
+        connections: getJsPlumbConnections(),
+        mode: WorkspaceMode.GENERAL,
     });
-
-    const workspaceState = {
-        items: itemsToSave,
-        connections: connectionsToSave
-    };
 
     console.log("Saving workspaceState:", workspaceState);
     localStorage.setItem(props.storageKey, JSON.stringify(workspaceState));
@@ -1231,10 +899,7 @@ defineExpose({
     importWorkspace,
     saveWorkspaceToLocal,
     getWorkspaceItems: () => computedWorkspaceItems.value,
-    getConnections: () => jsplumbInstance.value.getConnections().map(conn => ({
-        sourceId: conn.sourceId,
-        targetId: conn.targetId
-    }))
+    getConnections: getJsPlumbConnections
 });
 
 function toCssToken(value) {

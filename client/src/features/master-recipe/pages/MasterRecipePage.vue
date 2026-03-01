@@ -7,8 +7,7 @@
       style="background-color: var(--dark);"
       @trigger-export="callExportMasterRecipeFunction" @trigger-save="triggerSaveWorkspace"
       @trigger-exportJson="triggerExportWorkspace" @trigger-importJson="triggerImportWorkspace"
-      @trigger-reset="triggerResetWorkspace" @trigger-open-config="openMasterRecipeConfig"
-      @trigger-export-master-recipe="exportMasterRecipe" />
+      @trigger-reset="triggerResetWorkspace" @trigger-open-config="openMasterRecipeConfig" />
     </template>
     <template #sidebar>
       <MasterSideBar id="side_bar" />
@@ -41,8 +40,6 @@ import MasterPropertyWindow from '@/features/master-recipe/ui/property-window/Ma
 import MasterRecipeConfig from '@/features/master-recipe/ui/MasterRecipeConfig.vue'
 import { ref } from 'vue'
 import { useRecipeWorkspace } from '@/shell/composables/useRecipeWorkspace'
-import { create_validate_download_master_recipe_batchml } from '@/services/recipeExport/new_export_xml.js'
-import axios from 'axios'
 
 const {
   workspaceRef,
@@ -101,34 +98,6 @@ function closeMasterRecipeConfig() {
   showConfigPanel.value = false;
 }
 
-// --- Export Master Recipe ---
-const client = axios.create({ baseURL: '' });
-function exportMasterRecipe() {
-  if (!workspaceRef.value) {
-    alert('Workspace not ready!');
-    return;
-  }
-  const workspaceItems = workspaceRef.value.getWorkspaceItems();
-  const connections = workspaceRef.value.getConnections();
-  const config = masterRecipeConfig.value;
-
-  // Validation
-  if (!config.productId || !config.productName || !config.version) {
-    alert('Please fill out all required fields in the Master Recipe configuration (Product ID, Product Name, Version).');
-    return;
-  }
-  if (!workspaceItems.some(item => item.type === 'procedure')) {
-    alert('Please add at least one procedure step to the workspace.');
-    return;
-  }
-
-  create_validate_download_master_recipe_batchml(
-    workspaceItems,
-    connections,
-    client,
-    config
-  );
-}
 </script>
 
 <style lang="scss">

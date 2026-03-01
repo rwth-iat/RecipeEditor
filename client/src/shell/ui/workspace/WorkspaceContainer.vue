@@ -70,8 +70,20 @@
 <script setup>
 import { computed, ref, nextTick } from 'vue';
 import axios from 'axios'
-import { create_validate_download_general_recipe_batchml } from '@/services/recipeExport/new_export_xml.js';
-import { create_validate_download_master_recipe_batchml } from '@/services/recipeExport/new_export_xml.js';
+import { downloadTextFile } from "@/services/common/fileDownload";
+import {
+  buildGeneralRecipeXml,
+  buildMaterialInformationXml,
+  buildMasterRecipePayload,
+  requestMasterRecipeXml,
+  validateGeneralRecipeXml,
+  validateMaterialInformationXml,
+} from "@/services/recipe";
+import {
+  MaterialBuildStatus,
+  MasterRequestStatus,
+  XmlValidationStatus,
+} from "@/services/recipe/common/types/exportTypes";
 //import PropertyWindowContent from '@/shell/ui/workspace/PropertyWindow.vue'; // Import your property window content component
 import PropertyWindowContainer from '@/shell/ui/workspace/PropertyWindowContainer.vue';
 import GeneralWorkspaceContent from '@/features/general-recipe/ui/workspace/GeneralWorkspaceContent.vue';
@@ -151,25 +163,201 @@ function zoomOut() {
       - if not warns the user by alert box but downloads as "invalid_Verfahrensrezept"
       - if unknown error while creating or validating it gives the user the error message
 */
-function export_general_recipe_batchml() {
-  create_validate_download_general_recipe_batchml(main_workspace_items.value, mainWorkspaceContent.value.getConnections(), client)
+function formatMaterialInformationIssues(issues) {
+  if (!Array.isArray(issues) || issues.length === 0) {
+    return "";
+  }
+  const preview = issues
+    .slice(0, 5)
+    .map((entry) => {
+      const materialLabel =
+        (typeof entry.materialId === "string" && entry.materialId.trim()) ||
+        (typeof entry.itemId === "string" && entry.itemId.trim()) ||
+        `#${entry.itemIndex + 1}`;
+      return `- Material ${materialLabel}: Property row ${entry.propertyIndex + 1}`;
+    })
+    .join("\n");
+  const remainingCount = issues.length - 5;
+  const remainingText = remainingCount > 0 ? `\n...and ${remainingCount} more.` : "";
+  return `${preview}${remainingText}`;
 }
 
-// Property window
+async function export_general_recipe_batchml() {
+  const workspaceItems = main_workspace_items.value;
+  const connections = mainWorkspaceContent.value.getConnections();
+  const buildResult = buildGeneralRecipeXml({ workspaceItems, connections });
 
-function export_master_recipe_batchml() {
-  console.log(main_workspace_items.value)
-  console.log(mainWorkspaceContent.value.getConnections())
+  if (Array.isArray(buildResult.schemaWarnings) && buildResult.schemaWarnings.length > 0) {
+    console.warn("General recipe schema warnings:", buildResult.schemaWarnings);
+  }
+  if (Array.isArray(buildResult.buildWarnings) && buildResult.buildWarnings.length > 0) {
+    window.alert(buildResult.buildWarnings.join("\n"));
+  }
 
-  // Use the master recipe configuration from props
-  const config = props.masterRecipeConfig;
-
-  create_validate_download_master_recipe_batchml(
-    main_workspace_items.value,
-    mainWorkspaceContent.value.getConnections(),
+  const validation = await validateGeneralRecipeXml({
     client,
-    config
-  )
+    xml: buildResult.xml,
+  });
+
+  if (validation.status === XmlValidationStatus.VALID) {
+    alert("✅ General Recipe successfully validated against XSD schema!\n\nThe XML file will now download.");
+    downloadTextFile({
+      filename: "Verfahrensrezept.xml",
+      content: buildResult.xml,
+      mimeType: "application/xml;charset=utf-8",
+    });
+  } else if (validation.status === XmlValidationStatus.INVALID) {
+    downloadTextFile({
+      filename: "invalid_Verfahrensrezept.xml",
+      content: buildResult.xml,
+      mimeType: "application/xml;charset=utf-8",
+    });
+    window.alert(
+      "CAUTION: The generated BatchML is invalid, but is nevertheless downloaded."
+    );
+  } else if (validation.status === XmlValidationStatus.UNREACHABLE) {
+    downloadTextFile({
+      filename: "unchecked_Verfahrensrezept.xml",
+      content: buildResult.xml,
+      mimeType: "application/xml;charset=utf-8",
+    });
+    window.alert(
+      "Error 404: Unable to reach the server when validating BatchML. Are you maybe only running the client code?"
+    );
+  } else {
+    window.alert(
+      "Error: BatchML could not be validated. For complete error details, check browser devtools."
+    );
+  }
+
+  const materialInformation = buildMaterialInformationXml({ workspaceItems });
+  if (materialInformation.status === MaterialBuildStatus.BLOCKED) {
+    window.alert(
+      "WARNING: MaterialInformation.xml will NOT be exported.\n\n" +
+        "Reason: At least one MaterialDefinitionProperty has a Description and/or Value but the Property ID is empty.\n\n" +
+        "Please fill the Property ID or clear the row.\n\n" +
+        `${formatMaterialInformationIssues(materialInformation.issues)}\n\n` +
+        "The General Recipe export continues."
+    );
+    return;
+  }
+
+  if (materialInformation.status !== MaterialBuildStatus.READY || !materialInformation.xml) {
+    return;
+  }
+
+  const materialValidation = await validateMaterialInformationXml({
+    client,
+    xml: materialInformation.xml,
+  });
+
+  if (materialValidation.status === XmlValidationStatus.VALID) {
+    downloadTextFile({
+      filename: "MaterialInformation.xml",
+      content: materialInformation.xml,
+      mimeType: "application/xml;charset=utf-8",
+    });
+  } else if (materialValidation.status === XmlValidationStatus.INVALID) {
+    downloadTextFile({
+      filename: "invalid_MaterialInformation.xml",
+      content: materialInformation.xml,
+      mimeType: "application/xml;charset=utf-8",
+    });
+    window.alert(
+      "CAUTION: The generated MaterialInformation is invalid, but is nevertheless downloaded."
+    );
+  } else if (materialValidation.status === XmlValidationStatus.UNREACHABLE) {
+    downloadTextFile({
+      filename: "unchecked_MaterialInformation.xml",
+      content: materialInformation.xml,
+      mimeType: "application/xml;charset=utf-8",
+    });
+    window.alert(
+      "Error 404: Unable to reach the server when validating the MaterialInformation."
+    );
+  } else {
+    window.alert(
+      "Error: MaterialInformation could not be validated. For complete error details, check browser devtools."
+    );
+  }
+}
+
+async function export_master_recipe_batchml() {
+  const workspaceItems = main_workspace_items.value;
+  const connections = mainWorkspaceContent.value.getConnections();
+  const config = props.masterRecipeConfig;
+  const buildResult = buildMasterRecipePayload({
+    workspaceItems,
+    connections,
+    config,
+  });
+
+  if (buildResult.validationWarnings.length > 0) {
+    alert(
+      `⚠️ Parameter validation warnings found:\n\n${buildResult.validationWarnings.join(
+        "\n"
+      )}\n\nThe recipe will still be exported, but some parameters may be outside recommended ranges.`
+    );
+  }
+
+  const response = await requestMasterRecipeXml({
+    client,
+    payload: buildResult.payload,
+  });
+
+  if (response.status === MasterRequestStatus.VALID) {
+    alert("✅ Master Recipe successfully created and validated against XSD schema!\n\nThe XML file will now download.");
+    downloadTextFile({
+      filename: "master_recipe.xml",
+      content: response.xml,
+      mimeType: "application/xml;charset=utf-8",
+    });
+    return;
+  }
+
+  if (response.status === MasterRequestStatus.INVALID) {
+    alert(
+      `❌ Master Recipe validation failed!\n\nXSD Schema Error: ${
+        response.validationError || "Unknown validation error."
+      }\n\nA fallback file will now download.`
+    );
+    if (response.xml) {
+      downloadTextFile({
+        filename: "invalid_master_recipe.xml",
+        content: response.xml,
+        mimeType: "application/xml;charset=utf-8",
+      });
+    } else {
+      downloadTextFile({
+        filename: "invalid_master_recipe_validation_error.txt",
+        content: `Master Recipe validation failed.\n\nServer response:\n${response.validationError}`,
+        mimeType: "text/plain;charset=utf-8",
+      });
+    }
+    return;
+  }
+
+  if (response.status === MasterRequestStatus.SERVER_ERROR) {
+    alert(
+      `🚨 Server error occurred while creating master recipe:\n\n${
+        response.validationError || "Unknown server error."
+      }`
+    );
+    return;
+  }
+
+  if (response.status === MasterRequestStatus.NETWORK_ERROR) {
+    alert(
+      "🌐 Network error: Unable to reach the server for validation.\n\nPlease check your connection and try again."
+    );
+    return;
+  }
+
+  alert(
+    `❌ Error creating master recipe:\n\n${
+      response.validationError || "Unknown master recipe error."
+    }`
+  );
 }
 
 
