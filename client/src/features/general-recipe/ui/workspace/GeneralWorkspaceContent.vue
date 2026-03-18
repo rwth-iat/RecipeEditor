@@ -1,22 +1,33 @@
 <template>
     <div class="workspace_content" ref="workspaceContentRef" :style="workspaceStyle" @drop="$event => onDrop($event)" @dragenter.prevent
         @dragover.prevent draggable="false" @wheel.prevent="onWheel" @mousemove="updateMouse" @mousedown="startPanning">
-        <!--Draw all workspace elements. Connections are drawn by jsplumb in the background-->
         <div :class="'workspace_element'" v-for="item in computedWorkspaceItems" :key="item.id"
             :ref="skipUnwrap.jsplumbElements" :id="item.id" @click="handleClick(item)">
-            <div v-if="item.type === 'material'" class="flowChartLabel" style="float: right;">
-                <span>{{ getMaterialLabel(item) }}</span>
+            <div v-if="isMaterialContainer(item)" class="flowChartLabel" style="float: right;">
+                <span
+                    v-for="(labelLine, index) in getMaterialLabelLines(item)"
+                    :key="`${item.id}-label-${index}`"
+                    :class="index === 0 ? 'flowChartLabelLine flowChartLabelHeading' : 'flowChartLabelLine'"
+                >
+                    {{ labelLine }}
+                </span>
             </div>
             <div :class="getWorkspaceElementClass(item)">
                 <span v-if="item.type === 'process'">
                     {{ item.id }}
                 </span>
-                <span id="AnnotationSpan" v-if="item.procedureChartElementType === 'Annotation'">
+                <span v-else-if="item.procedureChartElementType === 'Annotation'" id="AnnotationSpan">
                     {{ item.description }}
                 </span>
             </div>
-            <div v-if="item.type === 'material'" class="flowChartLabelSpacer">
-                <span>{{ getMaterialLabel(item) }}</span>
+            <div v-if="isMaterialContainer(item)" class="flowChartLabelSpacer">
+                <span
+                    v-for="(labelLine, index) in getMaterialLabelLines(item)"
+                    :key="`${item.id}-spacer-${index}`"
+                    :class="index === 0 ? 'flowChartLabelLine flowChartLabelHeading' : 'flowChartLabelLine'"
+                >
+                    {{ labelLine }}
+                </span>
             </div>
         </div>
     </div>
@@ -32,104 +43,102 @@ import {
     exportWorkspaceJson,
     importWorkspaceFile,
 } from "@/services/workspace";
+import { reconcileMaterialEndpoints } from "@/services/workspace/core/generalMaterialEndpointUtils";
+import {
+    MATERIAL_CONTAINER_TYPE,
+    createMaterialContainerItem,
+    getContainerMaterials,
+    isMaterialContainerItem,
+    normalizeMaterialContainer,
+} from "@/services/recipe/general-recipe/materials/materialContainerUtils";
+
 const props = defineProps({
     main_workspace_items: Array,
     workspace_items: Array,
     storageKey: {
         type: String,
-        default: 'workspaceState', // fallback default
+        default: 'workspaceState',
     }
 });
 
 const emit = defineEmits(['changeSelectedElement', 'openPropertyWindow', 'update:workspace_items', 'saveWorkspace']);
-const workspaceContentRef = ref(null)
-const jsplumbInstance = ref(null) //the jsplumb instance, this is a library which handles the drag and drop as well as the connections
-const jsplumbElements = ref([])
-const managedElements = ref({}) //object to mark to which elements Endpoints where already added. That why when detecting a change in workspace elemets we know which items are new 
-const zoomLevel = ref(1)
-const initialWorkspaceWidth = 10000
-const initialWorkspaceHeight = 10000
-const workspaceWidth = ref(initialWorkspaceWidth)
-const workspaceHeight = ref(initialWorkspaceHeight)
+const workspaceContentRef = ref(null);
+const jsplumbInstance = ref(null);
+const jsplumbElements = ref([]);
+const managedElements = ref({});
+const zoomLevel = ref(1);
+const initialWorkspaceWidth = 10000;
+const initialWorkspaceHeight = 10000;
+const workspaceWidth = ref(initialWorkspaceWidth);
+const workspaceHeight = ref(initialWorkspaceHeight);
 const workspaceStyle = computed(() => ({
     width: `${workspaceWidth.value}px`,
     height: `${workspaceHeight.value}px`
-}))
+}));
 
-//need this as the developer server "npm run dev" will run into error using a normal ref of a v-for. This skips the unwrapping
-let skipUnwrap = { jsplumbElements }
+let skipUnwrap = { jsplumbElements };
 
-//here we make the ref to the workspace_content availible in the parent
 onMounted(async () => {
-    // Focus the workspace container
-    workspaceContentRef.value.focus();
+    workspaceContentRef.value?.focus?.();
 
-    if (workspaceContentRef.value) {
-        // Wait for jsPlumb to initialize
-        ready(async () => {
-            jsplumbInstance.value = initializeJsPlumb(workspaceContentRef);
-
-            jsplumbInstance.value.bind(EVENT_DRAG_STOP, ({ el }) => {
-                const id = el.id;
-                const x = parseFloat(el.style.left);
-                const y = parseFloat(el.style.top);
-
-                const updated = computedWorkspaceItems.value.map(item =>
-                    item.id === id
-                        ? { ...item, x, y }
-                        : item
-                );
-
-                emit('update:workspace_items', updated);
-            });
-
-
-            // Retrieve the saved workspace state, if any
-            const savedState = localStorage.getItem(props.storageKey);
-            if (savedState) {
-                try {
-                    const workspaceState = JSON.parse(savedState);
-
-                    // Add the saved items to the workspace (this should be plain data)
-                    await addElements(workspaceState.items);
-
-                    // Wait for the DOM to update and for endpoints to be created
-                    await nextTick();
-
-                    // Loop through each saved connection and reconnect using jsPlumb
-                    (workspaceState.connections || []).forEach(connection => {
-                        const sourceItem = computedWorkspaceItems.value.find(item => item.id === connection.sourceId);
-                        const targetItem = computedWorkspaceItems.value.find(item => item.id === connection.targetId);
-                        if (sourceItem && targetItem) {
-                            if (!sourceItem.sourceEndpoints?.length || !targetItem.targetEndpoints?.length) {
-                                console.warn("Skipping initial connection due to missing endpoints:", connection);
-                                return;
-                            }
-                            jsplumbInstance.value.connect({
-                                source: sourceItem.sourceEndpoints[0],
-                                target: targetItem.targetEndpoints[0]
-                            });
-                        }
-                    });
-                } catch (error) {
-                    console.error("Error loading saved workspace:", error);
-                }
-            }
-
-            // Set up a watcher to handle further changes in the workspace items
-            watch(computedWorkspaceItems, createUpdateItemListHandler(jsplumbInstance, jsplumbElements, managedElements), { deep: true });
-            watch(computedWorkspaceItems, updateWorkspaceBounds, { deep: true, immediate: true });
-        });
+    if (!workspaceContentRef.value) {
+        return;
     }
+
+    ready(async () => {
+        jsplumbInstance.value = initializeJsPlumb(workspaceContentRef);
+
+        jsplumbInstance.value.bind(EVENT_DRAG_STOP, ({ el }) => {
+            const id = el.id;
+            const x = parseFloat(el.style.left);
+            const y = parseFloat(el.style.top);
+
+            const updated = computedWorkspaceItems.value.map(item =>
+                item.id === id
+                    ? { ...item, x, y }
+                    : item
+            );
+
+            emit('update:workspace_items', updated);
+        });
+
+        const savedState = localStorage.getItem(props.storageKey);
+        if (savedState) {
+            try {
+                const workspaceState = JSON.parse(savedState);
+                await addElements(workspaceState.items || []);
+                await nextTick();
+
+                (workspaceState.connections || []).forEach(connection => {
+                    const sourceItem = computedWorkspaceItems.value.find(item => item.id === connection.sourceId);
+                    const targetItem = computedWorkspaceItems.value.find(item => item.id === connection.targetId);
+                    if (!sourceItem || !targetItem) {
+                        return;
+                    }
+                    if (!sourceItem.sourceEndpoints?.length || !targetItem.targetEndpoints?.length) {
+                        console.warn('Skipping initial connection due to missing endpoints:', connection);
+                        return;
+                    }
+                    jsplumbInstance.value.connect({
+                        source: sourceItem.sourceEndpoints[0],
+                        target: targetItem.targetEndpoints[0]
+                    });
+                });
+            } catch (error) {
+                console.error('Error loading saved workspace:', error);
+            }
+        }
+
+        watch(computedWorkspaceItems, createUpdateItemListHandler(jsplumbInstance, jsplumbElements, managedElements), { deep: true });
+        watch(
+            () => getMaterialTypeSignatures(computedWorkspaceItems.value),
+            syncMaterialTypeChanges,
+            { flush: 'post' }
+        );
+        watch(computedWorkspaceItems, updateWorkspaceBounds, { deep: true, immediate: true });
+    });
 });
 
-
-// Create a computed property that represents the entire selectedElement
-// this is recommended solution to achieve two way binding between the parent and this child component
-// this way the parent component is the only one setting values.
-// it define a get and set method:
-//    -get: take the given object from the parent
-//    -set: emit to parent new object. The parent then sets the new value
 const computedWorkspaceItems = computed({
     get: () => props.workspace_items,
     set: (newValue) => {
@@ -137,17 +146,10 @@ const computedWorkspaceItems = computed({
     },
 });
 
-/*
-The follwing Functions handle the opening and closing of the property window.
-Every click checks if in the last 300 miliseconds the same target was already clicked.
-Then it is registered as a double click and the property window is opened.
-*/
-//double click opens window
 const lastClickTime = ref(0);
-const doubleClickThreshold = 300; // Adjust this value as needed (in milliseconds)
+const doubleClickThreshold = 300;
 const handleClick = (item) => {
     const currentTime = new Date().getTime();
-    console.log("click_detected")
     if (currentTime - lastClickTime.value < doubleClickThreshold) {
         handleDoubleClick(item);
     } else {
@@ -155,14 +157,10 @@ const handleClick = (item) => {
     }
 };
 const handleDoubleClick = (item) => {
-    // Logic to handle double click
-    emit('changeSelectedElement', item)
-    emit('openPropertyWindow')
-    console.log('Double click detected!');
+    emit('changeSelectedElement', item);
+    emit('openPropertyWindow');
 };
 
-
-// Drag-panning via scrollbars (keep top-left reachable)
 let panning = false;
 let panStartX = 0;
 let panStartY = 0;
@@ -171,7 +169,7 @@ let panStartScrollTop = 0;
 
 const startPanning = (event) => {
     if (event.button !== 0) return;
-    if (!event.target.classList.contains("workspace_content")) return;
+    if (!event.target.classList.contains('workspace_content')) return;
     const container = workspaceContentRef.value?.parentElement;
     if (!container) return;
     event.preventDefault();
@@ -180,9 +178,9 @@ const startPanning = (event) => {
     panStartY = event.clientY;
     panStartScrollLeft = container.scrollLeft;
     panStartScrollTop = container.scrollTop;
-    container.classList.add("is-panning");
-    window.addEventListener("mousemove", handlePanning);
-    window.addEventListener("mouseup", stopPanning);
+    container.classList.add('is-panning');
+    window.addEventListener('mousemove', handlePanning);
+    window.addEventListener('mouseup', stopPanning);
 };
 
 const handlePanning = (event) => {
@@ -199,281 +197,269 @@ const stopPanning = () => {
     if (!panning) return;
     panning = false;
     const container = workspaceContentRef.value?.parentElement;
-    if (container) container.classList.remove("is-panning");
-    window.removeEventListener("mousemove", handlePanning);
-    window.removeEventListener("mouseup", stopPanning);
+    if (container) container.classList.remove('is-panning');
+    window.removeEventListener('mousemove', handlePanning);
+    window.removeEventListener('mouseup', stopPanning);
 };
 
-// TODO: check if this interfers with js plumb drag and drop as it may be called on every drop event
+function normalizeDroppedMaterialType(item) {
+    if (item?.materialElementType === 'Input' || item?.name === 'Educt') {
+        return 'Input';
+    }
+    if (item?.materialElementType === 'Intermediate' || item?.name === 'Intermediate') {
+        return 'Intermediate';
+    }
+    if (item?.materialElementType === 'Output' || item?.name === 'Product') {
+        return 'Output';
+    }
+    return undefined;
+}
+
 function onDrop(event) {
-    console.log("Drop");
     event.preventDefault();
 
-    let item = JSON.parse(event.dataTransfer.getData("item"));
-    let classes = event.dataTransfer.getData("itemClasses");
+    const droppedItem = JSON.parse(event.dataTransfer.getData('item'));
+    const classes = event.dataTransfer.getData('itemClasses');
 
     let type;
-    let x_offset;
-    console.log(classes);
-    if (classes.includes("material_element")) {
-        type = "material";
-
-        // Set the material type based on the material name (Educt, Intermediate, Product)
-        if (item.name === "Educt") {
-            item.materialType = "Input";
-            x_offset = 200;
-        } else if (item.name === "Intermediate") {
-            item.materialType = "Intermediate";
-            x_offset = 200;
-        } else if (item.name === "Product") {
-            item.materialType = "Output";
-            x_offset = 200;
-        } else {
-            console.error("Unknown material type: " + item.name);
+    let xOffset;
+    let materialType;
+    if (classes.includes('material_element')) {
+        type = MATERIAL_CONTAINER_TYPE;
+        materialType = normalizeDroppedMaterialType(droppedItem);
+        xOffset = 200;
+        if (!materialType) {
+            console.error('Unknown material type:', droppedItem?.name);
             return;
         }
-    } else if (classes.includes("process_element")) {
-        type = "process";
-        x_offset = 100;
-    } else if (classes.includes("chart_element")) {
-        type = "chart_element";
-        x_offset = 100; // or whatever is visually appropriate
-    }
-
-    else {
-        console.error("neither material nor process dropped into workspace");
+    } else if (classes.includes('process_element')) {
+        type = 'process';
+        xOffset = 100;
+    } else if (classes.includes('chart_element')) {
+        type = 'chart_element';
+        xOffset = 100;
+    } else {
+        console.error('neither material nor process dropped into workspace');
         return;
     }
 
-    let rect = event.target.getBoundingClientRect();
+    const rect = event.target.getBoundingClientRect();
     const zoom = zoomLevel.value || 1;
-    let x = (event.clientX - rect.left) / zoom - x_offset;
-    let y = (event.clientY - rect.top) / zoom;
+    const x = (event.clientX - rect.left) / zoom - xOffset;
+    const y = (event.clientY - rect.top) / zoom;
 
-    if (classes.includes("sidebar_element")) {
-        console.debug(props);
-        
-        // Generate a unique ID that considers both sidebar and current workspace
-        let uniqueId = findNextAvailableId(props.main_workspace_items, item.name);
-        console.log(`Initial ID generated: ${uniqueId}`);
-        
-        // Double-check that this ID is truly unique in the current workspace
-        while (computedWorkspaceItems.value.some(existingItem => existingItem.id === uniqueId)) {
-            // Extract the base name and current number
-            const baseName = item.name;
-            const currentNumber = parseInt(uniqueId.slice(baseName.length), 10);
-            const nextNumber = currentNumber + 1;
-            uniqueId = `${baseName}${nextNumber.toString().padStart(3, '0')}`;
-            console.log(`ID conflict detected, generating new ID: ${uniqueId}`);
-        }
-        
-        console.log(`Final unique ID: ${uniqueId}`);
-        console.log(`Current workspace items:`, computedWorkspaceItems.value.map(i => i.id));
-        
-        item.x = x;
-        item.y = y;
-        item.type = type;
-        item.description = item.name;
-        item.id = uniqueId;
-        item.processElementType = "Process";
-        if (item.procedureChartElementType === undefined) {
-            item.procedureChartElementType = "";
-        }
-        if (item.processElementType === undefined) {
-            item.processElementType = "";
-        }
-        item.amount = {};
-
-        // Add the new item to the workspace (no need to check for existing since we ensured uniqueness)
-        computedWorkspaceItems.value.push(item);
-        console.log(`Added item ${uniqueId} to workspace`);
-
-        emit("saveWorkspace");
-
-        // Check and add connections if necessary
-        // addConnectionsForDroppedItem(item);
+    if (!classes.includes('sidebar_element')) {
+        return;
     }
+
+    let uniqueId = findNextAvailableId(props.main_workspace_items, droppedItem.name);
+    while (computedWorkspaceItems.value.some(existingItem => existingItem.id === uniqueId)) {
+        const baseName = droppedItem.name;
+        const currentNumber = parseInt(uniqueId.slice(baseName.length), 10);
+        const nextNumber = currentNumber + 1;
+        uniqueId = `${baseName}${nextNumber.toString().padStart(3, '0')}`;
+    }
+
+    let item;
+    if (type === MATERIAL_CONTAINER_TYPE) {
+        item = createMaterialContainerItem({
+            id: uniqueId,
+            description: droppedItem.name,
+            materialType,
+            x,
+            y,
+            materials: [
+                {
+                    id: `${uniqueId}Material001`,
+                    description: droppedItem.name,
+                    materialID: '',
+                    order: '',
+                    amount: {},
+                    materialSpecificationProperty: [],
+                },
+            ],
+        });
+    } else {
+        item = {
+            ...droppedItem,
+            x,
+            y,
+            type,
+            description: droppedItem.name,
+            id: uniqueId,
+            amount: {},
+            procedureChartElementType: droppedItem.procedureChartElementType || '',
+            processElementType: droppedItem.processElementType || '',
+        };
+    }
+
+    computedWorkspaceItems.value.push(item);
+    emit('saveWorkspace');
 }
 
-// Function to initialize jsPlumb
 function initializeJsPlumb(container) {
-    let instance = newInstance({
+    const instance = newInstance({
         container: container.value,
         maxConnections: -1,
-        connectionOverlays: [{ type: "Arrow", options: { location: 1 } }],
-        connector: "Flowchart"
+        connectionOverlays: [{ type: 'Arrow', options: { location: 1 } }],
+        connector: 'Flowchart'
     });
     container.value.style.zoom = '1';
     instance.setZoom(1);
-    return instance
+    return instance;
 }
 
 async function resetJsPlumb() {
-    jsplumbInstance.value.reset()
-    console.debug("resetted jsplumb:", jsplumbInstance.value)
+    jsplumbInstance.value.reset();
 }
 
 function addEndpoint(instance, element, options) {
-    let anchor
-    if (options.source) { anchor = "Bottom" }
-    else if (options.target) { anchor = "Top" }
+    let anchor;
+    if (options.source) {
+        anchor = 'Bottom';
+    } else if (options.target) {
+        anchor = 'Top';
+    }
 
-    const sourceEndpoint = instance.addEndpoint(element, {
+    return instance.addEndpoint(element, {
         source: options.source,
         target: options.target,
-        anchor: anchor,
-        endpoint: { type: "Dot" }
+        anchor,
+        endpoint: { type: 'Dot' }
     });
-    return sourceEndpoint
 }
 
-// add endpoints and attach the element id as data to the endpoint. 
-// When exporting to xml we can iterate through the connections and when accessing the source Endpoint and Target endpoint we can now read the corresponding element
 function addJsPlumbEndpoints(instance, element, item) {
-    console.log("Adding JS Endpoints to new Element", element);
-
-    // Ensure materialType is set for materials
-    if (item.type === "material" && !item.materialType) {
-        item.materialType = "Intermediate";  // Set a default material type if it's undefined
+    if (!element || !instance) {
+        return;
     }
 
-    if (element) {
-        console.log("iselement", item.type)
-        console.log("item itself", item)
-        let sourceEndpoints = [];
-        let targetEndpoints = [];
+    if (isMaterialContainer(item)) {
+        item.sourceEndpoints = [];
+        item.targetEndpoints = [];
+        syncMaterialEndpoints(instance, element, item);
+        return;
+    }
 
-        if (item.type === "material") {
-            if (item.materialType === "Input") {
-                sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
-                console.log("added SourceEndpoint to Input material");
-            } else if (item.materialType === "Intermediate") {
-                sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
-                targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
-                console.debug("added Source- and Target-Endpoint to Intermediate material");
-            } else if (item.materialType === "Output") {
-                targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
-                console.log("added TargetEndpoint to Output material");
-            } else {
-                console.error("unknown material type: " + item.materialType);
-            }
-        } else if (item.type === "process") {
+    const sourceEndpoints = [];
+    const targetEndpoints = [];
+
+    if (item.type === 'process') {
+        sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
+        targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
+    } else if (item.type === 'chart_element') {
+        if (item.procedureChartElementType === 'Previous Operation Indicator') {
+            sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
+        } else if (item.procedureChartElementType === 'Next Operation Indicator') {
+            targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
+        } else {
             sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
             targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
-            console.debug("added Source and Target Endpoint to process");
-        } else if (item.type === "chart_element") {
-            if (item.procedureChartElementType === "Previous Operation Indicator") {
-                sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
-                console.debug("added Source Endpoint to previous Operation Indicator");
-            } else if (item.procedureChartElementType === "Next Operation Indicator") {
-                targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
-                console.debug("added Target Endpoint to Next operation Indicator");
-            } else if (item.procedureChartElementType === "Annotation") {
-                sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
-                console.debug("added Source Endpoint to Annotation");
-            } else {
-                sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
-                targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
-                console.debug("added Source and Target Endpoint to chart_element of type:", item.procedureChartElementType);
-            }
-        } else {
-            console.warn("unknown type:", item.type);
         }
-        item.sourceEndpoints = sourceEndpoints;
-        item.targetEndpoints = targetEndpoints;
+    }
+
+    item.sourceEndpoints = sourceEndpoints;
+    item.targetEndpoints = targetEndpoints;
+}
+
+function syncMaterialEndpoints(instance, elementRef, item) {
+    if (!instance || !elementRef || !isMaterialContainer(item)) {
+        return;
+    }
+
+    const { changed, desired } = reconcileMaterialEndpoints({
+        item,
+        createSourceEndpoint: () => addEndpoint(instance, elementRef, { source: true, target: false }),
+        createTargetEndpoint: () => addEndpoint(instance, elementRef, { source: false, target: true }),
+        deleteEndpoint: (endpoint) => deleteEndpoint(item, endpoint),
+    });
+
+    if (desired.source === 0 && desired.target === 0 && item.materialType) {
+        console.warn('unknown material type:', item.materialType);
+    }
+
+    if (changed) {
+        instance.revalidate?.(elementRef);
+        instance.repaintEverything?.();
     }
 }
 
-function checkEndpoints(instance, elementRef, item) {
-    //this function checks if the input/output endpoints of a given item are still correct and adds/deletes some if needed
-    console.debug("check endpoints")
-    if (item.type === "material") {
-        console.debug("element is material")
-        //for materials we check the materialType and and add/delete accordingly
-        if (item.materialType === "Input") {
-            console.debug("element is input material")
-            if (item.targetEndpoints.length !== 0) {
-                console.debug("deleting endpoints of source element:", item.id)
-                for (let endpoint of item.targetEndpoints) {
-                    console.debug("delete endpoint:", endpoint)
-                    deleteEndpoint(item, endpoint)
-                    item.targetEndpoints = item.targetEndpoints.filter(listEndpoint => listEndpoint.id !== endpoint.id);
-                }
-            }
-            if (item.sourceEndpoints.length === 0) {
-                console.debug("add endpoint:")
-                item.sourceEndpoints.push(addEndpoint(instance, elementRef, { source: true, target: false }))
-            }
-        } else if (item.materialType === "Intermediate") {
-            console.debug("element is intermediate material")
-            if (item.sourceEndpoints.length === 0) {
-                console.debug("add Endpoint")
-                item.sourceEndpoints.push(addEndpoint(instance, elementRef, { source: true, target: false }))
-            }
-            if (item.targetEndpoints.length === 0) {
-                console.debug("add Endpoint:")
-                item.targetEndpoints.push(addEndpoint(instance, elementRef, { source: false, target: true }))
-            }
-        } else if (item.materialType === "Output") {
-            console.debug("element is output material")
-            if (item.sourceEndpoints.length !== 0) {
-                console.log("deleting endpoints of source element:", item.id)
-                for (let endpoint of item.sourceEndpoints) {
-                    console.debug("delete Endpoint:", endpoint)
-                    deleteEndpoint(item, endpoint)
-                    item.sourceEndpoints = item.sourceEndpoints.filter(listEndpoint => listEndpoint.id !== endpoint.id);
-                }
-            }
-            if (item.targetEndpoints.length === 0) {
-                console.debug("add endpoint:")
-                item.targetEndpoints.push(addEndpoint(instance, elementRef, { source: false, target: true }))
-            }
-        }
-    }
+function getMaterialTypeSignatures(items) {
+    return (items || [])
+        .filter((item) => isMaterialContainer(item))
+        .map((item) => `${item.id}::${item.materialType || ''}`);
 }
 
-function createUpdateItemListHandler(instance, jsplumbElements, managedElements) {
-    return async (newItems) => {
-        console.debug("workspace_items updated, watcher triggered");
-        await nextTick(); //wait one tick otherwise the new workspace item is not yet in jsplumbElements
-        await nextTick();
+async function syncMaterialTypeChanges(newSignatures, oldSignatures = []) {
+    if (!jsplumbInstance.value || oldSignatures.length === 0) {
+        return;
+    }
 
-        // only handle elements that were added to the list (pushed), not removed ones (popped)
-        const pushedItems = computedWorkspaceItems.value.filter((item) => newItems.includes(item));
-        pushedItems.forEach((pushedItem) => {
-            console.debug("New pushed element found:", pushedItem);
-            // Handle the pop operation here
-            const elementRef = jsplumbElements.value.find(
-                (element) => element.id === pushedItem.id
-            );
-            if (!elementRef) {
-                console.debug("pushed element not found in jsplumbelements:", pushedItem)
-                return; // onoly returns the pushedItems.forEach function, effectively working as a continue
-            }
+    const previousTypes = new Map(
+        oldSignatures.map((signature) => {
+            const separatorIndex = signature.indexOf('::');
+            return [
+                signature.slice(0, separatorIndex),
+                signature.slice(separatorIndex + 2),
+            ];
+        })
+    );
 
-            if (managedElements.value[pushedItem.id] === true) {
-                console.debug("pushed element already managed: ", pushedItem);
-                checkEndpoints(instance.value, elementRef, pushedItem)
+    await nextTick();
+
+    computedWorkspaceItems.value
+        .filter((item) => isMaterialContainer(item))
+        .forEach((item) => {
+            const previousType = previousTypes.get(item.id);
+            const currentType = item.materialType || '';
+            if (previousType === undefined || previousType === currentType) {
                 return;
             }
 
-            console.debug("changed element not managed yet, placing in workspace and adding endpoints:", pushedItem);
-            elementRef.style.left = pushedItem.x + "px";
-            elementRef.style.top = pushedItem.y + "px";
-            addJsPlumbEndpoints(instance.value, elementRef, pushedItem);
-            managedElements.value[pushedItem.id] = true;
+            const elementRef = jsplumbElements.value.find(
+                (element) => element.id === item.id
+            );
+            if (!elementRef) {
+                return;
+            }
+
+            syncMaterialEndpoints(jsplumbInstance.value, elementRef, item);
+        });
+}
+
+function createUpdateItemListHandler(instance, jsplumbElementsRef, managedElementsRef) {
+    return async () => {
+        await nextTick();
+        await nextTick();
+
+        if (!instance.value) {
+            return;
+        }
+
+        computedWorkspaceItems.value.forEach((item) => {
+            const elementRef = jsplumbElementsRef.value.find(
+                (element) => element.id === item.id
+            );
+            if (!elementRef || managedElementsRef.value[item.id] === true) {
+                return;
+            }
+
+            elementRef.style.left = `${item.x}px`;
+            elementRef.style.top = `${item.y}px`;
+            addJsPlumbEndpoints(instance.value, elementRef, item);
+            managedElementsRef.value[item.id] = true;
         });
     };
 }
 
 function getItemSize(item) {
-    if (item?.type === "material") {
+    if (isMaterialContainer(item)) {
         return { width: 50, height: 50 };
     }
-    if (item?.type === "chart_element") {
+    if (item?.type === 'chart_element') {
         return { width: 200, height: 80 };
     }
-    if (item?.type === "process") {
+    if (item?.type === 'process') {
         return { width: 200, height: 80 };
     }
     return { width: 200, height: 80 };
@@ -496,7 +482,7 @@ function updateWorkspaceBounds() {
     }
 
     for (const item of items) {
-        if (typeof item?.x !== "number" || typeof item?.y !== "number") continue;
+        if (typeof item?.x !== 'number' || typeof item?.y !== 'number') continue;
         const size = getItemSize(item);
         maxRight = Math.max(maxRight, item.x + size.width);
         maxBottom = Math.max(maxBottom, item.y + size.height);
@@ -506,94 +492,89 @@ function updateWorkspaceBounds() {
     workspaceHeight.value = Math.max(initialWorkspaceHeight, minHeight, maxBottom + padding);
 }
 
-let zoomincrement = 0.1
-const zoomMin = 0.2
-const zoomMax = 3
-const lastMouse = ref({ x: NaN, y: NaN })
+let zoomincrement = 0.1;
+const zoomMin = 0.2;
+const zoomMax = 3;
+const lastMouse = ref({ x: NaN, y: NaN });
 
 function updateMouse(event) {
-    lastMouse.value = { x: event.clientX, y: event.clientY }
+    lastMouse.value = { x: event.clientX, y: event.clientY };
 }
 
 function clampZoom(value) {
-    return Math.min(zoomMax, Math.max(zoomMin, value))
+    return Math.min(zoomMax, Math.max(zoomMin, value));
 }
 
 function applyZoom(newZoomLevel) {
-    zoomLevel.value = clampZoom(newZoomLevel)
+    zoomLevel.value = clampZoom(newZoomLevel);
     if (workspaceContentRef.value) {
-        workspaceContentRef.value.style.zoom = String(zoomLevel.value)
+        workspaceContentRef.value.style.zoom = String(zoomLevel.value);
     }
     if (jsplumbInstance.value) {
-        jsplumbInstance.value.setZoom(zoomLevel.value)
+        jsplumbInstance.value.setZoom(zoomLevel.value);
     }
 }
 
 function zoomAt(clientX, clientY, newZoomLevel) {
-    const container = workspaceContentRef.value?.parentElement
+    const container = workspaceContentRef.value?.parentElement;
     if (!container || !workspaceContentRef.value) {
-        applyZoom(newZoomLevel)
-        return
+        applyZoom(newZoomLevel);
+        return;
     }
 
-    const rect = container.getBoundingClientRect()
-    const x = clientX - rect.left + container.scrollLeft
-    const y = clientY - rect.top + container.scrollTop
-    const oldZoom = zoomLevel.value
+    const rect = container.getBoundingClientRect();
+    const x = clientX - rect.left + container.scrollLeft;
+    const y = clientY - rect.top + container.scrollTop;
+    const oldZoom = zoomLevel.value;
 
-    applyZoom(newZoomLevel)
+    applyZoom(newZoomLevel);
 
-    const scale = zoomLevel.value / oldZoom
-    container.scrollLeft = x * scale - (clientX - rect.left)
-    container.scrollTop = y * scale - (clientY - rect.top)
+    const scale = zoomLevel.value / oldZoom;
+    container.scrollLeft = x * scale - (clientX - rect.left);
+    container.scrollTop = y * scale - (clientY - rect.top);
 }
 
 function onWheel(event) {
-    const delta = event.deltaY < 0 ? zoomincrement : -zoomincrement
-    zoomAt(event.clientX, event.clientY, zoomLevel.value + delta)
+    const delta = event.deltaY < 0 ? zoomincrement : -zoomincrement;
+    zoomAt(event.clientX, event.clientY, zoomLevel.value + delta);
 }
 
-// Zoom in by incrementing the zoom level
 function zoomIn() {
-    const { x, y } = lastMouse.value
+    const { x, y } = lastMouse.value;
     if (Number.isFinite(x) && Number.isFinite(y)) {
-        zoomAt(x, y, zoomLevel.value + zoomincrement)
+        zoomAt(x, y, zoomLevel.value + zoomincrement);
     } else {
-        applyZoom(zoomLevel.value + zoomincrement)
+        applyZoom(zoomLevel.value + zoomincrement);
     }
 }
-// Zoom out by decrementing the zoom level
+
 function zoomOut() {
-    const { x, y } = lastMouse.value
+    const { x, y } = lastMouse.value;
     if (Number.isFinite(x) && Number.isFinite(y)) {
-        zoomAt(x, y, zoomLevel.value - zoomincrement)
+        zoomAt(x, y, zoomLevel.value - zoomincrement);
     } else {
-        applyZoom(zoomLevel.value - zoomincrement)
+        applyZoom(zoomLevel.value - zoomincrement);
     }
 }
 
 async function clearWorkspace() {
-    jsplumbInstance.value.deleteEveryConnection();
-    for (let item of computedWorkspaceItems.value) {
+    jsplumbInstance.value?.deleteEveryConnection();
+    for (const item of computedWorkspaceItems.value) {
         const elementRef = jsplumbElements.value.find(
             (element) => element.id === item.id
         );
         if (elementRef !== undefined) {
-            jsplumbInstance.value.removeAllEndpoints(elementRef);
+            jsplumbInstance.value?.removeAllEndpoints(elementRef);
         }
     }
-    //jsplumbElements.value=[]
     managedElements.value = {};
-    while (computedWorkspaceItems.value.length > 0) { //simply setting to [] did not work
-        console.debug("pop item out of computedWorkspaceItems")
+    while (computedWorkspaceItems.value.length > 0) {
         computedWorkspaceItems.value.pop();
     }
-    await resetJsPlumb()
+    await resetJsPlumb();
     await saveWorkspaceToLocal();
-    console.log("deleted all Elements from secondary workspace")
 }
 
-// Deduplicate items by id before rendering and adding endpoints
 function deduplicateItems(items) {
     const seen = new Set();
     return items.filter(item => {
@@ -603,95 +584,72 @@ function deduplicateItems(items) {
     });
 }
 
+function normalizeWorkspaceElement(item) {
+    if (isMaterialContainer(item) || item?.type === 'material') {
+        return normalizeMaterialContainer(item);
+    }
+    return item;
+}
+
 async function addElements(list) {
-    console.log('addElements received:', list.map(i => ({id: i.id, type: i.type})));
-    const dedupedList = deduplicateItems(list);
-    console.log('dedupedList:', dedupedList.map(i => ({id: i.id, type: i.type})));
-    // Log all materials in the deduped list
-    const materialItems = dedupedList.filter(i => i.type === 'material');
-    console.log('MATERIALS IN WORKSPACE:', materialItems.map(i => ({id: i.id, description: i.description, materialType: i.materialType})));
-    for (let element of dedupedList) {
-        // Only set materialType if not already set
-        if (element.type === 'material' && !element.materialType) {
-            // Try to infer from description as fallback
-            const d = (element.description || '').toLowerCase();
-            if (d.includes('educt')) {
-                element.materialType = "Input";
-            } else if (d.includes('intermediate')) {
-                element.materialType = "Intermediate";
-            } else if (d.includes('product')) {
-                element.materialType = "Output";
-            } else {
-                element.materialType = undefined;
-            }
+    const dedupedList = deduplicateItems((Array.isArray(list) ? list : []).map(normalizeWorkspaceElement).filter(Boolean));
+    for (const element of dedupedList) {
+        if (isMaterialContainer(element) && !element.materialType) {
+            console.warn('Material container imported without explicit materialType:', element.id);
         }
 
-        if (!(computedWorkspaceItems.value.some(({ id }) => id === element.id))) { // Check if element already exists
-            console.log("add element to second workspace programmatically: ", element);
+        if (computedWorkspaceItems.value.some(({ id }) => id === element.id)) {
+            continue;
+        }
 
-            // Add the element to the workspace
-            computedWorkspaceItems.value.push(element);
+        computedWorkspaceItems.value.push(element);
+        await nextTick();
 
-            // Wait for the DOM to update before applying positions
-            await nextTick(); // Ensure the DOM elements are updated
+        const elementRef = jsplumbElements.value.find(
+            (elementRef) => elementRef.id === element.id
+        );
 
-            const elementRef = jsplumbElements.value.find(
-                (elementRef) => elementRef.id === element.id
-            );
-
-            if (elementRef) {
-                // Apply the x and y positions to the element immediately
-                console.log("Applying positions for:", element.id, " x:", element.x, " y:", element.y);
-                elementRef.style.left = `${element.x}px`;
-                elementRef.style.top = `${element.y}px`;
-
-                // Wait for the DOM to update before calling jsPlumb
-                await nextTick(); // Wait until next DOM update
-
-                // Add the necessary jsPlumb endpoints for this element
-                await addJsPlumbEndpoints(jsplumbInstance.value, elementRef, element);
-            }
+        if (elementRef) {
+            elementRef.style.left = `${element.x}px`;
+            elementRef.style.top = `${element.y}px`;
+            await nextTick();
+            await addJsPlumbEndpoints(jsplumbInstance.value, elementRef, element);
         }
     }
 
-    // Repaint all jsPlumb elements and ensure positions are correct
-    await nextTick(); // Ensure the DOM is updated before continuing
-
-    // Re-establish connections
+    await nextTick();
     await addConnectionsFromState();
 }
 
-// Function to add connections from the saved state
 async function addConnectionsFromState() {
     const savedState = localStorage.getItem(props.storageKey);
-    if (savedState) {
-        const workspaceState = JSON.parse(savedState);
-        (workspaceState.connections || []).forEach(connection => {
-            // Check if the connection already exists
-            const existingConnection = jsplumbInstance.value.getConnections().find(conn =>
-                conn.sourceId === connection.sourceId && conn.targetId === connection.targetId);
-
-            // Only add the connection if it does not already exist
-            if (!existingConnection) {
-                const sourceItem = computedWorkspaceItems.value.find(item => item.id === connection.sourceId);
-                const targetItem = computedWorkspaceItems.value.find(item => item.id === connection.targetId);
-
-                if (sourceItem && targetItem) {
-                    if (!sourceItem.sourceEndpoints?.length || !targetItem.targetEndpoints?.length) {
-                        console.warn("Skipping restore connection due to missing endpoints:", connection);
-                        return;
-                    }
-                    jsplumbInstance.value.connect({
-                        source: sourceItem.sourceEndpoints[0],
-                        target: targetItem.targetEndpoints[0]
-                    });
-                }
-            }
-        });
+    if (!savedState) {
+        return;
     }
+
+    const workspaceState = JSON.parse(savedState);
+    (workspaceState.connections || []).forEach(connection => {
+        const existingConnection = jsplumbInstance.value.getConnections().find(conn =>
+            conn.sourceId === connection.sourceId && conn.targetId === connection.targetId);
+        if (existingConnection) {
+            return;
+        }
+
+        const sourceItem = computedWorkspaceItems.value.find(item => item.id === connection.sourceId);
+        const targetItem = computedWorkspaceItems.value.find(item => item.id === connection.targetId);
+        if (!sourceItem || !targetItem) {
+            return;
+        }
+        if (!sourceItem.sourceEndpoints?.length || !targetItem.targetEndpoints?.length) {
+            console.warn('Skipping restore connection due to missing endpoints:', connection);
+            return;
+        }
+        jsplumbInstance.value.connect({
+            source: sourceItem.sourceEndpoints[0],
+            target: targetItem.targetEndpoints[0]
+        });
+    });
 }
-
-
 
 function deleteElement(item) {
     const elementRef = jsplumbElements.value.find(
@@ -699,24 +657,22 @@ function deleteElement(item) {
     );
     if (elementRef !== undefined) {
         jsplumbInstance.value.removeAllEndpoints(elementRef);
-        jsplumbInstance.value.deleteConnectionsForElement(elementRef)
+        jsplumbInstance.value.deleteConnectionsForElement(elementRef);
         elementRef.remove();
     }
-    
-    // Clean up managed elements tracking
+
     if (managedElements.value[item.id]) {
         delete managedElements.value[item.id];
     }
-    
-    //search for item in also delete from workspaceitemslist
-    let index = computedWorkspaceItems.value.findIndex(element => element.id === item.id);
+
+    const index = computedWorkspaceItems.value.findIndex(element => element.id === item.id);
     if (index !== -1) {
         computedWorkspaceItems.value.splice(index, 1);
     }
-    
-    // Save workspace state after deletion
-    emit("saveWorkspace");
+
+    emit('saveWorkspace');
 }
+
 function deleteEndpoint(item, endpoint) {
     const elementRef = jsplumbElements.value.find(
         (element) => element.id === item.id
@@ -726,67 +682,56 @@ function deleteEndpoint(item, endpoint) {
     }
 }
 
-// In addConnections, only add if both source and target exist and have endpoints
 function addConnections(connections) {
-    for (let connectionId in connections) {
-        let connection = connections[connectionId];
-        let sourceId = connection.sourceId;
-        let targetId = connection.targetId;
+    for (const connection of connections || []) {
         const sourceElementRef = computedWorkspaceItems.value.find(
-            (element) => element.id === sourceId
+            (element) => element.id === connection.sourceId
         );
         const targetElementRef = computedWorkspaceItems.value.find(
-            (element) => element.id === targetId
+            (element) => element.id === connection.targetId
         );
         if (!sourceElementRef || !targetElementRef) {
-            console.warn("either sourceElement: ", sourceElementRef, " or targetElement:", targetElementRef, " is undefined");
+            console.warn('either sourceElement or targetElement is undefined', connection);
             continue;
         }
-        if (!sourceElementRef.sourceEndpoints || !targetElementRef.targetEndpoints) {
-            console.warn("either sourceEndpoint: ", sourceElementRef.sourceEndpoints, " or targetEndpoint:", targetElementRef.targetEndpoints, " is undefined");
+        if (!sourceElementRef.sourceEndpoints?.length || !targetElementRef.targetEndpoints?.length) {
+            console.warn('Skipping connection due to missing endpoints:', connection);
             continue;
         }
-        if (!sourceElementRef.sourceEndpoints.length || !targetElementRef.targetEndpoints.length) {
-            console.warn("Skipping connection due to empty endpoint list:", connection);
-            continue;
-        }
-        nextTick();
-        jsplumbInstance.value.connect({ source: sourceElementRef.sourceEndpoints[0], target: targetElementRef.targetEndpoints[0] });
+        jsplumbInstance.value.connect({
+            source: sourceElementRef.sourceEndpoints[0],
+            target: targetElementRef.targetEndpoints[0]
+        });
     }
 }
+
 function createUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substring(2);
 }
+
 function findNextAvailableId(nestedList, basename) {
-    // Create an array to store existing IDs for the given basename
     const existingIds = [];
 
-    // Recursive function to collect existing IDs
     function collectIds(list) {
-        for (const item of list) {
-            if (item.id.startsWith(basename)) {
-                // Extract the number part of the ID and push it to the existingIds array
+        for (const item of list || []) {
+            if (item?.id?.startsWith?.(basename)) {
                 const idNumber = parseInt(item.id.slice(basename.length), 10);
                 if (!isNaN(idNumber)) {
                     existingIds.push(idNumber);
                 }
-
             }
             if (item.processElement && item.processElement.length > 0) {
-                // Recursively search in child items
                 collectIds(item.processElement);
             }
-            if (item.materials && item.materials.length > 0) {
-                // Recursively search in child items
+            if (item.materials && item.materials.length > 0 && item.type === 'process') {
                 collectIds(item.materials);
             }
         }
     }
-    
-    // Also check the current workspace items to avoid conflicts with deleted elements
+
     function collectWorkspaceIds() {
         for (const item of computedWorkspaceItems.value) {
-            if (item.id.startsWith(basename)) {
+            if (item?.id?.startsWith?.(basename)) {
                 const idNumber = parseInt(item.id.slice(basename.length), 10);
                 if (!isNaN(idNumber)) {
                     existingIds.push(idNumber);
@@ -794,35 +739,17 @@ function findNextAvailableId(nestedList, basename) {
             }
         }
     }
-    
-    console.log("test1")
-    // Call the recursive function to collect existing IDs from sidebar
+
     collectIds(nestedList);
-    // Also collect IDs from current workspace to avoid conflicts
     collectWorkspaceIds();
-    console.log("test2")
 
-    console.log("existing ids:", existingIds)
-    console.log("sidebar items checked:", nestedList.map(i => i.id))
-    console.log("workspace items checked:", computedWorkspaceItems.value.map(i => i.id))
-
-    // If no existing IDs found, create an initial element
     if (existingIds.length === 0) {
-        const initialId = `${basename}001`;
-        console.log(`No existing IDs found, using initial ID: ${initialId}`);
-        return initialId;
+        return `${basename}001`;
     }
 
-    console.log("test3")
-    // Find the next available ID by incrementing the maximum existing ID by 1
     const maxId = Math.max(...existingIds, 0);
     const nextIdNumber = maxId + 1;
-
-    // Format the next ID with leading zeros (e.g., "Begin003")
-    const nextId = `${basename}${nextIdNumber.toString().padStart(3, '0')}`;
-    console.log(`Generated next ID: ${nextId} (max existing: ${maxId}, next number: ${nextIdNumber})`);
-
-    return nextId;
+    return `${basename}${nextIdNumber.toString().padStart(3, '0')}`;
 }
 
 function getJsPlumbConnections() {
@@ -850,7 +777,6 @@ async function importWorkspace(event) {
     if (!file) return;
     const text = await file.text();
 
-    // 1) Clear existing
     await clearWorkspace();
 
     const importResult = importWorkspaceFile({
@@ -871,21 +797,15 @@ async function importWorkspace(event) {
 }
 
 function saveWorkspaceToLocal() {
-    console.log("saveWorkspaceToLocal called");
     const workspaceState = buildWorkspaceState({
         items: computedWorkspaceItems.value,
         connections: getJsPlumbConnections(),
         mode: WorkspaceMode.GENERAL,
     });
 
-    console.log("Saving workspaceState:", workspaceState);
     localStorage.setItem(props.storageKey, JSON.stringify(workspaceState));
-    console.log("Workspace saved to local storage");
 }
 
-
-
-//expose this funciton so that i can be called from the Topbar export button
 defineExpose({
     zoomIn,
     zoomOut,
@@ -902,12 +822,17 @@ defineExpose({
     getConnections: getJsPlumbConnections
 });
 
+function isMaterialContainer(item) {
+    return isMaterialContainerItem(item);
+}
+
 function toCssToken(value) {
     return (value || '').toString().replace(/\s+/g, '');
 }
 
 function getWorkspaceElementClass(item) {
     return [
+        isMaterialContainer(item) ? 'material' : item?.type || '',
         item?.type || '',
         item?.materialType || '',
         toCssToken(item?.processElementType),
@@ -915,15 +840,25 @@ function getWorkspaceElementClass(item) {
     ].filter(Boolean).join(' ');
 }
 
-function getMaterialLabel(item) {
-    const id = item?.id || '';
-    const materialID = item?.materialID || '';
-    const valueString = item?.amount?.valueString || '';
-    const unitOfMeasure = item?.amount?.unitOfMeasure || '';
-    return `${id} ${materialID} = ${valueString} ${unitOfMeasure}`.replace(/\s+/g, ' ').trim();
+function getMaterialLabelLines(item) {
+    const materials = getContainerMaterials(item);
+    const containerId = item?.id || '';
+
+    if (materials.length === 0) {
+        return [containerId];
+    }
+
+    return [
+        containerId,
+        ...materials.map((material) => {
+            const materialElementId = material?.id || '';
+            const materialID = material?.materialID || '';
+            const valueString = material?.amount?.valueString || '';
+            return `${materialElementId} ${materialID} = ${valueString}`.replace(/\s+/g, ' ').trim();
+        }),
+    ];
 }
 </script>
-
 <style>
 .workspace_content {
     position: relative;
@@ -989,6 +924,7 @@ function getMaterialLabel(item) {
     border-radius: 5px;
     padding: 5px;
     display: flex;
+    flex-direction: column;
     text-align: center;
 }
 
@@ -997,7 +933,20 @@ function getMaterialLabel(item) {
     /*this label is only for centering the material therefore text_color white*/
     padding: 6px;
     display: flex;
+    flex-direction: column;
     text-align: center;
+}
+
+.flowChartLabelLine {
+    display: block;
+}
+
+.flowChartLabelHeading {
+    font-size: 0.9em;
+    font-weight: 700;
+    text-decoration: underline;
+    text-align: left;
+    margin-bottom: 0.3em;
 }
 
 
@@ -1176,3 +1125,5 @@ function getMaterialLabel(item) {
     text-align: center;
 }
 </style>
+
+

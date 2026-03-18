@@ -43,7 +43,7 @@
         <label :for="'parameter_' + index + '_id'">ID:</label>
         <input type="text" :id="'parameter_' + index + '_id'" v-model="parameter.id" />
         <label :for="'parameter_' + index + '_description'">Description:</label>
-        <input type="text" :id="'parameter_' + index + '_description'" v-model="parameter.description[0]" />
+        <input type="text" :id="'parameter_' + index + '_description'" v-model="parameter.description" />
         <div class="value-type-header">
           <label>ParameterValue:</label>
           <button
@@ -129,7 +129,7 @@
         <input
           type="text"
           :id="'resourceConstraint_' + index + '_description'"
-          v-model="resourceConstraint.description[0]"
+          v-model="resourceConstraint.description"
         />
         <label :for="'resourceConstraint_' + index + '_constraintType'">ConstraintType:</label>
         <select
@@ -235,7 +235,7 @@
         <input
           type="text"
           :id="'otherInformation_' + index + '_description'"
-          v-model="otherInformation.description[0]"
+          v-model="otherInformation.description"
         />
         <div class="value-type-header">
           <label>OtherValue:</label>
@@ -433,7 +433,7 @@ function addProcessElementParameter() {
   }
   selectedElementModel.value.processElementParameter.push({
     id: '',
-    description: [''],
+    description: '',
     value: [emptyValueType()]
   });
 }
@@ -444,7 +444,7 @@ function addOtherInformation() {
   }
   selectedElementModel.value.otherInformation.push({
     otherInfoID: '',
-    description: [''],
+    description: '',
     otherValue: [emptyValueType()]
   });
 }
@@ -455,7 +455,7 @@ function addResourceConstraint() {
   }
   selectedElementModel.value.resourceConstraint.push({
     constraintID: '',
-    description: [''],
+    description: '',
     constraintType: '',
     lifeCycleState: '',
     range: [emptyValueType()],

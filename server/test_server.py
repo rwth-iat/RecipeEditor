@@ -107,3 +107,57 @@ def test_get_onto_classes(client):
     
 #     # Add more test assertions as needed
 # Add more tests as new endpoints are added
+EMPTY_GENERAL_RECIPE_XML = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<b2mml:GRecipe xmlns:b2mml="http://www.mesa.org/xml/B2MML">
+  <b2mml:ID>testID</b2mml:ID>
+  <b2mml:Description/>
+  <b2mml:GRecipeType>General</b2mml:GRecipeType>
+  <b2mml:Formula>
+    <b2mml:Description>The formula defines the Inputs, Intermediates and Outputs of the Procedure</b2mml:Description>
+    <b2mml:ProcessInputs>
+      <b2mml:ID>inputid</b2mml:ID>
+      <b2mml:Description>List of Process Inputs</b2mml:Description>
+      <b2mml:MaterialsType>Input</b2mml:MaterialsType>
+    </b2mml:ProcessInputs>
+    <b2mml:ProcessOutputs>
+      <b2mml:ID>outputsid</b2mml:ID>
+      <b2mml:Description>List of Process Outputs</b2mml:Description>
+      <b2mml:MaterialsType>Output</b2mml:MaterialsType>
+    </b2mml:ProcessOutputs>
+    <b2mml:ProcessIntermediates>
+      <b2mml:ID>intermediateid</b2mml:ID>
+      <b2mml:Description>List of Process Intermediates</b2mml:Description>
+      <b2mml:MaterialsType>Intermediate</b2mml:MaterialsType>
+    </b2mml:ProcessIntermediates>
+  </b2mml:Formula>
+  <b2mml:ProcessProcedure>
+    <b2mml:ID>Procedure1</b2mml:ID>
+    <b2mml:Description>This is the top level ProcessElement</b2mml:Description>
+    <b2mml:ProcessElementType>Process</b2mml:ProcessElementType>
+    <b2mml:Materials>
+      <b2mml:ID>Procedure1InputMaterials</b2mml:ID>
+      <b2mml:Description>Input Materials of ProcessProcedure1</b2mml:Description>
+      <b2mml:MaterialsType>Input</b2mml:MaterialsType>
+    </b2mml:Materials>
+    <b2mml:Materials>
+      <b2mml:ID>Procedure1IntermediateMaterials</b2mml:ID>
+      <b2mml:Description>Intermediate Materials of ProcessProcedure1</b2mml:Description>
+      <b2mml:MaterialsType>Intermediate</b2mml:MaterialsType>
+    </b2mml:Materials>
+    <b2mml:Materials>
+      <b2mml:ID>Procedure1OutputMaterials</b2mml:ID>
+      <b2mml:Description>Output Materials of ProcessProcedure1</b2mml:Description>
+      <b2mml:MaterialsType>Output</b2mml:MaterialsType>
+    </b2mml:Materials>
+  </b2mml:ProcessProcedure>
+</b2mml:GRecipe>
+"""
+
+
+def test_validate_empty_general_recipe_export(client):
+    response = client.get(
+        '/grecipe/validate',
+        query_string={'xml_string': EMPTY_GENERAL_RECIPE_XML}
+    )
+    assert response.status_code == 200
+    assert response.get_data(as_text=True) == 'valid!'

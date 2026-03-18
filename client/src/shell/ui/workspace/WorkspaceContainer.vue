@@ -577,3 +577,4 @@ function deleteElement(element) {
   transform: translateX(100%);
 }
 </style>
+

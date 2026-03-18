@@ -1,9 +1,9 @@
 from flask import Blueprint, request, make_response, flash, jsonify
-import os
 import xml.etree.ElementTree as ET
 from lxml import etree
 from django.utils.encoding import iri_to_uri, uri_to_iri
 import json
+from pathlib import Path
 from xml.sax.saxutils import escape
 try:
     from dicttoxml import dicttoxml
@@ -25,17 +25,16 @@ def build_error_xml(message: str) -> str:
 
 def validate(xml_string: str, xsd_relpath: str) -> Tuple[bool, str]:
     # 1) Locate the XSD file next to this .py
-    
-    here = os.path.dirname(__file__)
-    xsd_path = os.path.join(here, xsd_relpath)
+    here = Path(__file__).resolve().parent
+    xsd_path = (here / xsd_relpath).resolve()
 
     # 2) Load/compile the schema
     try:
-        schema_doc = etree.parse(xsd_path)
+        # Parse via a normalized file URI so nested includes/imports resolve
+        schema_doc = etree.parse(xsd_path.as_uri())
         schema     = etree.XMLSchema(schema_doc)
     except Exception as e:
         return False, f"XSD load/compile error: {e}"
-
     # 3) Parse your XML payload
     try:
         xml_doc = etree.fromstring(xml_string.encode('utf-8'))
@@ -103,14 +102,16 @@ def validate_batchml():
 
     valid, error = validate(xml_string, "batchml_schemas/schemas/BatchML-GeneralRecipe.xsd")   
     if valid:
-        print('Valid! :)')
+        print('Recipe is valid!')
         response = make_response("valid!", 200)
         return response
+    elif error.startswith("XSD load") or error.startswith("XML parse"):
+        response = make_response(error, 500)
+        return response
     else:
-        print('Not valid! :(')
+        print('Recipe is not valid!')
         response = make_response(error, 400)
         return response
-
 @recipe_api.route('/material/validate')
 def validate_material_information():
     """Endpoint to validate a xml string against B2MML Material schema.

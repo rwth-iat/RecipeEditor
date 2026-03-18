@@ -3,36 +3,52 @@ import {
   createValueTypeList,
   isNonEmptyString,
 } from "../../common/value-type/valueTypeHelpers";
+import { normalizeContainerMaterials } from "../materials/materialContainerUtils";
 
-export function createMaterial(item) {
+function createMaterialId(material, fallbackId) {
+  if (isNonEmptyString(material?.id)) {
+    return material.id.trim();
+  }
+  return fallbackId;
+}
+
+export function createMaterial(item, fallbackId) {
   return {
-    "b2mml:ID": item.id,
-    "b2mml:Description": [item.description],
-    "b2mml:MaterialID": item.materialID,
-    "b2mml:Order": item.order,
-    "b2mml:Amount": createAmount(item.amount),
+    "b2mml:ID": createMaterialId(item, fallbackId),
+    "b2mml:Description": isNonEmptyString(item?.description)
+      ? [item.description.trim()]
+      : undefined,
+    "b2mml:MaterialID": isNonEmptyString(item?.materialID)
+      ? item.materialID.trim()
+      : undefined,
+    "b2mml:Order": isNonEmptyString(item?.order) ? item.order.trim() : undefined,
+    "b2mml:Amount": createAmount(item?.amount),
   };
 }
 
-export function createMaterialsCollection(
-  workspaceItems,
+export function createMaterialsCollectionFromMaterials(
+  materials,
   id,
   description,
   materialsType
 ) {
-  const materials = {
+  return {
     "b2mml:ID": id,
-    "b2mml:Description": [description],
+    "b2mml:Description": isNonEmptyString(description) ? [description.trim()] : undefined,
     "b2mml:MaterialsType": materialsType,
-    "b2mml:Material": [],
+    "b2mml:Material": normalizeContainerMaterials(materials).map((material, index) =>
+      createMaterial(material, `${id}Material${(index + 1).toString().padStart(3, "0")}`)
+    ),
   };
+}
 
-  for (const item of workspaceItems) {
-    if (item.type === "material" && item.materialType === materialsType) {
-      materials["b2mml:Material"].push(createMaterial(item));
-    }
-  }
-  return materials;
+export function createMaterialsCollection(container) {
+  return createMaterialsCollectionFromMaterials(
+    container?.materials,
+    container?.id,
+    container?.description,
+    container?.materialType
+  );
 }
 
 export function createMaterialDefinitionProperty(property) {

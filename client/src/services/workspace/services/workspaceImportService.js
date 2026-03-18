@@ -5,6 +5,7 @@ import { mapGeneralXmlTreeToWorkspace } from "../mapping/generalXmlToWorkspaceMa
 import { mapMasterXmlTreeToWorkspace } from "../mapping/masterXmlToWorkspaceMapper";
 import { mapRecipeJsonToWorkspace } from "../mapping/recipeJsonToWorkspaceMapper";
 import { WorkspaceMode, WorkspaceSourceType } from "../core/workspaceTypes";
+import { upgradeGeneralWorkspaceItems } from "../../recipe/general-recipe/materials/materialContainerUtils";
 
 function isJsonFilename(filename) {
   return typeof filename === "string" && filename.toLowerCase().endsWith(".json");
@@ -12,6 +13,10 @@ function isJsonFilename(filename) {
 
 function isXmlFilename(filename) {
   return typeof filename === "string" && filename.toLowerCase().endsWith(".xml");
+}
+
+function normalizeGeneralImportItems(items) {
+  return upgradeGeneralWorkspaceItems(items);
 }
 
 export function importWorkspaceFile({ filename, content, mode }) {
@@ -22,6 +27,8 @@ export function importWorkspaceFile({ filename, content, mode }) {
       mode === WorkspaceMode.MASTER
         ? mapMasterXmlTreeToWorkspace(xmlTree)
         : mapGeneralXmlTreeToWorkspace(xmlTree);
+    warnings.push(...(mapped.warnings || []));
+
     const { items } = applyTopologicalLayout({
       items: mapped.items,
       connections: mapped.connections,
@@ -38,7 +45,11 @@ export function importWorkspaceFile({ filename, content, mode }) {
     const parsedWorkspaceState = parseWorkspaceJson(content);
     if (parsedWorkspaceState) {
       return {
-        ...parsedWorkspaceState,
+        items:
+          mode === WorkspaceMode.GENERAL
+            ? normalizeGeneralImportItems(parsedWorkspaceState.items)
+            : parsedWorkspaceState.items,
+        connections: parsedWorkspaceState.connections,
         sourceType: WorkspaceSourceType.WORKSPACE_JSON,
         warnings,
       };

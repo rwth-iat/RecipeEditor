@@ -21,6 +21,7 @@
 import { computed } from 'vue';
 import ElementWindowContainer from '@/shell/ui/sidebar/ElementWindowContainer.vue';
 import GeneralAddDialog from '@/features/general-recipe/ui/sidebar/GeneralAddDialog.vue';
+import { MATERIAL_CONTAINER_TYPE } from '@/services/recipe/general-recipe/materials/materialContainerUtils';
 
 const props = defineProps({
   element_type: String
@@ -57,9 +58,9 @@ const initialPackages = computed(() => {
   switch (normalizedElementType.value) {
     case 'Materials':
       return [
-        { type: 'material', name: 'Educt', materialElementType: 'Input'},
-        { type: 'material', name: 'Intermediate', materialElementType: 'Intermediate'},
-        { type: 'material', name: 'Product', materialElementType: 'Output'},        
+        { type: MATERIAL_CONTAINER_TYPE, name: 'Educt', materialElementType: 'Input'},
+        { type: MATERIAL_CONTAINER_TYPE, name: 'Intermediate', materialElementType: 'Intermediate'},
+        { type: MATERIAL_CONTAINER_TYPE, name: 'Product', materialElementType: 'Output'},
       ];
     case 'Processes':
       return [

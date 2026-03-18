@@ -4,6 +4,7 @@ import { WorkspaceMode } from "./workspaceTypes";
 const generalWorkspaceFields = [
   "id",
   "type",
+  "parentId",
   "materialType",
   "x",
   "y",
@@ -12,6 +13,10 @@ const generalWorkspaceFields = [
   "order",
   "amount",
   "materialSpecificationProperty",
+  "materials",
+  "processElement",
+  "procedureChartElement",
+  "directedLink",
   "processElementParameter",
   "resourceConstraint",
   "otherInformation",
@@ -22,6 +27,7 @@ const generalWorkspaceFields = [
 const masterWorkspaceFields = [
   "id",
   "type",
+  "name",
   "x",
   "y",
   "description",
@@ -29,6 +35,11 @@ const masterWorkspaceFields = [
   "processElementType",
   "recipeElementType",
   "conditionGroup",
+  "procId",
+  "serviceId",
+  "selfCompleting",
+  "params",
+  "equipmentInfo",
 ];
 
 export function normalizeWorkspaceItems(items) {

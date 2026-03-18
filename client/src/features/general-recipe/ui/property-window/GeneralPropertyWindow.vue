@@ -8,7 +8,7 @@
     @update:selectedElement="emit('update:selectedElement', $event)"
   >
     <MaterialPropertySection
-      v-if="computedSelectedElement?.type === 'material'"
+      v-if="computedSelectedElement?.type === 'material_container'"
       v-model:selectedElement="computedSelectedElement"
     />
 

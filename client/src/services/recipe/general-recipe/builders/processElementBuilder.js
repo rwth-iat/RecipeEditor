@@ -7,7 +7,10 @@ import { createMaterialsCollection } from "./materialBuilder";
 function createProcedureChartElement(item) {
   return {
     "b2mml:ID": item.id,
-    "b2mml:Description": [item.description],
+    "b2mml:Description": isNonEmptyString(item.description)
+      ? [item.description.trim()]
+      : undefined,
+    "b2mml:ProcedureChartElementType": item.procedureChartElementType,
   };
 }
 
@@ -54,21 +57,42 @@ function createResourceConstraint(item) {
   };
 }
 
-export function createProcessElementType(item, workspaceItems, connections) {
+function createDirectedLink(connection, scopeId, index) {
+  const suffix = scopeId || "Root";
+  return {
+    "b2mml:ID": `DirectedLink_${suffix}_${index + 1}`,
+    "b2mml:Description": [],
+    "b2mml:FromID": connection.sourceId,
+    "b2mml:ToID": connection.targetId,
+  };
+}
+
+export function createProcessElementType(item, exportState) {
+  const scopeId = item?.scopeId !== undefined ? item.scopeId : item?.id ?? null;
   const processElement = {
     "b2mml:ID": item.id,
-    "b2mml:Description": [item.description],
+    "b2mml:Description": isNonEmptyString(item.description)
+      ? [item.description.trim()]
+      : undefined,
     "b2mml:ProcessElementType": item.processElementType,
-    "b2mml:Materials": [],
-    "b2mml:DirectedLink": [],
-    "b2mml:ProcedureChartElement": [],
-    "b2mml:ProcessElement": [],
+    "b2mml:Materials": exportState
+      .getMaterialContainers(scopeId)
+      .map((container) => createMaterialsCollection(container)),
+    "b2mml:DirectedLink": exportState
+      .getConnections(scopeId)
+      .map((connection, index) => createDirectedLink(connection, scopeId, index)),
+    "b2mml:ProcedureChartElement": exportState
+      .getChartElements(scopeId)
+      .map((chartElement) => createProcedureChartElement(chartElement)),
+    "b2mml:ProcessElement": exportState
+      .getChildProcesses(scopeId)
+      .map((childProcess) => createProcessElementType(childProcess, exportState)),
     "b2mml:ProcessElementParameter": [],
     "b2mml:ResourceConstraint": [],
     "b2mml:OtherInformation": [],
   };
 
-  if (item.processElementParameter) {
+  if (Array.isArray(item.processElementParameter)) {
     item.processElementParameter.forEach((parameter) => {
       processElement["b2mml:ProcessElementParameter"].push(
         createProcessElementParameter(parameter)
@@ -76,87 +100,21 @@ export function createProcessElementType(item, workspaceItems, connections) {
     });
   }
 
-  processElement["b2mml:Materials"].push(
-    createMaterialsCollection(
-      workspaceItems,
-      `${item.id}InputMaterials`,
-      `Input Materials of Process${item.id}`,
-      "Input"
-    )
-  );
-  processElement["b2mml:Materials"].push(
-    createMaterialsCollection(
-      workspaceItems,
-      `${item.id}IntermediateMaterials`,
-      `Intermediate Materials of Process${item.id}`,
-      "Intermediate"
-    )
-  );
-  processElement["b2mml:Materials"].push(
-    createMaterialsCollection(
-      workspaceItems,
-      `${item.id}OutputMaterials`,
-      `Output Materials of Process${item.id}`,
-      "Output"
-    )
-  );
-
-  for (const connectionId in connections) {
-    const connection = connections[connectionId];
-    processElement["b2mml:DirectedLink"].push({
-      "b2mml:ID": connectionId,
-      "b2mml:Description": [],
-      "b2mml:FromID": connection.sourceId,
-      "b2mml:ToID": connection.targetId,
-    });
-  }
-
-  workspaceItems.forEach((childItem) => {
-    if (childItem.type === "process" || childItem.type === "procedure") {
-      const childWorkspaceItems = [];
-      if (childItem.materials) {
-        childWorkspaceItems.push(...childItem.materials);
-      }
-      if (childItem.processElement) {
-        childWorkspaceItems.push(...childItem.processElement);
-      }
-      if (childItem.procedureChartElement) {
-        childWorkspaceItems.push(...childItem.procedureChartElement);
-      }
-
-      processElement["b2mml:ProcessElement"].push(
-        createProcessElementType(
-          childItem,
-          childWorkspaceItems,
-          childItem.directedLink || {}
-        )
-      );
-    }
-  });
-
-  if (item.otherInformation !== undefined) {
-    for (const otherInformation of item.otherInformation) {
+  if (Array.isArray(item.otherInformation)) {
+    item.otherInformation.forEach((otherInformation) => {
       processElement["b2mml:OtherInformation"].push(
         createOtherInformation(otherInformation)
       );
-    }
+    });
   }
 
-  if (item.resourceConstraint !== undefined) {
-    for (const resourceConstraint of item.resourceConstraint) {
+  if (Array.isArray(item.resourceConstraint)) {
+    item.resourceConstraint.forEach((resourceConstraint) => {
       processElement["b2mml:ResourceConstraint"].push(
         createResourceConstraint(resourceConstraint)
       );
-    }
+    });
   }
-
-  workspaceItems.forEach((childItem) => {
-    if (childItem.type === "chart_element") {
-      processElement["b2mml:ProcedureChartElement"].push(
-        createProcedureChartElement(childItem)
-      );
-    }
-  });
 
   return processElement;
 }

@@ -22,42 +22,12 @@
     </b2mml:ProcessIntermediates>
   </b2mml:Formula>
   <b2mml:ProcessProcedure>
-    <b2mml:ID>Procedure1</b2mml:ID>
+    <b2mml:ID>ProcessProcedureID001</b2mml:ID>
     <b2mml:Description>This is the top level ProcessElement</b2mml:Description>
     <b2mml:ProcessElementType>Process</b2mml:ProcessElementType>
-    <b2mml:Materials>
-      <b2mml:ID>Procedure1InputMaterials</b2mml:ID>
-      <b2mml:Description>Input Materials of ProcessProcedure1</b2mml:Description>
-      <b2mml:MaterialsType>Input</b2mml:MaterialsType>
-    </b2mml:Materials>
-    <b2mml:Materials>
-      <b2mml:ID>Procedure1IntermediateMaterials</b2mml:ID>
-      <b2mml:Description>Intermediate Materials of ProcessProcedure1</b2mml:Description>
-      <b2mml:MaterialsType>Intermediate</b2mml:MaterialsType>
-    </b2mml:Materials>
-    <b2mml:Materials>
-      <b2mml:ID>Procedure1OutputMaterials</b2mml:ID>
-      <b2mml:Description>Output Materials of ProcessProcedure1</b2mml:Description>
-      <b2mml:MaterialsType>Output</b2mml:MaterialsType>
-    </b2mml:Materials>
     <b2mml:ProcessElement>
       <b2mml:ID>lmorr3zsv6wxnsippj</b2mml:ID>
       <b2mml:Description>Draining</b2mml:Description>
-      <b2mml:Materials>
-        <b2mml:ID>lmorr3zsv6wxnsippjInputMaterials</b2mml:ID>
-        <b2mml:Description>Input Materials of Processlmorr3zsv6wxnsippj</b2mml:Description>
-        <b2mml:MaterialsType>Input</b2mml:MaterialsType>
-      </b2mml:Materials>
-      <b2mml:Materials>
-        <b2mml:ID>lmorr3zsv6wxnsippjIntermediateMaterials</b2mml:ID>
-        <b2mml:Description>Intermediate Materials of Processlmorr3zsv6wxnsippj</b2mml:Description>
-        <b2mml:MaterialsType>Intermediate</b2mml:MaterialsType>
-      </b2mml:Materials>
-      <b2mml:Materials>
-        <b2mml:ID>lmorr3zsv6wxnsippjOutputMaterials</b2mml:ID>
-        <b2mml:Description>Output Materials of Processlmorr3zsv6wxnsippj</b2mml:Description>
-        <b2mml:MaterialsType>Output</b2mml:MaterialsType>
-      </b2mml:Materials>
       <b2mml:OtherInformation>
         <b2mml:OtherInfoID>testOtherInfoID</b2mml:OtherInfoID>
         <b2mml:Description>testDescription</b2mml:Description>

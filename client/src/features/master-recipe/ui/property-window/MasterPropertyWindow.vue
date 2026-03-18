@@ -104,62 +104,59 @@
       </select>
 
       <!-- Equipment Information Section (MTP/AAS) -->
-      <div v-if="computedSelectedElement.equipmentInfo" class="equipment-info-section">
+      <div v-if="hasProcedureMetadata" class="equipment-info-section">
         <h2>Equipment Information (Read-Only)</h2>
         <div class="equipment-source">
           <label>Source:</label>
           <input type="text"
-            :value="computedSelectedElement.equipmentInfo.source_type + ': ' + computedSelectedElement.equipmentInfo.source_file"
+            :value="equipmentSourceLabel"
             readonly class="locked-input" />
         </div>
 
         <!-- Show target process if available (for filtered MTP data) -->
-        <div v-if="computedSelectedElement.equipmentInfo.target_process" class="target-process">
+        <div v-if="selectedEquipmentInfo?.target_process" class="target-process">
           <label>Target Procedure:</label>
-          <input type="text" :value="computedSelectedElement.equipmentInfo.target_process" readonly
+          <input type="text" :value="selectedEquipmentInfo.target_process" readonly
             class="locked-input" />
         </div>
 
         <!-- MTP Equipment Info -->
-        <div
-          v-if="computedSelectedElement.equipmentInfo.source_type === 'MTP' && computedSelectedElement.equipmentInfo.equipment_data">
+        <div v-if="showsMtpMetadata">
           <!-- Equipment Service Information (RecipeElement reference) -->
-          <div v-if="computedSelectedElement.equipmentInfo.equipment_data.service_info" class="equipment-details">
+          <div v-if="displayedServiceInfo" class="equipment-details">
             <h3>Equipment Service (RecipeElement Reference)</h3>
             <label>Service Name:</label>
-            <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.service_info.name || 'N/A'"
+            <input type="text" :value="displayedServiceInfo.name || 'N/A'"
               readonly class="locked-input" />
 
             <label>Service ID:</label>
-            <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.service_info.id || 'N/A'"
+            <input type="text" :value="displayedServiceInfo.id || 'N/A'"
               readonly class="locked-input" />
           </div>
 
           <!-- Equipment Procedure Information (RecipeElement reference) -->
-          <div v-if="computedSelectedElement.equipmentInfo.equipment_data.procedure_info" class="equipment-details">
+          <div v-if="displayedProcedureInfo" class="equipment-details">
             <h3>Equipment Procedure (RecipeElement Reference)</h3>
             <label>Procedure Name:</label>
-            <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.procedure_info.name || 'N/A'"
+            <input type="text" :value="displayedProcedureInfo.name || 'N/A'"
               readonly class="locked-input" />
 
             <label>Procedure ID:</label>
-            <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.procedure_info.id || 'N/A'"
+            <input type="text" :value="displayedProcedureInfo.id || 'N/A'"
               readonly class="locked-input" />
 
             <label>Self Completing:</label>
             <input type="text"
-              :value="computedSelectedElement.equipmentInfo.equipment_data.procedure_info.self_completing ? 'Yes' : 'No'"
+              :value="isSelfCompleting(displayedProcedureInfo.self_completing) ? 'Yes' : 'No'"
               readonly class="locked-input" />
           </div>
 
           <!-- Recipe Parameters (B2MML Formula section) -->
-          <div
-            v-if="computedSelectedElement.equipmentInfo.equipment_data.recipe_parameters && computedSelectedElement.equipmentInfo.equipment_data.recipe_parameters.length > 0">
+          <div v-if="displayedRecipeParameters.length > 0">
             <h3>Recipe Parameters (B2MML Formula)</h3>
-            <div v-for="(parameter, index) in computedSelectedElement.equipmentInfo.equipment_data.recipe_parameters"
-              :key="index" class="parameter-item">
+            <div v-for="(parameter, index) in displayedRecipeParameters" :key="index" class="parameter-item">
               <label>Parameter {{ index + 1 }}:</label>
-              <input type="text" :value="parameter.name + ' (ID: ' + parameter.id + ')'" readonly class="locked-input" />
+              <input type="text" :value="formatParameterLabel(parameter)" readonly class="locked-input" />
 
               <!-- Enhanced parameter details with validation -->
               <div v-if="parameter.min || parameter.max" class="parameter-details">
@@ -184,19 +181,17 @@
               </div>
 
               <!-- Parameter type information -->
-              <div v-if="parameter.paramElem" class="parameter-type-info">
+              <div v-if="parameter.paramElem || parameter.dataType" class="parameter-type-info">
                 <label>Parameter Type:</label>
-                <input type="text" :value="parameter.paramElem.Type || 'N/A'" readonly class="locked-input" />
+                <input type="text" :value="getParameterTypeLabel(parameter)" readonly class="locked-input" />
               </div>
             </div>
           </div>
 
           <!-- Equipment Requirements (B2MML EquipmentRequirement section) -->
-          <div
-            v-if="computedSelectedElement.equipmentInfo.equipment_data.equipment_requirements && computedSelectedElement.equipmentInfo.equipment_data.equipment_requirements.length > 0">
+          <div v-if="displayedEquipmentRequirements.length > 0">
             <h3>Equipment Requirements (B2MML EquipmentRequirement)</h3>
-            <div v-for="(equipment, index) in computedSelectedElement.equipmentInfo.equipment_data.equipment_requirements"
-              :key="index" class="equipment-item">
+            <div v-for="(equipment, index) in displayedEquipmentRequirements" :key="index" class="equipment-item">
               <label>Equipment {{ index + 1 }}:</label>
               <input type="text" :value="equipment.name + ' (ID: ' + equipment.id + ')'" readonly class="locked-input" />
             </div>
@@ -204,24 +199,21 @@
         </div>
 
         <!-- AAS Equipment Info -->
-        <div
-          v-if="computedSelectedElement.equipmentInfo.source_type === 'AAS' && computedSelectedElement.equipmentInfo.equipment_data">
+        <div v-if="selectedEquipmentInfo?.source_type === 'AAS' && selectedEquipmentData">
           <div class="equipment-details">
             <label>AAS ID:</label>
-            <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.aas_id || 'N/A'" readonly
+            <input type="text" :value="selectedEquipmentData.aas_id || 'N/A'" readonly
               class="locked-input" />
 
             <label>Asset ID:</label>
-            <input type="text" :value="computedSelectedElement.equipmentInfo.equipment_data.asset_id || 'N/A'" readonly
+            <input type="text" :value="selectedEquipmentData.asset_id || 'N/A'" readonly
               class="locked-input" />
           </div>
 
           <!-- AAS Capabilities -->
-          <div
-            v-if="computedSelectedElement.equipmentInfo.equipment_data.capabilities && computedSelectedElement.equipmentInfo.equipment_data.capabilities.length > 0">
+          <div v-if="selectedEquipmentData.capabilities && selectedEquipmentData.capabilities.length > 0">
             <h3>Equipment Capabilities</h3>
-            <div v-for="(capability, index) in computedSelectedElement.equipmentInfo.equipment_data.capabilities"
-              :key="index" class="capability-item">
+            <div v-for="(capability, index) in selectedEquipmentData.capabilities" :key="index" class="capability-item">
               <label>Capability {{ index + 1 }}:</label>
               <input type="text"
                 :value="capability.id + (capability.semantic_id ? ' (' + capability.semantic_id + ')' : '')" readonly
@@ -230,11 +222,9 @@
           </div>
 
           <!-- AAS Properties -->
-          <div
-            v-if="computedSelectedElement.equipmentInfo.equipment_data.properties && computedSelectedElement.equipmentInfo.equipment_data.properties.length > 0">
+          <div v-if="selectedEquipmentData.properties && selectedEquipmentData.properties.length > 0">
             <h3>Equipment Properties</h3>
-            <div v-for="(property, index) in computedSelectedElement.equipmentInfo.equipment_data.properties" :key="index"
-              class="property-item">
+            <div v-for="(property, index) in selectedEquipmentData.properties" :key="index" class="property-item">
               <label>Property {{ index + 1 }}:</label>
               <input type="text"
                 :value="property.id + ': ' + (property.value || 'N/A') + ' (' + (property.data_type || 'N/A') + ')'"
@@ -243,11 +233,9 @@
           </div>
 
           <!-- AAS Operations -->
-          <div
-            v-if="computedSelectedElement.equipmentInfo.equipment_data.operations && computedSelectedElement.equipmentInfo.equipment_data.operations.length > 0">
+          <div v-if="selectedEquipmentData.operations && selectedEquipmentData.operations.length > 0">
             <h3>Equipment Operations</h3>
-            <div v-for="(operation, index) in computedSelectedElement.equipmentInfo.equipment_data.operations"
-              :key="index" class="operation-item">
+            <div v-for="(operation, index) in selectedEquipmentData.operations" :key="index" class="operation-item">
               <label>Operation {{ index + 1 }}:</label>
               <input type="text" :value="operation.id" readonly class="locked-input" />
             </div>
@@ -388,6 +376,100 @@ const isTransitionElement = computed(() => {
  */
 const availableSensors = computed(() => {
   return getPreviousElementSensorData(computedSelectedElement.value);
+});
+
+const selectedEquipmentInfo = computed(() => {
+  return computedSelectedElement.value?.equipmentInfo || null;
+});
+
+const selectedEquipmentData = computed(() => {
+  return selectedEquipmentInfo.value?.equipment_data || null;
+});
+
+const displayedServiceInfo = computed(() => {
+  if (selectedEquipmentData.value?.service_info) {
+    return selectedEquipmentData.value.service_info;
+  }
+
+  if (computedSelectedElement.value?.serviceId) {
+    return {
+      name: null,
+      id: computedSelectedElement.value.serviceId,
+    };
+  }
+
+  return null;
+});
+
+const displayedProcedureInfo = computed(() => {
+  if (selectedEquipmentData.value?.procedure_info) {
+    return selectedEquipmentData.value.procedure_info;
+  }
+
+  const selected = computedSelectedElement.value;
+  if (!selected) {
+    return null;
+  }
+
+  if (
+    selected.name ||
+    selected.procId ||
+    (selected.selfCompleting !== undefined && selected.selfCompleting !== null)
+  ) {
+    return {
+      name: selected.name || null,
+      id: selected.procId || null,
+      self_completing: selected.selfCompleting,
+    };
+  }
+
+  return null;
+});
+
+const displayedRecipeParameters = computed(() => {
+  if (
+    Array.isArray(selectedEquipmentData.value?.recipe_parameters) &&
+    selectedEquipmentData.value.recipe_parameters.length > 0
+  ) {
+    return selectedEquipmentData.value.recipe_parameters;
+  }
+
+  return Array.isArray(computedSelectedElement.value?.params)
+    ? computedSelectedElement.value.params
+    : [];
+});
+
+const displayedEquipmentRequirements = computed(() => {
+  return Array.isArray(selectedEquipmentData.value?.equipment_requirements)
+    ? selectedEquipmentData.value.equipment_requirements
+    : [];
+});
+
+const equipmentSourceLabel = computed(() => {
+  if (selectedEquipmentInfo.value?.source_type || selectedEquipmentInfo.value?.source_file) {
+    const sourceType = selectedEquipmentInfo.value?.source_type || 'Imported';
+    const sourceFile = selectedEquipmentInfo.value?.source_file || 'Unknown source';
+    return `${sourceType}: ${sourceFile}`;
+  }
+
+  return 'Imported procedure metadata';
+});
+
+const showsMtpMetadata = computed(() => {
+  if (selectedEquipmentInfo.value?.source_type === 'MTP') {
+    return true;
+  }
+
+  return Boolean(
+    displayedServiceInfo.value ||
+    displayedProcedureInfo.value ||
+    displayedRecipeParameters.value.length > 0 ||
+    displayedEquipmentRequirements.value.length > 0
+  );
+});
+
+const hasProcedureMetadata = computed(() => {
+  return !!selectedEquipmentInfo.value || showsMtpMetadata.value;
 });
 
 /**
@@ -577,6 +659,23 @@ const isValueInvalid = (parameter) => {
   return false;
 };
 
+function formatParameterLabel(parameter) {
+  const parameterName = parameter?.name || parameter?.id || 'Unnamed parameter';
+  const parameterId = parameter?.id || 'N/A';
+  return `${parameterName} (ID: ${parameterId})`;
+}
+
+function getParameterTypeLabel(parameter) {
+  return parameter?.paramElem?.Type || parameter?.dataType || 'N/A';
+}
+
+function isSelfCompleting(value) {
+  if (typeof value === 'string') {
+    return value.toLowerCase() === 'true';
+  }
+  return Boolean(value);
+}
+
 function onRecipeParameterInput(parameter, index) {
   if (isValueInvalid(parameter)) {
     validationErrors.value.add(`recipe_parameter_${index}`);
@@ -594,10 +693,7 @@ const hasValidationErrors = computed(() => {
 
 // Computed property to check if the element has equipment parameters
 const hasEquipmentParameters = computed(() => {
-  return computedSelectedElement.value.equipmentInfo &&
-    computedSelectedElement.value.equipmentInfo.equipment_data &&
-    computedSelectedElement.value.equipmentInfo.equipment_data.recipe_parameters &&
-    computedSelectedElement.value.equipmentInfo.equipment_data.recipe_parameters.length > 0;
+  return displayedRecipeParameters.value.length > 0;
 });
 
 /*
