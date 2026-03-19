@@ -5,7 +5,6 @@
       title="General Recipe Editor" 
       mode="general"
       @trigger-export="callExportGeneralRecipeFunction"
-      @trigger-save="triggerSaveWorkspace" 
       @trigger-exportJson="triggerExportWorkspace"
       @trigger-importJson="triggerImportWorkspace" 
       @trigger-reset="triggerResetWorkspace" />
@@ -15,7 +14,6 @@
     </template>
     <template #workspace>
       <workspace 
-      :storage-key="workspaceStorageKey" 
       :key="workspaceKey" 
       :property-window-component="GeneralPropertyWindow"
       id="workspace" 
@@ -35,12 +33,10 @@ import { useRecipeWorkspace } from '@/shell/composables/useRecipeWorkspace'
 const {
   workspaceRef,
   workspaceKey,
-  workspaceStorageKey,
   callExportGeneralRecipeFunction,
   triggerResetWorkspace,
-  triggerSaveWorkspace,
   triggerExportWorkspace,
   triggerImportWorkspace
-} = useRecipeWorkspace('workspaceState_general')
+} = useRecipeWorkspace()
 
 </script>

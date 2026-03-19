@@ -5,7 +5,7 @@
       title="Master Recipe Editor" 
       mode="master" 
       style="background-color: var(--dark);"
-      @trigger-export="callExportMasterRecipeFunction" @trigger-save="triggerSaveWorkspace"
+      @trigger-export="callExportMasterRecipeFunction"
       @trigger-exportJson="triggerExportWorkspace" @trigger-importJson="triggerImportWorkspace"
       @trigger-reset="triggerResetWorkspace" @trigger-open-config="openMasterRecipeConfig" />
     </template>
@@ -16,7 +16,6 @@
       <workspace 
       :key="workspaceKey" 
       :property-window-component="MasterPropertyWindow"
-      :storage-key="workspaceStorageKey"
       :master-recipe-config="masterRecipeConfig" 
       id="workspace" 
       ref="workspaceRef"
@@ -44,13 +43,11 @@ import { useRecipeWorkspace } from '@/shell/composables/useRecipeWorkspace'
 const {
   workspaceRef,
   workspaceKey,
-  workspaceStorageKey,
   callExportMasterRecipeFunction,
   triggerResetWorkspace,
-  triggerSaveWorkspace,
   triggerExportWorkspace,
   triggerImportWorkspace
-} = useRecipeWorkspace('workspaceState_master')
+} = useRecipeWorkspace()
 
 // Master Recipe Configuration (fully empty by default)
 const masterRecipeConfig = ref({

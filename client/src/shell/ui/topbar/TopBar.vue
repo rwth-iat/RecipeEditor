@@ -15,9 +15,6 @@
         <button class="dropdown-item" @click="triggerExportWorkspace">
           Export Workspace
         </button>
-        <button class="dropdown-item" @click="triggerSaveWorkspace">
-          Save Workspace
-        </button>
         <button class="dropdown-item" @click="$refs.importInput.click()">
           Import Recipe
         </button>
@@ -57,7 +54,7 @@ defineProps({
     default: 'general'
   }
 });
-const emit = defineEmits(["trigger-export", "trigger-save", "trigger-reset", "trigger-importJson", "trigger-exportJson", "trigger-open-config", "trigger-export-master-recipe"]);
+const emit = defineEmits(["trigger-export", "trigger-reset", "trigger-importJson", "trigger-exportJson", "trigger-open-config", "trigger-export-master-recipe"]);
 const actionsDropdownVisible = ref(false);
 const settingsDropdownVisible = ref(false);
 
@@ -76,11 +73,6 @@ const triggerExportInWorkspace = () => {
 const triggerOpenConfig = () => {
   console.log("trigger-open-config");
   emit("trigger-open-config");
-};
-
-const triggerSaveWorkspace = () => {
-  console.log("trigger-save");
-  emit("trigger-save");
 };
 
 const triggerResetWorkspace = () => {

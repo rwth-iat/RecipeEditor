@@ -39,7 +39,6 @@ import { newInstance, ready, EVENT_DRAG_STOP } from "@jsplumb/browser-ui";
 import { downloadTextFile } from "@/services/common/fileDownload";
 import {
     WorkspaceMode,
-    buildWorkspaceState,
     exportWorkspaceJson,
     importWorkspaceFile,
 } from "@/services/workspace";
@@ -55,10 +54,6 @@ import {
 const props = defineProps({
     main_workspace_items: Array,
     workspace_items: Array,
-    storageKey: {
-        type: String,
-        default: 'workspaceState',
-    }
 });
 
 const emit = defineEmits(['changeSelectedElement', 'openPropertyWindow', 'update:workspace_items', 'saveWorkspace']);
@@ -101,33 +96,6 @@ onMounted(async () => {
 
             emit('update:workspace_items', updated);
         });
-
-        const savedState = localStorage.getItem(props.storageKey);
-        if (savedState) {
-            try {
-                const workspaceState = JSON.parse(savedState);
-                await addElements(workspaceState.items || []);
-                await nextTick();
-
-                (workspaceState.connections || []).forEach(connection => {
-                    const sourceItem = computedWorkspaceItems.value.find(item => item.id === connection.sourceId);
-                    const targetItem = computedWorkspaceItems.value.find(item => item.id === connection.targetId);
-                    if (!sourceItem || !targetItem) {
-                        return;
-                    }
-                    if (!sourceItem.sourceEndpoints?.length || !targetItem.targetEndpoints?.length) {
-                        console.warn('Skipping initial connection due to missing endpoints:', connection);
-                        return;
-                    }
-                    jsplumbInstance.value.connect({
-                        source: sourceItem.sourceEndpoints[0],
-                        target: targetItem.targetEndpoints[0]
-                    });
-                });
-            } catch (error) {
-                console.error('Error loading saved workspace:', error);
-            }
-        }
 
         watch(computedWorkspaceItems, createUpdateItemListHandler(jsplumbInstance, jsplumbElements, managedElements), { deep: true });
         watch(
@@ -572,7 +540,6 @@ async function clearWorkspace() {
         computedWorkspaceItems.value.pop();
     }
     await resetJsPlumb();
-    await saveWorkspaceToLocal();
 }
 
 function deduplicateItems(items) {
@@ -616,39 +583,7 @@ async function addElements(list) {
             await addJsPlumbEndpoints(jsplumbInstance.value, elementRef, element);
         }
     }
-
     await nextTick();
-    await addConnectionsFromState();
-}
-
-async function addConnectionsFromState() {
-    const savedState = localStorage.getItem(props.storageKey);
-    if (!savedState) {
-        return;
-    }
-
-    const workspaceState = JSON.parse(savedState);
-    (workspaceState.connections || []).forEach(connection => {
-        const existingConnection = jsplumbInstance.value.getConnections().find(conn =>
-            conn.sourceId === connection.sourceId && conn.targetId === connection.targetId);
-        if (existingConnection) {
-            return;
-        }
-
-        const sourceItem = computedWorkspaceItems.value.find(item => item.id === connection.sourceId);
-        const targetItem = computedWorkspaceItems.value.find(item => item.id === connection.targetId);
-        if (!sourceItem || !targetItem) {
-            return;
-        }
-        if (!sourceItem.sourceEndpoints?.length || !targetItem.targetEndpoints?.length) {
-            console.warn('Skipping restore connection due to missing endpoints:', connection);
-            return;
-        }
-        jsplumbInstance.value.connect({
-            source: sourceItem.sourceEndpoints[0],
-            target: targetItem.targetEndpoints[0]
-        });
-    });
 }
 
 function deleteElement(item) {
@@ -793,17 +728,6 @@ async function importWorkspace(event) {
     await addElements(importResult.items);
     await nextTick();
     addConnections(importResult.connections);
-    saveWorkspaceToLocal();
-}
-
-function saveWorkspaceToLocal() {
-    const workspaceState = buildWorkspaceState({
-        items: computedWorkspaceItems.value,
-        connections: getJsPlumbConnections(),
-        mode: WorkspaceMode.GENERAL,
-    });
-
-    localStorage.setItem(props.storageKey, JSON.stringify(workspaceState));
 }
 
 defineExpose({
@@ -817,7 +741,6 @@ defineExpose({
     findNextAvailableId,
     exportWorkspace,
     importWorkspace,
-    saveWorkspaceToLocal,
     getWorkspaceItems: () => computedWorkspaceItems.value,
     getConnections: getJsPlumbConnections
 });
@@ -1125,5 +1048,3 @@ function getMaterialLabelLines(item) {
     text-align: center;
 }
 </style>
-
-

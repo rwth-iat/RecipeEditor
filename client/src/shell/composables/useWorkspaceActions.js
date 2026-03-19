@@ -2,10 +2,9 @@
 import { watch, ref } from "vue";
 import { useRoute } from "vue-router";
 
-export function useWorkspaceActions(workspaceRef, initialStorageKey) {
+export function useWorkspaceActions(workspaceRef) {
   const route = useRoute();
   const workspaceKey = ref(route.fullPath);
-  const workspaceStorageKey = ref(initialStorageKey);
 
   watch(
     () => route.fullPath,
@@ -38,15 +37,6 @@ export function useWorkspaceActions(workspaceRef, initialStorageKey) {
     }
   }
 
-  function triggerSaveWorkspace() {
-    if (workspaceRef.value?.saveWorkspaceToLocal) {
-      workspaceRef.value.saveWorkspaceToLocal();
-      alert("Workspace saved to local storage!");
-    } else {
-      console.error("saveWorkspaceToLocal not found on workspaceRef");
-    }
-  }
-
   function triggerExportWorkspace() {
     if (workspaceRef.value?.exportWorkspaceJson) {
       workspaceRef.value.exportWorkspaceJson();
@@ -65,11 +55,9 @@ export function useWorkspaceActions(workspaceRef, initialStorageKey) {
 
   return {
     workspaceKey,
-    workspaceStorageKey,
     callExportGeneralRecipeFunction,
     callExportMasterRecipeFunction,
     triggerResetWorkspace,
-    triggerSaveWorkspace,
     triggerExportWorkspace,
     triggerImportWorkspace,
   };

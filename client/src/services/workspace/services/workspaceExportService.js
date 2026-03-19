@@ -1,8 +1,4 @@
-import { serializeWorkspaceJson, serializeWorkspaceState } from "../io/workspaceJsonIO";
-
-export function buildWorkspaceState({ items, connections, mode }) {
-  return serializeWorkspaceState({ items, connections, mode });
-}
+import { serializeWorkspaceJson } from "../io/workspaceJsonIO";
 
 export function exportWorkspaceJson({ items, connections, mode }) {
   return {

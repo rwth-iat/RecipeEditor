@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildWorkspaceState, WorkspaceMode } from "@/services/workspace";
+import { exportWorkspaceJson, WorkspaceMode } from "@/services/workspace";
 
 describe("Master workspace state", () => {
   test("keeps imported procedure metadata when serializing master workspace items", () => {
@@ -25,7 +25,7 @@ describe("Master workspace state", () => {
       },
     };
 
-    const state = buildWorkspaceState({
+    const exportResult = exportWorkspaceJson({
       items: [
         {
           id: "Proc001",
@@ -51,6 +51,7 @@ describe("Master workspace state", () => {
       connections: [],
       mode: WorkspaceMode.MASTER,
     });
+    const state = JSON.parse(exportResult.content);
 
     expect(state.items).toHaveLength(1);
     expect(state.items[0]).toEqual(
