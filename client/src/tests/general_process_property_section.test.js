@@ -12,6 +12,39 @@ function createValueType() {
 }
 
 describe("ProcessPropertySection", () => {
+  test("keeps Process selectable for imported or free-form models", () => {
+    const selectedElement = {
+      type: "process",
+      processElementType: "Process",
+      processElementParameter: [],
+      resourceConstraint: [],
+      otherInformation: [],
+    };
+
+    const wrapper = mount(ProcessPropertySection, {
+      props: { selectedElement },
+      global: {
+        stubs: {
+          ValueTypeProperty: {
+            template: "<div class='value-type-property-stub' />",
+          },
+        },
+      },
+    });
+
+    const optionValues = wrapper
+      .findAll("#processElementType option")
+      .map((option) => option.element.value);
+
+    expect(optionValues).toContain("Process");
+    expect(optionValues).toEqual([
+      "Process",
+      "Process Stage",
+      "Process Operation",
+      "Process Action",
+    ]);
+  });
+
   test("renders full string descriptions for imported process metadata", () => {
     const selectedElement = {
       type: "process",

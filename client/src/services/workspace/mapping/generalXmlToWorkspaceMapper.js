@@ -187,6 +187,18 @@ function normalizeProcess(processElement, parentId) {
   };
 }
 
+function normalizeProcedureChartElement(procedureChartElement, parentId) {
+  return {
+    id: getId(procedureChartElement?.ID),
+    type: "chart_element",
+    parentId,
+    x: typeof procedureChartElement?.x === "number" ? procedureChartElement.x : 0,
+    y: typeof procedureChartElement?.y === "number" ? procedureChartElement.y : 0,
+    description: normalizeText(procedureChartElement?.Description),
+    procedureChartElementType: normalizeText(procedureChartElement?.ProcedureChartElementType),
+  };
+}
+
 function mergeContainer(existing, incoming) {
   const materialsById = new Map();
 
@@ -239,6 +251,19 @@ function mergeProcess(existing, incoming) {
   };
 }
 
+function mergeProcedureChartElement(existing, incoming) {
+  return {
+    ...existing,
+    ...incoming,
+    description: incoming?.description || existing?.description || "",
+    procedureChartElementType:
+      incoming?.procedureChartElementType || existing?.procedureChartElementType || "",
+    parentId: incoming?.parentId ?? existing?.parentId ?? null,
+    x: typeof incoming?.x === "number" ? incoming.x : existing?.x ?? 0,
+    y: typeof incoming?.y === "number" ? incoming.y : existing?.y ?? 0,
+  };
+}
+
 function addOrMergeItem(itemsById, item, warnings) {
   if (!item?.id) {
     return;
@@ -259,6 +284,11 @@ function addOrMergeItem(itemsById, item, warnings) {
 
   if (item.type === MATERIAL_CONTAINER_TYPE) {
     itemsById.set(item.id, mergeContainer(existing, item));
+    return;
+  }
+
+  if (item.type === "chart_element") {
+    itemsById.set(item.id, mergeProcedureChartElement(existing, item));
     return;
   }
 
@@ -436,6 +466,19 @@ function collectRawConnections(container, rawConnections) {
   });
 }
 
+function collectProcedureChartElements({ container, visibleParentId, itemsById, warnings }) {
+  asArray(container?.ProcedureChartElement).forEach((procedureChartElement) => {
+    const normalizedChartElement = normalizeProcedureChartElement(
+      procedureChartElement,
+      visibleParentId
+    );
+    if (!normalizedChartElement.id || !normalizedChartElement.procedureChartElementType) {
+      return;
+    }
+    addOrMergeItem(itemsById, normalizedChartElement, warnings);
+  });
+}
+
 function collectProcessItems({
   processElement,
   parentId,
@@ -463,6 +506,12 @@ function collectProcessItems({
     materialDetailsById,
     itemsById,
     materialIdToContainers,
+    warnings,
+  });
+  collectProcedureChartElements({
+    container: processElement,
+    visibleParentId: includeCurrentProcess ? processId : parentId,
+    itemsById,
     warnings,
   });
   collectRawConnections(processElement, rawConnections);

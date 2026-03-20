@@ -22,9 +22,17 @@ import { computed } from 'vue';
 import ElementWindowContainer from '@/shell/ui/sidebar/ElementWindowContainer.vue';
 import GeneralAddDialog from '@/features/general-recipe/ui/sidebar/GeneralAddDialog.vue';
 import { MATERIAL_CONTAINER_TYPE } from '@/services/recipe/general-recipe/materials/materialContainerUtils';
+import {
+  DEFAULT_ALLOWED_PROCESS_ELEMENT_TYPES,
+  getProcessSidebarPackages,
+} from '@/features/general-recipe/ui/sidebar/processSidebarOptions';
 
 const props = defineProps({
-  element_type: String
+  element_type: String,
+  allowedProcessElementTypes: {
+    type: Array,
+    default: () => [...DEFAULT_ALLOWED_PROCESS_ELEMENT_TYPES]
+  }
 });
 
 const normalizedElementType = computed(() => {
@@ -63,13 +71,7 @@ const initialPackages = computed(() => {
         { type: MATERIAL_CONTAINER_TYPE, name: 'Product', materialElementType: 'Output'},
       ];
     case 'Processes':
-      return [
-        { type: 'process', name: 'Process', processElementType: 'Process' },
-        { type: 'process', name: 'Process Stage', processElementType: 'Process Stage' },
-        { type: 'process', name: 'Process Operation', processElementType: 'Process Operation' },
-        { type: 'process', name: 'Process Action', processElementType: 'Process Action' },
-
-      ];
+      return getProcessSidebarPackages(props.allowedProcessElementTypes);
     case 'ChartElements':
       return [
           { type: 'chart_element', name: 'Previous Operation Indicator', procedureChartElementType: 'Previous Operation Indicator' },

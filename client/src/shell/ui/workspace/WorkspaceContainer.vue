@@ -82,6 +82,11 @@ import {
 import PropertyWindowContainer from '@/shell/ui/workspace/PropertyWindowContainer.vue';
 import GeneralWorkspaceContent from '@/features/general-recipe/ui/workspace/GeneralWorkspaceContent.vue';
 import MasterWorkspaceContent from '@/features/master-recipe/ui/workspace/MasterWorkspaceContent.vue';
+import {
+  isLegacyVisibleMaterialItem,
+  isMaterialContainerItem,
+  normalizeMaterialContainer,
+} from '@/services/recipe/general-recipe/materials/materialContainerUtils';
 
 const props = defineProps({
   mode: { 
@@ -95,6 +100,7 @@ const props = defineProps({
     default: () => PropertyWindowContainer
   }
 });
+const emit = defineEmits(['secondary-workspace-context-change']);
 
 const showSecondaryWorkspace = ref(false)
 const canUseSecondaryWorkspace = computed(() => props.mode === 'general');
@@ -128,6 +134,65 @@ function openPropertyWindow() {
 }
 function closePropertyWindow() {
   isPropertyWindowOpen.value = false;
+}
+
+function normalizeProcessElementType(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalizedValue = value.trim();
+  return normalizedValue || null;
+}
+
+function emitSecondaryWorkspaceContext(visible, parentProcessElementType = null) {
+  emit('secondary-workspace-context-change', {
+    visible,
+    parentProcessElementType: visible
+      ? normalizeProcessElementType(parentProcessElementType)
+      : null,
+  });
+}
+
+function shouldInitializeOperationIndicators(processElementType) {
+  const normalizedType = normalizeProcessElementType(processElementType);
+  return normalizedType === 'Process Stage' || normalizedType === 'Process Operation';
+}
+
+function createDefaultOperationIndicators() {
+  let uniqueId = secondaryWorkspaceContent.value.findNextAvailableId(
+    main_workspace_items.value,
+    "Previous Operation Indicator"
+  );
+  const previousIndicator = {
+    id: uniqueId,
+    description: uniqueId,
+    name: "Previous Operation Indicator",
+    type: "chart_element",
+    x: 300,
+    y: 100,
+    amount: {},
+    processElementType: "",
+    procedureChartElementType: "Previous Operation Indicator",
+  };
+
+  uniqueId = secondaryWorkspaceContent.value.findNextAvailableId(
+    main_workspace_items.value,
+    "Next Operation Indicator"
+  );
+  const nextIndicator = {
+    id: uniqueId,
+    description: uniqueId,
+    name: "Next Operation Indicator",
+    type: "chart_element",
+    x: 300,
+    y: 600,
+    amount: {},
+    processElementType: "",
+    procedureChartElementType: "Next Operation Indicator",
+  };
+
+  return [previousIndicator, nextIndicator];
 }
 
 /*
@@ -397,31 +462,54 @@ async function openInWorkspace() {
   if (!canUseSecondaryWorkspace.value || !secondaryWorkspaceContent.value) {
     return;
   }
+  if (normalizeProcessElementType(selectedElement.value?.processElementType) === 'Process Action') {
+    return;
+  }
   await secondaryWorkspaceContent.value.clearWorkspace() //reset secondary workspace
   // check if this element already has children processes else define empty list
   if (!Array.isArray(selectedElement.value.processElement)) {
     console.debug("no child processelements: ", selectedElement.value.processElement)
     selectedElement.value.processElement = [];
   }
-  // check if this element already has children processes else define empty list
   if (!Array.isArray(selectedElement.value.materials)) {
     console.debug("no child materials: ", selectedElement.value.materials)
-    //if no materials exist yet add an input and output knot
     selectedElement.value.materials = [];
-    let unique_id = secondaryWorkspaceContent.value.findNextAvailableId(main_workspace_items.value, "Previous Operation Indicator")
-    selectedElement.value.materials.push({ id: unique_id, description: unique_id, name: "Previous Operation Indicator", type: "chart_element", x: 300, y: 100, amount: {}, processElementType: "", procedureChartElementType: "Previous Operation Indicator" })
-    unique_id = secondaryWorkspaceContent.value.findNextAvailableId(main_workspace_items.value, "Next Operation Indicator")
-    selectedElement.value.materials.push({ id: unique_id, description: unique_id, name: "Next Operation Indicator", type: "chart_element", x: 300, y: 600, amount: {}, processElementType: "", procedureChartElementType: "Next Operation Indicator" })
+  }
+  const legacyChartElements = selectedElement.value.materials.filter(
+    (item) => item?.type === 'chart_element'
+  );
+  selectedElement.value.materials = selectedElement.value.materials.filter(
+    (item) => item?.type !== 'chart_element'
+  );
+  if (!Array.isArray(selectedElement.value.procedureChartElement)) {
+    selectedElement.value.procedureChartElement = [];
+  }
+  if (
+    selectedElement.value.procedureChartElement.length === 0 &&
+    legacyChartElements.length > 0
+  ) {
+    selectedElement.value.procedureChartElement = legacyChartElements;
+  }
+  if (
+    selectedElement.value.procedureChartElement.length === 0 &&
+    shouldInitializeOperationIndicators(selectedElement.value.processElementType)
+  ) {
+    selectedElement.value.procedureChartElement = createDefaultOperationIndicators();
+  }
+  if (!Array.isArray(selectedElement.value.directedLink)) {
+    selectedElement.value.directedLink = [];
   }
 
   await nextTick();
   await nextTick();
   //reset secondary workspace variables
   await secondaryWorkspaceContent.value.addElements(selectedElement.value.materials) //add materials to workspace item list
+  await secondaryWorkspaceContent.value.addElements(selectedElement.value.procedureChartElement)
   await secondaryWorkspaceContent.value.addElements(selectedElement.value.processElement) //add processes to workspace item list
   await secondaryWorkspaceContent.value.addConnections(selectedElement.value.directedLink)
   showSecondaryWorkspace.value = true;//visually open the actual secondary workspace
   secondaryWorkspaceParent.value = selectedElement.value;//set the current parent
+  emitSecondaryWorkspaceContext(true, selectedElement.value?.processElementType);
 }
 
 //function needed to replace the original item with the edited item 
@@ -442,6 +530,8 @@ function updateObjectByID(id, newobj) {
 function closeSecondaryWorkspace() {
   saveSecondaryWorkspace();
   showSecondaryWorkspace.value = false;
+  secondaryWorkspaceParent.value = null;
+  emitSecondaryWorkspaceContext(false);
 }
 
 
@@ -456,9 +546,9 @@ function saveSecondaryWorkspace() {
   secondaryWorkspaceParent.value.procedureChartElement = []
   for (let element of secondary_workspace_items.value) {
     console.debug("adding element: ", element)
-    if (element.type == "material") { // add materials
+    if (isMaterialContainerItem(element) || isLegacyVisibleMaterialItem(element)) { // add materials
       console.debug("adding as material")
-      secondaryWorkspaceParent.value.materials.push(element)
+      secondaryWorkspaceParent.value.materials.push(normalizeMaterialContainer(element))
     } else if (element.type == "process") { // add processes
       console.debug("adding as process")
       secondaryWorkspaceParent.value.processElement.push(element)

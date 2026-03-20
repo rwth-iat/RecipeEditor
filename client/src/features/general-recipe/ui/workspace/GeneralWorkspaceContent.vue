@@ -39,9 +39,11 @@ import { newInstance, ready, EVENT_DRAG_STOP } from "@jsplumb/browser-ui";
 import { downloadTextFile } from "@/services/common/fileDownload";
 import {
     WorkspaceMode,
+    WorkspaceSourceType,
     exportWorkspaceJson,
     importWorkspaceFile,
 } from "@/services/workspace";
+import { buildGeneralWorkspaceHierarchy } from "@/services/workspace/mapping/generalWorkspaceHierarchy";
 import { reconcileMaterialEndpoints } from "@/services/workspace/core/generalMaterialEndpointUtils";
 import {
     MATERIAL_CONTAINER_TYPE,
@@ -722,12 +724,17 @@ async function importWorkspace(event) {
     if (importResult.warnings.length > 0) {
         importResult.warnings.forEach((warning) => console.warn(warning));
     }
-    if (importResult.items.length === 0 && importResult.connections.length === 0) {
+    const hierarchicalImport =
+        importResult.sourceType === WorkspaceSourceType.XML
+            ? buildGeneralWorkspaceHierarchy(importResult.items, importResult.connections)
+            : importResult;
+
+    if (hierarchicalImport.items.length === 0 && hierarchicalImport.connections.length === 0) {
         return;
     }
-    await addElements(importResult.items);
+    await addElements(hierarchicalImport.items);
     await nextTick();
-    addConnections(importResult.connections);
+    addConnections(hierarchicalImport.connections);
 }
 
 defineExpose({

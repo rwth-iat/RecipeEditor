@@ -316,6 +316,55 @@ const PROCESS_METADATA_GENERAL_RECIPE_XML = `<?xml version="1.0" encoding="UTF-8
   </b2mml:ProcessProcedure>
 </b2mml:GRecipe>`;
 
+const PROCEDURE_CHART_GENERAL_RECIPE_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<b2mml:GRecipe xmlns:b2mml="http://www.mesa.org/xml/B2MML">
+  <b2mml:ID>GeneralRecipe_Chart_001</b2mml:ID>
+  <b2mml:GRecipeType>General</b2mml:GRecipeType>
+  <b2mml:ProcessProcedure>
+    <b2mml:ID>Procedure1</b2mml:ID>
+    <b2mml:ProcessElementType>Process</b2mml:ProcessElementType>
+    <b2mml:ProcessElement>
+      <b2mml:ID>Stage001</b2mml:ID>
+      <b2mml:Description>Mixing Stage</b2mml:Description>
+      <b2mml:ProcessElementType>Process Stage</b2mml:ProcessElementType>
+      <b2mml:Materials>
+        <b2mml:ID>StageInput001</b2mml:ID>
+        <b2mml:Description>Input</b2mml:Description>
+        <b2mml:MaterialsType>Input</b2mml:MaterialsType>
+        <b2mml:Material>
+          <b2mml:ID>StageMaterial001</b2mml:ID>
+          <b2mml:Description>Water</b2mml:Description>
+        </b2mml:Material>
+      </b2mml:Materials>
+      <b2mml:ProcedureChartElement>
+        <b2mml:ID>PrevIndicator001</b2mml:ID>
+        <b2mml:Description>Previous</b2mml:Description>
+        <b2mml:ProcedureChartElementType>Previous Operation Indicator</b2mml:ProcedureChartElementType>
+      </b2mml:ProcedureChartElement>
+      <b2mml:ProcedureChartElement>
+        <b2mml:ID>NextIndicator001</b2mml:ID>
+        <b2mml:Description>Next</b2mml:Description>
+        <b2mml:ProcedureChartElementType>Next Operation Indicator</b2mml:ProcedureChartElementType>
+      </b2mml:ProcedureChartElement>
+      <b2mml:DirectedLink>
+        <b2mml:ID>StageLink001</b2mml:ID>
+        <b2mml:FromID>PrevIndicator001</b2mml:FromID>
+        <b2mml:ToID>Operation001</b2mml:ToID>
+      </b2mml:DirectedLink>
+      <b2mml:DirectedLink>
+        <b2mml:ID>StageLink002</b2mml:ID>
+        <b2mml:FromID>StageInput001</b2mml:FromID>
+        <b2mml:ToID>Operation001</b2mml:ToID>
+      </b2mml:DirectedLink>
+      <b2mml:ProcessElement>
+        <b2mml:ID>Operation001</b2mml:ID>
+        <b2mml:Description>Operation</b2mml:Description>
+        <b2mml:ProcessElementType>Process Operation</b2mml:ProcessElementType>
+      </b2mml:ProcessElement>
+    </b2mml:ProcessElement>
+  </b2mml:ProcessProcedure>
+</b2mml:GRecipe>`;
+
 const AMBIGUOUS_LEGACY_LINK_GENERAL_RECIPE_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <b2mml:GRecipe xmlns:b2mml="http://www.mesa.org/xml/B2MML">
   <b2mml:ID>GeneralRecipe_Ambiguous_001</b2mml:ID>
@@ -533,6 +582,35 @@ test("imports process metadata descriptions as full strings", () => {
       otherValue: [{ valueString: "http://example.com/ontology#Mixing" }],
     },
   ]);
+});
+
+test("imports procedure chart elements and links from nested process elements", () => {
+  const result = importGeneralRecipe(PROCEDURE_CHART_GENERAL_RECIPE_XML);
+
+  expect(findItem(result.items, "PrevIndicator001")).toMatchObject({
+    type: "chart_element",
+    parentId: "Stage001",
+    procedureChartElementType: "Previous Operation Indicator",
+  });
+  expect(findItem(result.items, "NextIndicator001")).toMatchObject({
+    type: "chart_element",
+    parentId: "Stage001",
+    procedureChartElementType: "Next Operation Indicator",
+  });
+  expect(findItem(result.items, "StageInput001")).toMatchObject({
+    type: "material_container",
+    parentId: "Stage001",
+    materialType: "Input",
+  });
+  expect(result.connections).toContainEqual({
+    sourceId: "PrevIndicator001",
+    targetId: "Operation001",
+  });
+  expect(result.connections).toContainEqual({
+    sourceId: "StageInput001",
+    targetId: "Operation001",
+  });
+  expect(result.warnings).toEqual([]);
 });
 
 test("warns and skips legacy links when one child material ID belongs to multiple visible containers", () => {

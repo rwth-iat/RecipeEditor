@@ -1,7 +1,7 @@
 <template>
   <PropertyWindowContainer
     v-bind="props"
-    :showOpenInWorkspace="computedSelectedElement?.type === 'process'"
+    :showOpenInWorkspace="showOpenInWorkspace"
     @close="emit('close')"
     @openInWorkspace="emit('openInWorkspace')"
     @deleteElement="emit('deleteElement',$event)"
@@ -53,5 +53,13 @@ const computedSelectedElement = computed({
   set: (newValue) => {
     emit('update:selectedElement', newValue);
   },
+});
+
+const showOpenInWorkspace = computed(() => {
+  if (computedSelectedElement.value?.type !== 'process') {
+    return false;
+  }
+
+  return computedSelectedElement.value?.processElementType?.trim() !== 'Process Action';
 });
 </script>
