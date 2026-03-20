@@ -12,6 +12,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import ConditionGroupEditor from '@/features/master-recipe/ui/property-window/ConditionGroupEditor.vue';
+import { stringifyConditionGroup } from '@/services/recipe/master-recipe/conditions/conditionGroupUtils';
 
 /**
  * ConditionEditor Component
@@ -49,56 +50,17 @@ watch(groupRef, (val) => { emit('update:group', val); }, { deep: true });
  * it to a readable string representation with proper logical precedence.
  */
 const conditionSummary = computed(() => {
-  /**
-   * Recursively summarizes a condition group or individual condition
-   * @param {Object} group - The condition group or condition to summarize
-   * @returns {string} - Human-readable condition summary
-   */
-  function summarizeGroup(group) {
-    // Handle individual conditions (leaf nodes in the condition tree)
-    if (group.type === 'condition') {
-      console.log('Summary stringifying condition:', JSON.stringify(group, null, 2));
-      
-      // Validate that the condition has all required fields
-      if (!group.keyword || !group.operator || group.value === undefined || group.value === '') {
-        return '';
-      }
-      
-      // Special handling for Step-type conditions
-      if (group.keyword === 'Step') {
-        return `Step "${group.instance || ''}" is Completed`;
-      } else {
-        // For other condition types, format as: "Keyword Instance Operator Value"
-        const instancePart = group.instance ? `${group.instance} ` : '';
-        return `${group.keyword} ${instancePart}${group.operator} ${group.value}`;
-      }
-    }
-    
-    // Handle condition groups (internal nodes in the condition tree)
-    console.log('Summarizing group:', JSON.stringify(group, null, 2));
-    
-    // Empty group defaults to "True"
-    if (!group || !group.children || !group.children.length) return 'True';
-    
-    // NOT operator is unary - only one child allowed
-    if (group.operator === 'NOT') {
-      // Format: NOT (child_condition)
-      return `NOT (${summarizeGroup(group.children[0])})`;
-    }
-    
-    // AND/OR operators are binary - join all children with the operator
-    // This creates expressions like: "condition1 AND condition2 AND condition3"
-    return group.children.map((child) => {
-      // Recursively summarize each child (could be condition or nested group)
-      if (child.type === 'group' || child.type === 'condition') {
-        return summarizeGroup(child);
-      }
-      return '';
-    }).join(` ${group.operator} `);
-  }
-  
-  // Start the recursive summarization from the root group
-  return summarizeGroup(groupRef.value);
+  const stepLabelById = new Map(
+    (Array.isArray(props.availableSteps) ? props.availableSteps : []).map((step) => [
+      step.id,
+      step.name || step.id,
+    ])
+  );
+  const summary = stringifyConditionGroup(groupRef.value, {
+    quoteStepInstance: true,
+    resolveStepLabel: (stepId) => stepLabelById.get(stepId) || stepId,
+  });
+  return summary || 'True';
 });
 </script>
 

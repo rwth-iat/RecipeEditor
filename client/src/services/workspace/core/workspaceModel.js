@@ -35,10 +35,12 @@ const masterWorkspaceFields = [
   "processElementType",
   "recipeElementType",
   "conditionGroup",
+  "conditionList",
   "procId",
   "serviceId",
   "selfCompleting",
   "params",
+  "processElementParameter",
   "equipmentInfo",
 ];
 

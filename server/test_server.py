@@ -161,3 +161,229 @@ def test_validate_empty_general_recipe_export(client):
     )
     assert response.status_code == 200
     assert response.get_data(as_text=True) == 'valid!'
+
+
+def test_create_master_recipe_includes_transitions_links_and_pretty_print(client):
+    payload = {
+        "listHeader": {
+            "id": "ListHeader001",
+            "createDate": "2026-03-20T10:00:00Z",
+        },
+        "description": "Imported batch information",
+        "masterRecipe": {
+            "id": "MasterRecipe001",
+            "version": "1.2.3",
+            "versionDate": "2026-03-20T10:00:00Z",
+            "description": "Imported master recipe",
+            "header": {
+                "productId": "Product001",
+                "productName": "Imported Product",
+            },
+            "equipmentRequirement": [
+                {
+                    "b2mml:ID": "REQ-1",
+                    "b2mml:Constraint": {
+                        "b2mml:ID": "REQ-1_constraint",
+                        "b2mml:Condition": "Material == H2O",
+                    },
+                    "b2mml:Description": "Only water is allowed",
+                }
+            ],
+            "formula": {
+                "description": "Formula description",
+                "parameter": [
+                    {
+                        "b2mml:ID": "001:ParamTemp",
+                        "b2mml:Description": "001:Temperature",
+                        "b2mml:ParameterType": "ProcessParameter",
+                        "b2mml:ParameterSubType": "ST",
+                        "b2mml:Value": {
+                            "b2mml:ValueString": "80",
+                            "b2mml:DataInterpretation": "Constant",
+                            "b2mml:DataType": "temperature",
+                            "b2mml:UnitOfMeasure": "C",
+                        },
+                    }
+                ],
+                "material": [],
+            },
+            "procedureLogic": {
+                "link": [
+                    {
+                        "b2mml:ID": "L1",
+                        "b2mml:FromID": {
+                            "b2mml:FromIDValue": "S1",
+                            "b2mml:FromType": "Step",
+                            "b2mml:IDScope": "External",
+                        },
+                        "b2mml:ToID": {
+                            "b2mml:ToIDValue": "T1",
+                            "b2mml:ToType": "Transition",
+                            "b2mml:IDScope": "External",
+                        },
+                        "b2mml:LinkType": "ControlLink",
+                        "b2mml:Depiction": "LineAndArrow",
+                        "b2mml:EvaluationOrder": "1",
+                        "b2mml:Description": "Link from S1 to T1",
+                    },
+                    {
+                        "b2mml:ID": "L2",
+                        "b2mml:FromID": {
+                            "b2mml:FromIDValue": "T1",
+                            "b2mml:FromType": "Transition",
+                            "b2mml:IDScope": "External",
+                        },
+                        "b2mml:ToID": {
+                            "b2mml:ToIDValue": "S2",
+                            "b2mml:ToType": "Step",
+                            "b2mml:IDScope": "External",
+                        },
+                        "b2mml:LinkType": "ControlLink",
+                        "b2mml:Depiction": "LineAndArrow",
+                        "b2mml:EvaluationOrder": "1",
+                        "b2mml:Description": "Link from T1 to S2",
+                    },
+                    {
+                        "b2mml:ID": "L3",
+                        "b2mml:FromID": {
+                            "b2mml:FromIDValue": "S2",
+                            "b2mml:FromType": "Step",
+                            "b2mml:IDScope": "External",
+                        },
+                        "b2mml:ToID": {
+                            "b2mml:ToIDValue": "T2",
+                            "b2mml:ToType": "Transition",
+                            "b2mml:IDScope": "External",
+                        },
+                        "b2mml:LinkType": "ControlLink",
+                        "b2mml:Depiction": "LineAndArrow",
+                        "b2mml:EvaluationOrder": "1",
+                        "b2mml:Description": "Link from S2 to T2",
+                    },
+                    {
+                        "b2mml:ID": "L4",
+                        "b2mml:FromID": {
+                            "b2mml:FromIDValue": "T2",
+                            "b2mml:FromType": "Transition",
+                            "b2mml:IDScope": "External",
+                        },
+                        "b2mml:ToID": {
+                            "b2mml:ToIDValue": "S3",
+                            "b2mml:ToType": "Step",
+                            "b2mml:IDScope": "External",
+                        },
+                        "b2mml:LinkType": "ControlLink",
+                        "b2mml:Depiction": "LineAndArrow",
+                        "b2mml:EvaluationOrder": "1",
+                        "b2mml:Description": "Link from T2 to S3",
+                    },
+                ],
+                "step": [
+                    {
+                        "b2mml:ID": "S1",
+                        "b2mml:RecipeElementID": "Init",
+                        "b2mml:RecipeElementVersion": "",
+                        "b2mml:Description": "Init",
+                    },
+                    {
+                        "b2mml:ID": "S2",
+                        "b2mml:RecipeElementID": "001:ProcHeat",
+                        "b2mml:RecipeElementVersion": "",
+                        "b2mml:Description": "001:Heat Step",
+                    },
+                    {
+                        "b2mml:ID": "S3",
+                        "b2mml:RecipeElementID": "End",
+                        "b2mml:RecipeElementVersion": "",
+                        "b2mml:Description": "End",
+                    },
+                ],
+                "transition": [
+                    {
+                        "b2mml:ID": "T1",
+                        "b2mml:Condition": "True",
+                        "b2mml:Description": "True transition",
+                    },
+                    {
+                        "b2mml:ID": "T2",
+                        "b2mml:Condition": "Step 001:Heat Step is Completed",
+                        "b2mml:Description": "Imported condition",
+                    },
+                ],
+            },
+            "recipeElement": [
+                {
+                    "b2mml:ID": "Init",
+                    "b2mml:Description": "Init",
+                    "b2mml:RecipeElementType": "Begin",
+                },
+                {
+                    "b2mml:ID": "001:ProcHeat",
+                    "b2mml:Description": "Heating Procedure",
+                    "b2mml:RecipeElementType": "Operation",
+                    "b2mml:ActualEquipmentID": "EQ-1",
+                    "b2mml:EquipmentRequirement": [
+                        {
+                            "b2mml:ID": "REQ-1",
+                            "b2mml:Description": "Only water is allowed",
+                        }
+                    ],
+                    "b2mml:Parameter": [
+                        {
+                            "b2mml:ID": "001:ParamTemp",
+                            "b2mml:Description": "Temperature",
+                            "b2mml:ParameterType": "ProcessParameter",
+                            "b2mml:ParameterSubType": "ST",
+                        }
+                    ],
+                },
+                {
+                    "b2mml:ID": "End",
+                    "b2mml:Description": "End",
+                    "b2mml:RecipeElementType": "End",
+                },
+            ],
+        },
+        "equipmentElement": [
+            {
+                "b2mml:ID": "EQ-1",
+                "b2mml:Description": "Heating Unit instance",
+                "b2mml:EquipmentElementType": "Other",
+                "b2mml:EquipmentElementLevel": "EquipmentModule",
+                "b2mml:EquipmentProceduralElement": [
+                    {
+                        "b2mml:ID": "ProcHeat",
+                        "b2mml:Description": "Heating Library Procedure",
+                        "b2mml:EquipmentProceduralElementType": "Procedure",
+                        "b2mml:Parameter": [
+                            {
+                                "b2mml:ID": "ParamTemp",
+                                "b2mml:Description": "Temperature",
+                                "b2mml:ParameterType": "ProcessParameter",
+                                "b2mml:ParameterSubType": "ST",
+                                "b2mml:Value": {
+                                    "b2mml:ValueString": "80",
+                                    "b2mml:DataInterpretation": "Constant",
+                                    "b2mml:DataType": "temperature",
+                                    "b2mml:UnitOfMeasure": "C",
+                                },
+                            }
+                        ],
+                    }
+                ],
+                "b2mml:EquipmentConnection": [],
+            }
+        ],
+    }
+
+    response = client.post('/api/recipe/master', json=payload)
+    xml_text = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert '\n  <b2mml:ListHeader>' in xml_text
+    assert xml_text.count('<b2mml:Transition>') == 2
+    assert xml_text.count('<b2mml:Link>') == 4
+    assert '<b2mml:RecipeElementID>001:ProcHeat</b2mml:RecipeElementID>' in xml_text
+    assert '<b2mml:Condition>Step 001:Heat Step is Completed</b2mml:Condition>' in xml_text
+    assert '<b2mml:Description>Imported condition</b2mml:Description>' in xml_text
+    assert '<b2mml:ID>ProcHeat</b2mml:ID>' in xml_text

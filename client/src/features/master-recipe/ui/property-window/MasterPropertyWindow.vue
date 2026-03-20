@@ -265,6 +265,10 @@
 import { computed, ref, watch, watchEffect } from 'vue';
 import PropertyWindowContainer from '@/shell/ui/workspace/PropertyWindowContainer.vue';
 import ConditionEditor from '@/features/master-recipe/ui/property-window/ConditionEditor.vue';
+import {
+  createEmptyConditionGroup,
+  stringifyConditionGroup,
+} from '@/services/recipe/master-recipe/conditions/conditionGroupUtils';
 
 const props = defineProps({
   // The currently selected workspace element to edit
@@ -317,15 +321,13 @@ const isProcedureType = (item) => item?.type === 'procedure';
  * - children: [] - empty array for child conditions/groups
  */
 watchEffect(() => {
-  if (
-    computedSelectedElement.value &&
-    !computedSelectedElement.value.conditionGroup
-  ) {
-    computedSelectedElement.value.conditionGroup = {
-      type: 'group',
-      operator: 'AND',
-      children: []
-    };
+  const selectedElement = computedSelectedElement.value;
+  if (!selectedElement) {
+    return;
+  }
+
+  if (!selectedElement.conditionGroup) {
+    selectedElement.conditionGroup = createEmptyConditionGroup();
   }
 });
 
@@ -481,48 +483,47 @@ const hasProcedureMetadata = computed(() => {
  * @param {Object} transitionElement - The transition element to analyze
  * @returns {Array} - Array of available sensor data objects
  */
+function getElementDisplayLabel(item) {
+  if (Array.isArray(item?.description) && item.description.length > 0) {
+    return item.description[0] || item.name || item.id;
+  }
+  if (typeof item?.description === 'string' && item.description.trim()) {
+    return item.description.trim();
+  }
+  return item?.name || item?.id || '';
+}
+
+function isExecutableStep(item) {
+  return (
+    isProcedureType(item) ||
+    (
+      item?.type === 'recipe_element' &&
+      (item.recipeElementType === 'Begin' || item.recipeElementType === 'End')
+    )
+  );
+}
+
 const availableSteps = computed(() => {
   return props.workspaceItems
-    .filter(item => isProcedureType(item) || item.type === 'recipe_element')
-    .map(item => ({ id: item.id, name: item.name || item.id }));
+    .filter((item) => isExecutableStep(item))
+    .map((item) => ({
+      id: item.id,
+      name: getElementDisplayLabel(item),
+    }));
 });
 
-const stringifyConditionGroup = (node) => {
-  if (!node) return '';
-  if (node.type === 'condition') {
-    const parts = [node.keyword, node.operator, node.value]
-      .filter(part => part !== undefined && part !== null && part !== '');
-    return parts.join(' ');
-  }
-  if (node.type === 'group') {
-    const operator = node.operator || 'AND';
-    const children = (node.children || [])
-      .map(stringifyConditionGroup)
-      .filter(Boolean);
-    if (!children.length) return 'True';
-    if (operator === 'NOT') return 'NOT (' + (children[0] || 'True') + ')';
-    return children.join(' ' + operator + ' ');
-  }
-  return '';
-};
+const stepLabelById = computed(() => new Map(
+  availableSteps.value.map((step) => [step.id, step.name || step.id])
+));
 
 const conditionSummary = computed(() => {
   const element = computedSelectedElement.value;
   if (!element) return '';
-  if (element.conditionGroup) {
-    const summary = stringifyConditionGroup(element.conditionGroup);
-    return summary || 'True';
-  }
-  if (Array.isArray(element.conditionList) && element.conditionList.length > 0) {
-    const summary = element.conditionList
-      .map(condition => [condition.keyword, condition.instance, condition.operator, condition.value]
-        .filter(part => part !== undefined && part !== null && part !== '')
-        .join(' '))
-      .filter(Boolean)
-      .join(' AND ');
-    return summary || 'True';
-  }
-  return 'True';
+  const summary = stringifyConditionGroup(element.conditionGroup, {
+    quoteStepInstance: true,
+    resolveStepLabel: (stepId) => stepLabelById.value.get(stepId) || stepId,
+  });
+  return summary || 'True';
 });
 
 /**
@@ -610,38 +611,22 @@ const getPreviousElementSensorData = (transitionElement) => {
  * @param {Object} sensor - The sensor data object that was clicked
  */
 const onSensorClicked = (sensor) => {
-  // Find the current condition being edited (last one or empty one)
-  let targetCondition = null;
+  const targetCondition = addOrSelectSensorCondition();
+  targetCondition.keyword = sensor.keyword;
+  targetCondition.instance = sensor.name;
 
-  if (!computedSelectedElement.value.conditionList || computedSelectedElement.value.conditionList.length === 0) {
-    // No conditions exist, create a new one
-    addCondition();
-    targetCondition = computedSelectedElement.value.conditionList[0];
+  if (sensor.keyword === 'Temp') {
+    targetCondition.operator = '>';
+    targetCondition.value = '25';
+  } else if (sensor.keyword === 'Level') {
+    targetCondition.operator = '>';
+    targetCondition.value = '50';
+  } else if (sensor.keyword === 'Flow') {
+    targetCondition.operator = '>';
+    targetCondition.value = '0';
   } else {
-    // Find the last condition or one with empty instance
-    const conditions = computedSelectedElement.value.conditionList;
-    targetCondition = conditions.find(c => !c.instance) || conditions[conditions.length - 1];
-  }
-
-  if (targetCondition) {
-    // Auto-fill the condition with sensor data
-    targetCondition.keyword = sensor.keyword;
-    targetCondition.instance = sensor.name;
-    
-    // Set a default operator and value based on sensor type
-    if (sensor.keyword === 'Temp') {
-      targetCondition.operator = '>';
-      targetCondition.value = '25';
-    } else if (sensor.keyword === 'Level') {
-      targetCondition.operator = '>';
-      targetCondition.value = '50';
-    } else if (sensor.keyword === 'Flow') {
-      targetCondition.operator = '>';
-      targetCondition.value = '0';
-    } else {
-      targetCondition.operator = '==';
-      targetCondition.value = '';
-    }
+    targetCondition.operator = '==';
+    targetCondition.value = '';
   }
 };
 
@@ -677,6 +662,34 @@ function isSelfCompleting(value) {
 }
 
 function onRecipeParameterInput(parameter, index) {
+  if (computedSelectedElement.value) {
+    if (!Array.isArray(computedSelectedElement.value.processElementParameter)) {
+      computedSelectedElement.value.processElementParameter = [];
+    }
+
+    const parameterId = parameter?.id || `recipe_parameter_${index}`;
+    const existingIndex = computedSelectedElement.value.processElementParameter.findIndex(
+      (entry) => entry.id === parameterId
+    );
+    const normalizedParameter = {
+      id: parameterId,
+      description: parameter?.description || parameter?.name || parameterId,
+      value: parameter?.default || parameter?.value
+        ? [{
+            valueString: String(parameter?.default ?? parameter?.value ?? ''),
+            dataType: parameter?.dataType || parameter?.paramElem?.Type || '',
+            unitOfMeasure: parameter?.unit || '',
+          }]
+        : [],
+    };
+
+    if (existingIndex === -1) {
+      computedSelectedElement.value.processElementParameter.push(normalizedParameter);
+    } else {
+      computedSelectedElement.value.processElementParameter.splice(existingIndex, 1, normalizedParameter);
+    }
+  }
+
   if (isValueInvalid(parameter)) {
     validationErrors.value.add(`recipe_parameter_${index}`);
   } else {
@@ -696,50 +709,73 @@ const hasEquipmentParameters = computed(() => {
   return displayedRecipeParameters.value.length > 0;
 });
 
-/*
- * Function to add a new condition to the current element's condition list.
- * This function is called when the user clicks the "Edit Condition" button.
- * It ensures the conditionList is an array and adds a new condition object.
- */
-function addCondition() {
-  if (!computedSelectedElement.value.conditionList) {
-    computedSelectedElement.value.conditionList = [];
-  } else if (!Array.isArray(computedSelectedElement.value.conditionList)) {
-    computedSelectedElement.value.conditionList = [];
-  }
-
-  // Clear the isAlwaysTrue flag when adding a condition
-  computedSelectedElement.value.isAlwaysTrue = false;
-
-  computedSelectedElement.value.conditionList.push({
+function createSensorCondition() {
+  return {
+    type: 'condition',
     keyword: 'Level',
     instance: '',
     operator: '==',
     value: '',
-    binaryOperator: ''
-  });
+  };
 }
 
-// Ensure for 'Step' conditions, operator is always 'is'
-watch(
-  () => computedSelectedElement.value?.conditionList,
-  (newList) => {
-    if (!newList) return;
-    newList.forEach(condition => {
-      if (condition.keyword === 'Step') {
-        condition.operator = 'is';
-        condition.value = 'Completed';
+function findReusableSensorCondition(children) {
+  if (!Array.isArray(children)) {
+    return null;
+  }
+
+  for (let index = children.length - 1; index >= 0; index -= 1) {
+    const child = children[index];
+    if (child?.type === 'group') {
+      const nestedCondition = findReusableSensorCondition(child.children);
+      if (nestedCondition) {
+        return nestedCondition;
       }
-    });
-  },
-  { deep: true }
-);
+      continue;
+    }
+
+    if (child?.type === 'condition' && child.keyword !== 'Step' && !child.instance) {
+      return child;
+    }
+  }
+
+  return null;
+}
+
+function addOrSelectSensorCondition() {
+  const selectedElement = computedSelectedElement.value;
+  if (!selectedElement.conditionGroup) {
+    selectedElement.conditionGroup = createEmptyConditionGroup();
+  }
+
+  const reusableCondition = findReusableSensorCondition(selectedElement.conditionGroup.children);
+  if (reusableCondition) {
+    return reusableCondition;
+  }
+
+  if (selectedElement.conditionGroup.operator === 'NOT') {
+    selectedElement.conditionGroup.operator = 'AND';
+  }
+
+  const newCondition = createSensorCondition();
+  selectedElement.conditionGroup.children.push(newCondition);
+  return newCondition;
+}
 
 // Set the default value for processElementType when in master mode and the selected element is a procedure
 watch(
   () => [computedSelectedElement.value, props.mode],
   ([selected, currentMode]) => {
-    if (selected && isProcedureType(selected) && currentMode === 'master' && !selected.processElementType) {
+    if (
+      selected &&
+      isProcedureType(selected) &&
+      currentMode === 'master' &&
+      (
+        !selected.processElementType ||
+        selected.processElementType === 'MTP Operation' ||
+        selected.processElementType === 'AAS Capability'
+      )
+    ) {
       computedSelectedElement.value.processElementType = 'Recipe Procedure Containing Lower Level PFC';
     }
   },
@@ -753,9 +789,12 @@ const showConditionModalWarning = ref(false);
 function isConditionGroupValid(group) {
   if (!group) return false;
   if (group.type === 'condition') {
+    if (group.keyword === 'Step') {
+      return !!group.instance;
+    }
     return !!(group.keyword && group.operator && group.value !== undefined && group.value !== '');
   }
-  if (!group.children || !group.children.length) return false;
+  if (!group.children || !group.children.length) return true;
   if (group.operator === 'NOT') {
     return isConditionGroupValid(group.children[0]);
   }

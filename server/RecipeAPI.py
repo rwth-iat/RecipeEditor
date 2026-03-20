@@ -470,182 +470,228 @@ def create_master_recipe():
         return response
 
 def convert_enhanced_json_to_batchml_xml(json_data):
-    """Convert the enhanced JSON payload to B2MML XML format with proper structure"""
+    """Convert the enhanced JSON payload to B2MML XML format with proper structure."""
     print("Converting enhanced JSON to BatchML XML:", json.dumps(json_data, indent=2))
 
-    # Namespaces
-    NS_B2MML = "http://www.mesa.org/xml/B2MML"
-    NS_XSI = "http://www.w3.org/2001/XMLSchema-instance"
-    NSMAP = {
-        'b2mml': NS_B2MML,
-        'xsi': NS_XSI
-    }
-    ET.register_namespace('b2mml', NS_B2MML)
-    ET.register_namespace('xsi', NS_XSI)
+    ns_b2mml = "http://www.mesa.org/xml/B2MML"
+    ns_xsi = "http://www.w3.org/2001/XMLSchema-instance"
+    ET.register_namespace('b2mml', ns_b2mml)
+    ET.register_namespace('xsi', ns_xsi)
 
-    # Root element
-    root = ET.Element('{%s}BatchInformation' % NS_B2MML, {
-        '{%s}schemaLocation' % NS_XSI: 'http://www.mesa.org/xml/B2MML Schema/AllSchemas.xsd',
+    def qname(name: str) -> str:
+        return f'{{{ns_b2mml}}}{name}'
+
+    allowed_data_types = {
+        "Amount", "BinaryObject", "Code", "DateTime", "Identifier", "Indicator",
+        "Measure", "Numeric", "Quantity", "Text", "string", "byte", "unsignedByte",
+        "binary", "integer", "positiveInteger", "negativeInteger", "nonNegativeInteger",
+        "nonPositiveInteger", "int", "unsignedInt", "long", "unsignedLong", "short",
+        "unsignedShort", "decimal", "float", "double", "boolean", "time",
+        "timeInstant", "timePeriod", "duration", "date", "dateTime", "month",
+        "year", "century", "recurringDay", "recurringDate", "recurringDuration",
+        "Name", "QName", "NCName", "uriReference", "language", "ID", "IDREF",
+        "IDREFS", "ENTITY", "ENTITIES", "NOTATION", "NMTOKEN", "NMTOKENS",
+        "Enumeration", "SVG", "Other",
+    }
+    data_type_aliases = {
+        "temperature": "Measure",
+        "pressure": "Measure",
+        "flow": "Measure",
+        "level": "Measure",
+        "speed": "Measure",
+        "weight": "Measure",
+        "density": "Measure",
+        "time": "duration",
+    }
+
+    def append_text(parent, name, value, required=False):
+        text = ""
+        if value is not None:
+            text = str(value)
+        if not required and text == "":
+            return None
+        element = ET.SubElement(parent, qname(name))
+        element.text = text
+        return element
+
+    def append_descriptions(parent, description):
+        if description is None:
+            return
+        if isinstance(description, list):
+            for entry in description:
+                append_descriptions(parent, entry)
+            return
+        append_text(parent, "Description", description)
+
+    def append_value(parent, value):
+        if not value:
+            return
+
+        raw_data_type = value.get('b2mml:DataType')
+        normalized_data_type = data_type_aliases.get(
+            str(raw_data_type).strip().lower(),
+            raw_data_type,
+        )
+        if normalized_data_type not in allowed_data_types:
+            normalized_data_type = "string" if normalized_data_type else ""
+
+        el_value = ET.SubElement(parent, qname("Value"))
+        append_text(el_value, "ValueString", value.get('b2mml:ValueString'), required=True)
+        append_text(el_value, "DataInterpretation", value.get('b2mml:DataInterpretation'))
+        append_text(el_value, "DataType", normalized_data_type)
+        append_text(el_value, "UnitOfMeasure", value.get('b2mml:UnitOfMeasure'))
+
+    def append_parameter(parent, parameter):
+        el_parameter = ET.SubElement(parent, qname("Parameter"))
+        append_text(el_parameter, "ID", parameter.get('b2mml:ID', ''), required=True)
+        append_descriptions(el_parameter, parameter.get('b2mml:Description'))
+        append_text(el_parameter, "ParameterType", parameter.get('b2mml:ParameterType'))
+        append_text(el_parameter, "ParameterSubType", parameter.get('b2mml:ParameterSubType'))
+        append_value(el_parameter, parameter.get('b2mml:Value'))
+
+    def append_equipment_requirement(parent, requirement, include_constraint=False):
+        el_requirement = ET.SubElement(parent, qname("EquipmentRequirement"))
+        append_text(el_requirement, "ID", requirement.get('b2mml:ID', ''), required=True)
+        if include_constraint and requirement.get('b2mml:Constraint'):
+            constraint = requirement.get('b2mml:Constraint', {})
+            el_constraint = ET.SubElement(el_requirement, qname("Constraint"))
+            append_text(el_constraint, "ID", constraint.get('b2mml:ID', ''))
+            append_text(el_constraint, "Condition", constraint.get('b2mml:Condition'))
+        append_descriptions(el_requirement, requirement.get('b2mml:Description'))
+
+    def append_formula_material(parent, material):
+        el_material = ET.SubElement(parent, qname("Material"))
+        append_text(el_material, "ID", material.get('b2mml:ID', ''), required=True)
+        append_descriptions(el_material, material.get('b2mml:Description'))
+        append_text(el_material, "MaterialType", material.get('b2mml:MaterialType'))
+
+        amount = material.get('b2mml:Amount')
+        if amount:
+            el_amount = ET.SubElement(el_material, qname("Amount"))
+            append_text(el_amount, "ValueString", amount.get('b2mml:ValueString'), required=True)
+            append_text(el_amount, "UnitOfMeasure", amount.get('b2mml:UnitOfMeasure'))
+
+    def append_link_endpoint(parent, name, endpoint):
+        el_endpoint = ET.SubElement(parent, qname(name))
+        append_text(el_endpoint, f"{name}Value", endpoint.get(f"b2mml:{name}Value", ''), required=True)
+        append_text(el_endpoint, f"{name[:-2]}Type", endpoint.get(f"b2mml:{name[:-2]}Type"), required=True)
+        append_text(el_endpoint, "IDScope", endpoint.get("b2mml:IDScope"))
+
+    def append_link(parent, link):
+        el_link = ET.SubElement(parent, qname("Link"))
+        append_text(el_link, "ID", link.get('b2mml:ID', ''), required=True)
+        append_link_endpoint(el_link, "FromID", link.get('b2mml:FromID', {}))
+        append_link_endpoint(el_link, "ToID", link.get('b2mml:ToID', {}))
+        append_text(el_link, "LinkType", link.get('b2mml:LinkType'), required=True)
+        append_text(el_link, "Depiction", link.get('b2mml:Depiction'))
+        append_text(el_link, "EvaluationOrder", link.get('b2mml:EvaluationOrder'))
+        append_descriptions(el_link, link.get('b2mml:Description'))
+
+    def append_step(parent, step):
+        el_step = ET.SubElement(parent, qname("Step"))
+        append_text(el_step, "ID", step.get('b2mml:ID', ''), required=True)
+        append_text(el_step, "RecipeElementID", step.get('b2mml:RecipeElementID', ''), required=True)
+        append_text(el_step, "RecipeElementVersion", step.get('b2mml:RecipeElementVersion', ''), required=True)
+        append_descriptions(el_step, step.get('b2mml:Description'))
+
+    def append_transition(parent, transition):
+        el_transition = ET.SubElement(parent, qname("Transition"))
+        append_text(el_transition, "ID", transition.get('b2mml:ID', ''), required=True)
+        append_text(el_transition, "Condition", transition.get('b2mml:Condition', ''), required=True)
+        append_descriptions(el_transition, transition.get('b2mml:Description'))
+
+    def append_recipe_element(parent, element):
+        el_recipe_element = ET.SubElement(parent, qname("RecipeElement"))
+        append_text(el_recipe_element, "ID", element.get('b2mml:ID', ''), required=True)
+        append_descriptions(el_recipe_element, element.get('b2mml:Description'))
+        append_text(el_recipe_element, "RecipeElementType", element.get('b2mml:RecipeElementType', ''), required=True)
+        append_text(el_recipe_element, "ActualEquipmentID", element.get('b2mml:ActualEquipmentID'))
+
+        for requirement in element.get('b2mml:EquipmentRequirement', []):
+            append_equipment_requirement(el_recipe_element, requirement)
+        for parameter in element.get('b2mml:Parameter', []):
+            append_parameter(el_recipe_element, parameter)
+
+    def append_equipment_element(parent, equipment):
+        el_equipment = ET.SubElement(parent, qname("EquipmentElement"))
+        append_text(el_equipment, "ID", equipment.get('b2mml:ID', ''), required=True)
+        append_descriptions(el_equipment, equipment.get('b2mml:Description'))
+        append_text(el_equipment, "EquipmentElementType", equipment.get('b2mml:EquipmentElementType', ''), required=True)
+        append_text(el_equipment, "EquipmentElementLevel", equipment.get('b2mml:EquipmentElementLevel', ''), required=True)
+
+        for procedural_element in equipment.get('b2mml:EquipmentProceduralElement', []):
+            el_procedural_element = ET.SubElement(el_equipment, qname("EquipmentProceduralElement"))
+            append_text(el_procedural_element, "ID", procedural_element.get('b2mml:ID', ''), required=True)
+            append_descriptions(el_procedural_element, procedural_element.get('b2mml:Description'))
+            append_text(
+                el_procedural_element,
+                "EquipmentProceduralElementType",
+                procedural_element.get('b2mml:EquipmentProceduralElementType', ''),
+                required=True,
+            )
+            for parameter in procedural_element.get('b2mml:Parameter', []):
+                append_parameter(el_procedural_element, parameter)
+
+        for connection in equipment.get('b2mml:EquipmentConnection', []):
+            el_connection = ET.SubElement(el_equipment, qname("EquipmentConnection"))
+            append_text(el_connection, "ID", connection.get('b2mml:ID', ''), required=True)
+            append_descriptions(el_connection, connection.get('b2mml:Description'))
+            append_text(el_connection, "ConnectionType", connection.get('b2mml:ConnectionType'))
+            append_text(el_connection, "FromEquipmentID", connection.get('b2mml:FromEquipmentID'))
+            append_text(el_connection, "ToEquipmentID", connection.get('b2mml:ToEquipmentID'))
+
+    root = ET.Element(qname("BatchInformation"), {
+        f'{{{ns_xsi}}}schemaLocation': 'http://www.mesa.org/xml/B2MML Schema/AllSchemas.xsd',
     })
 
-    # ListHeader
     list_header = json_data.get('listHeader', {})
-    el_list_header = ET.SubElement(root, '{%s}ListHeader' % NS_B2MML)
-    ET.SubElement(el_list_header, '{%s}ID' % NS_B2MML).text = list_header.get('id', 'ListHeadID')
-    ET.SubElement(el_list_header, '{%s}CreateDate' % NS_B2MML).text = list_header.get('createDate', '')
+    el_list_header = ET.SubElement(root, qname("ListHeader"))
+    append_text(el_list_header, "ID", list_header.get('id', 'ListHeadID'), required=True)
+    append_text(el_list_header, "CreateDate", list_header.get('createDate', ''), required=True)
+    append_descriptions(root, json_data.get('description'))
 
-    # Description
-    ET.SubElement(root, '{%s}Description' % NS_B2MML).text = json_data.get('description', '')
+    master_recipe = json_data.get('masterRecipe', {})
+    el_master_recipe = ET.SubElement(root, qname("MasterRecipe"))
+    append_text(el_master_recipe, "ID", master_recipe.get('id', 'MasterRecipe'), required=True)
+    append_text(el_master_recipe, "Version", master_recipe.get('version', '1.0.0'), required=True)
+    append_text(el_master_recipe, "VersionDate", master_recipe.get('versionDate', ''), required=True)
+    append_descriptions(el_master_recipe, master_recipe.get('description'))
 
-    # MasterRecipe
-    mr = json_data.get('masterRecipe', {})
-    el_mr = ET.SubElement(root, '{%s}MasterRecipe' % NS_B2MML)
-    ET.SubElement(el_mr, '{%s}ID' % NS_B2MML).text = mr.get('id', 'MasterRecipe')
-    ET.SubElement(el_mr, '{%s}Version' % NS_B2MML).text = mr.get('version', '1.0.0')
-    ET.SubElement(el_mr, '{%s}VersionDate' % NS_B2MML).text = mr.get('versionDate', '')
-    ET.SubElement(el_mr, '{%s}Description' % NS_B2MML).text = mr.get('description', '')
+    header = master_recipe.get('header', {})
+    el_header = ET.SubElement(el_master_recipe, qname("Header"))
+    append_text(el_header, "ProductID", header.get('productId', ''), required=True)
+    append_text(el_header, "ProductName", header.get('productName', ''), required=True)
 
-    # Header
-    header = mr.get('header', {})
-    el_header = ET.SubElement(el_mr, '{%s}Header' % NS_B2MML)
-    ET.SubElement(el_header, '{%s}ProductID' % NS_B2MML).text = header.get('productId', '')
-    ET.SubElement(el_header, '{%s}ProductName' % NS_B2MML).text = header.get('productName', '')
+    for requirement in master_recipe.get('equipmentRequirement', []):
+        append_equipment_requirement(el_master_recipe, requirement, include_constraint=True)
 
-    # EquipmentRequirement
-    equipment_requirements = mr.get('equipmentRequirement', [])
-    for req in equipment_requirements:
-        el_req = ET.SubElement(el_mr, '{%s}EquipmentRequirement' % NS_B2MML)
-        ET.SubElement(el_req, '{%s}ID' % NS_B2MML).text = req.get('b2mml:ID', '')
-        
-        constraint = req.get('b2mml:Constraint', {})
-        if constraint:
-            el_constraint = ET.SubElement(el_req, '{%s}Constraint' % NS_B2MML)
-            ET.SubElement(el_constraint, '{%s}ID' % NS_B2MML).text = constraint.get('b2mml:ID', '')
-            ET.SubElement(el_constraint, '{%s}Condition' % NS_B2MML).text = constraint.get('b2mml:Condition', '')
-        
-        ET.SubElement(el_req, '{%s}Description' % NS_B2MML).text = req.get('b2mml:Description', '')
-
-    # Formula
-    formula = mr.get('formula', {})
+    formula = master_recipe.get('formula', {})
     if formula:
-        el_formula = ET.SubElement(el_mr, '{%s}Formula' % NS_B2MML)
-        
-        # Parameters
-        parameters = formula.get('parameter', [])
-        for param in parameters:
-            el_param = ET.SubElement(el_formula, '{%s}Parameter' % NS_B2MML)
-            ET.SubElement(el_param, '{%s}ID' % NS_B2MML).text = param.get('b2mml:ID', '')
-            ET.SubElement(el_param, '{%s}ParameterType' % NS_B2MML).text = param.get('b2mml:ParameterType', '')
-            ET.SubElement(el_param, '{%s}ParameterSubType' % NS_B2MML).text = param.get('b2mml:ParameterSubType', '')
-            
-            value = param.get('b2mml:Value', {})
-            if value:
-                el_value = ET.SubElement(el_param, '{%s}Value' % NS_B2MML)
-                ET.SubElement(el_value, '{%s}ValueString' % NS_B2MML).text = value.get('b2mml:ValueString', '')
-                ET.SubElement(el_value, '{%s}DataInterpretation' % NS_B2MML).text = value.get('b2mml:DataInterpretation', '')
-                ET.SubElement(el_value, '{%s}DataType' % NS_B2MML).text = value.get('b2mml:DataType', '')
-                ET.SubElement(el_value, '{%s}UnitOfMeasure' % NS_B2MML).text = value.get('b2mml:UnitOfMeasure', '')
-        
-        # Materials
-        materials = formula.get('material', [])
-        for material in materials:
-            el_material = ET.SubElement(el_formula, '{%s}Material' % NS_B2MML)
-            ET.SubElement(el_material, '{%s}ID' % NS_B2MML).text = material.get('b2mml:ID', '')
-            ET.SubElement(el_material, '{%s}Description' % NS_B2MML).text = material.get('b2mml:Description', '')
-            ET.SubElement(el_material, '{%s}MaterialType' % NS_B2MML).text = material.get('b2mml:MaterialType', '')
-            
-            amount = material.get('b2mml:Amount', {})
-            if amount:
-                el_amount = ET.SubElement(el_material, '{%s}Amount' % NS_B2MML)
-                ET.SubElement(el_amount, '{%s}ValueString' % NS_B2MML).text = amount.get('b2mml:ValueString', '')
-                ET.SubElement(el_amount, '{%s}UnitOfMeasure' % NS_B2MML).text = amount.get('b2mml:UnitOfMeasure', '')
+        el_formula = ET.SubElement(el_master_recipe, qname("Formula"))
+        for parameter in formula.get('parameter', []):
+            append_parameter(el_formula, parameter)
+        for material in formula.get('material', []):
+            append_formula_material(el_formula, material)
 
-    # ProcedureLogic
-    procedure_logic = mr.get('procedureLogic', {})
+    procedure_logic = master_recipe.get('procedureLogic', {})
     if procedure_logic:
-        el_procedure_logic = ET.SubElement(el_mr, '{%s}ProcedureLogic' % NS_B2MML)
-        
-        # Steps
-        steps = procedure_logic.get('step', [])
-        for step in steps:
-            el_step = ET.SubElement(el_procedure_logic, '{%s}Step' % NS_B2MML)
-            ET.SubElement(el_step, '{%s}ID' % NS_B2MML).text = step.get('b2mml:ID', '')
-            ET.SubElement(el_step, '{%s}RecipeElementID' % NS_B2MML).text = step.get('b2mml:RecipeElementID', '')
-            ET.SubElement(el_step, '{%s}RecipeElementVersion' % NS_B2MML).text = step.get('b2mml:RecipeElementVersion', '')
-            ET.SubElement(el_step, '{%s}Description' % NS_B2MML).text = step.get('b2mml:Description', '')
-        
-        # Transitions
-        transitions = procedure_logic.get('transition', [])
-        for transition in transitions:
-            el_transition = ET.SubElement(el_procedure_logic, '{%s}Transition' % NS_B2MML)
-            ET.SubElement(el_transition, '{%s}ID' % NS_B2MML).text = transition.get('b2mml:ID', '')
-            ET.SubElement(el_transition, '{%s}Condition' % NS_B2MML).text = transition.get('b2mml:Condition', '')
+        el_procedure_logic = ET.SubElement(el_master_recipe, qname("ProcedureLogic"))
+        for link in procedure_logic.get('link', []):
+            append_link(el_procedure_logic, link)
+        for step in procedure_logic.get('step', []):
+            append_step(el_procedure_logic, step)
+        for transition in procedure_logic.get('transition', []):
+            append_transition(el_procedure_logic, transition)
 
-    # RecipeElement
-    recipe_elements = mr.get('recipeElement', [])
-    for element in recipe_elements:
-        el_recipe_element = ET.SubElement(el_mr, '{%s}RecipeElement' % NS_B2MML)
-        ET.SubElement(el_recipe_element, '{%s}ID' % NS_B2MML).text = element.get('b2mml:ID', '')
-        ET.SubElement(el_recipe_element, '{%s}Description' % NS_B2MML).text = element.get('b2mml:Description', '')
-        ET.SubElement(el_recipe_element, '{%s}RecipeElementType' % NS_B2MML).text = element.get('b2mml:RecipeElementType', '')
-        ET.SubElement(el_recipe_element, '{%s}ActualEquipmentID' % NS_B2MML).text = element.get('b2mml:ActualEquipmentID', '')
-        
-        # EquipmentRequirement
-        equipment_reqs = element.get('b2mml:EquipmentRequirement', [])
-        for req in equipment_reqs:
-            el_eq_req = ET.SubElement(el_recipe_element, '{%s}EquipmentRequirement' % NS_B2MML)
-            ET.SubElement(el_eq_req, '{%s}ID' % NS_B2MML).text = req.get('b2mml:ID', '')
-        
-        # Parameters
-        parameters = element.get('b2mml:Parameter', [])
-        for param in parameters:
-            el_param = ET.SubElement(el_recipe_element, '{%s}Parameter' % NS_B2MML)
-            ET.SubElement(el_param, '{%s}ID' % NS_B2MML).text = param.get('b2mml:ID', '')
-            ET.SubElement(el_param, '{%s}ParameterType' % NS_B2MML).text = param.get('b2mml:ParameterType', '')
+    for recipe_element in master_recipe.get('recipeElement', []):
+        append_recipe_element(el_master_recipe, recipe_element)
 
-    # EquipmentElement
-    equipment_elements = json_data.get('equipmentElement', [])
-    for equipment in equipment_elements:
-        el_equipment = ET.SubElement(root, '{%s}EquipmentElement' % NS_B2MML)
-        ET.SubElement(el_equipment, '{%s}ID' % NS_B2MML).text = equipment.get('b2mml:ID', '')
-        ET.SubElement(el_equipment, '{%s}EquipmentElementType' % NS_B2MML).text = equipment.get('b2mml:EquipmentElementType', '')
-        ET.SubElement(el_equipment, '{%s}EquipmentElementLevel' % NS_B2MML).text = equipment.get('b2mml:EquipmentElementLevel', '')
-        
-        # EquipmentProceduralElement
-        procedural_elements = equipment.get('b2mml:EquipmentProceduralElement', [])
-        for proc_elem in procedural_elements:
-            el_proc_elem = ET.SubElement(el_equipment, '{%s}EquipmentProceduralElement' % NS_B2MML)
-            ET.SubElement(el_proc_elem, '{%s}ID' % NS_B2MML).text = proc_elem.get('b2mml:ID', '')
-            ET.SubElement(el_proc_elem, '{%s}Description' % NS_B2MML).text = proc_elem.get('b2mml:Description', '')
-            ET.SubElement(el_proc_elem, '{%s}EquipmentProceduralElementType' % NS_B2MML).text = proc_elem.get('b2mml:EquipmentProceduralElementType', '')
-            
-            # Parameters
-            proc_params = proc_elem.get('b2mml:Parameter', [])
-            for param in proc_params:
-                el_param = ET.SubElement(el_proc_elem, '{%s}Parameter' % NS_B2MML)
-                ET.SubElement(el_param, '{%s}ID' % NS_B2MML).text = param.get('b2mml:ID', '')
-                ET.SubElement(el_param, '{%s}Description' % NS_B2MML).text = param.get('b2mml:Description', '')
-                ET.SubElement(el_param, '{%s}ParameterType' % NS_B2MML).text = param.get('b2mml:ParameterType', '')
-                ET.SubElement(el_param, '{%s}ParameterSubType' % NS_B2MML).text = param.get('b2mml:ParameterSubType', '')
-                
-                value = param.get('b2mml:Value', {})
-                if value:
-                    el_value = ET.SubElement(el_param, '{%s}Value' % NS_B2MML)
-                    ET.SubElement(el_value, '{%s}ValueString' % NS_B2MML).text = value.get('b2mml:ValueString', '')
-                    ET.SubElement(el_value, '{%s}DataInterpretation' % NS_B2MML).text = value.get('b2mml:DataInterpretation', '')
-                    ET.SubElement(el_value, '{%s}DataType' % NS_B2MML).text = value.get('b2mml:DataType', '')
-                    ET.SubElement(el_value, '{%s}UnitOfMeasure' % NS_B2MML).text = value.get('b2mml:UnitOfMeasure', '')
-        
-        # EquipmentConnection
-        connections = equipment.get('b2mml:EquipmentConnection', [])
-        for conn in connections:
-            el_conn = ET.SubElement(el_equipment, '{%s}EquipmentConnection' % NS_B2MML)
-            ET.SubElement(el_conn, '{%s}ID' % NS_B2MML).text = conn.get('b2mml:ID', '')
-            ET.SubElement(el_conn, '{%s}ConnectionType' % NS_B2MML).text = conn.get('b2mml:ConnectionType', '')
-            ET.SubElement(el_conn, '{%s}FromEquipmentID' % NS_B2MML).text = conn.get('b2mml:FromEquipmentID', '')
-            ET.SubElement(el_conn, '{%s}ToEquipmentID' % NS_B2MML).text = conn.get('b2mml:ToEquipmentID', '')
+    for equipment_element in json_data.get('equipmentElement', []):
+        append_equipment_element(root, equipment_element)
 
-    # Convert to string
-    xml_string = ET.tostring(root, encoding='unicode', method='xml')
+    if hasattr(ET, "indent"):
+        ET.indent(root, space="  ")
+
+    xml_string = ET.tostring(root, encoding='utf-8', xml_declaration=True).decode('utf-8')
     print("Generated XML:", xml_string)
     return xml_string

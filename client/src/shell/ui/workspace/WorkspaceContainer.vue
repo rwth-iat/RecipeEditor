@@ -10,6 +10,7 @@
         :main_workspace_items="main_workspace_items" :workspace_items="main_workspace_items"
         @changeSelectedElement="selectedElement = $event" @openPropertyWindow="openPropertyWindow"
         @update:workspace_items="main_workspace_items = $event"
+        @workspaceImported="onWorkspaceImported"
       />
 
       <!-- secondary workspace for when the inner steps of a single process are edited -->
@@ -100,7 +101,10 @@ const props = defineProps({
     default: () => PropertyWindowContainer
   }
 });
-const emit = defineEmits(['secondary-workspace-context-change']);
+const emit = defineEmits([
+  'secondary-workspace-context-change',
+  'master-config-imported',
+]);
 
 const showSecondaryWorkspace = ref(false)
 const canUseSecondaryWorkspace = computed(() => props.mode === 'general');
@@ -152,6 +156,14 @@ function emitSecondaryWorkspaceContext(visible, parentProcessElementType = null)
       ? normalizeProcessElementType(parentProcessElementType)
       : null,
   });
+}
+
+function onWorkspaceImported(payload) {
+  if (props.mode !== 'master') {
+    return;
+  }
+
+  emit('master-config-imported', payload || null);
 }
 
 function shouldInitializeOperationIndicators(processElementType) {

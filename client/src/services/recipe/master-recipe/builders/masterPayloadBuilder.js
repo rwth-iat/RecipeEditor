@@ -1,38 +1,152 @@
-import { buildEquipmentElements } from "./equipmentBuilder";
-import { buildProcedureLogic } from "./procedureLogicBuilder";
-import { buildRecipeElements } from "./recipeElementBuilder";
+import { buildMasterExecutionModel } from "./masterExecutionModelBuilder";
+
+function asArray(value) {
+  if (!value) {
+    return [];
+  }
+  return Array.isArray(value) ? value : [value];
+}
+
+function normalizeString(value, fallback = "") {
+  return typeof value === "string" ? value : fallback;
+}
+
+function normalizeBatchDataType(rawDataType, hasUnit) {
+  const normalizedDataType = typeof rawDataType === "string" ? rawDataType.trim() : "";
+  const normalizedLookup = normalizedDataType.toLowerCase();
+  const aliasMap = {
+    temperature: "Measure",
+    pressure: "Measure",
+    flow: "Measure",
+    level: "Measure",
+    speed: "Measure",
+    weight: "Measure",
+    density: "Measure",
+    time: "duration",
+    st: "string",
+    bool: "boolean",
+    dint: "integer",
+    int: "integer",
+    real: "double",
+    float: "float",
+    double: "double",
+  };
+
+  if (aliasMap[normalizedLookup]) {
+    return aliasMap[normalizedLookup];
+  }
+  if (normalizedDataType) {
+    return normalizedDataType;
+  }
+  return hasUnit ? "Measure" : "duration";
+}
+
+function normalizeDateTime(value, fallback) {
+  if (typeof value !== "string" || !value.trim()) {
+    return fallback;
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return fallback;
+  }
+
+  return parsedDate.toISOString();
+}
 
 function normalizeMasterConfig(config) {
-  return config || {
-    productId: "",
-    productName: "",
-    version: "",
-    description: "",
-    formulaParameters: [],
-    equipmentRequirements: [],
+  const normalizedConfig = config || {};
+  const nowIso = new Date().toISOString();
+
+  return {
+    listHeaderId: normalizeString(normalizedConfig.listHeaderId, "ListHeadID"),
+    listHeaderCreateDate: normalizeDateTime(
+      normalizedConfig.listHeaderCreateDate,
+      nowIso
+    ),
+    batchInfoDescription: normalizeString(
+      normalizedConfig.batchInfoDescription,
+      normalizeString(normalizedConfig.description, "")
+    ),
+    masterRecipeId: normalizeString(
+      normalizedConfig.masterRecipeId,
+      "MasterRecipeHC"
+    ),
+    masterRecipeVersion: normalizeString(
+      normalizedConfig.masterRecipeVersion,
+      normalizeString(normalizedConfig.version, "")
+    ),
+    masterRecipeVersionDate: normalizeDateTime(
+      normalizedConfig.masterRecipeVersionDate,
+      nowIso
+    ),
+    masterRecipeDescription: normalizeString(
+      normalizedConfig.masterRecipeDescription,
+      normalizeString(normalizedConfig.description, "")
+    ),
+    productId: normalizeString(normalizedConfig.productId, ""),
+    productName: normalizeString(normalizedConfig.productName, ""),
+    version: normalizeString(
+      normalizedConfig.version,
+      normalizeString(normalizedConfig.masterRecipeVersion, "")
+    ),
+    description: normalizeString(
+      normalizedConfig.description,
+      normalizeString(normalizedConfig.masterRecipeDescription, "")
+    ),
+    formulaParameters: asArray(normalizedConfig.formulaParameters),
+    equipmentRequirements: asArray(normalizedConfig.equipmentRequirements),
   };
+}
+
+function normalizeLegacyFormulaParameters(formulaParameters) {
+  return asArray(formulaParameters)
+    .filter((parameter) => parameter?.id)
+    .map((parameter) => ({
+      "b2mml:ID": String(parameter.id),
+      "b2mml:Description": normalizeString(parameter.description, String(parameter.id)),
+      "b2mml:ParameterType": "ProcessParameter",
+      "b2mml:ParameterSubType": normalizeString(parameter.parameterSubType, "ST"),
+      "b2mml:Value": {
+        "b2mml:ValueString": String(parameter.value ?? ""),
+        "b2mml:DataInterpretation": normalizeString(
+          parameter.dataInterpretation,
+          "Constant"
+        ),
+        "b2mml:DataType": normalizeBatchDataType(
+          parameter.dataType,
+          Boolean(parameter.unit)
+        ),
+        "b2mml:UnitOfMeasure": normalizeString(parameter.unit, "seconds"),
+      },
+    }));
 }
 
 function collectFormulaMaterials(workspaceItems) {
   const materialInputs = [];
   const materialOutputs = [];
 
-  workspaceItems.forEach((item) => {
-    if (item.type !== "material") {
+  (Array.isArray(workspaceItems) ? workspaceItems : []).forEach((item) => {
+    if (item?.type !== "material") {
       return;
     }
+
     const materialInfo = {
       "b2mml:ID": item.id,
-      "b2mml:Description": item.description || item.name,
+      "b2mml:Description": item.description || item.name || item.id,
       "b2mml:MaterialType": item.materialType || "Intermediate",
       "b2mml:Amount": {
         "b2mml:ValueString": item.amount?.valueString || "1",
         "b2mml:UnitOfMeasure": item.amount?.unitOfMeasure || "kg",
       },
     };
+
     if (item.materialType === "Input") {
       materialInputs.push(materialInfo);
-    } else if (item.materialType === "Output") {
+      return;
+    }
+
+    if (item.materialType === "Output") {
       materialOutputs.push(materialInfo);
     }
   });
@@ -40,158 +154,77 @@ function collectFormulaMaterials(workspaceItems) {
   return { materialInputs, materialOutputs };
 }
 
-function collectEquipmentAndFormulaParameters(workspaceItems, config) {
-  const equipmentInstances = new Set();
-  const formulaParameters = [];
-
-  workspaceItems.forEach((item) => {
-    if (
-      (item.type !== "process" && item.type !== "procedure") ||
-      !item.equipmentInfo
-    ) {
-      return;
-    }
-
-    if (
-      item.equipmentInfo.source_type === "MTP" &&
-      item.equipmentInfo.equipment_data
-    ) {
-      const equipmentData = item.equipmentInfo.equipment_data;
-      if (equipmentData.service_info?.id) {
-        equipmentInstances.add(equipmentData.service_info.id);
-      }
-      if (Array.isArray(equipmentData.recipe_parameters)) {
-        equipmentData.recipe_parameters.forEach((parameter) => {
-          formulaParameters.push({
-            "b2mml:ID": String(parameter.id),
-            "b2mml:ParameterType": "ProcessParameter",
-            "b2mml:ParameterSubType": parameter.paramElem?.Type || "ST",
-            "b2mml:Value": {
-              "b2mml:ValueString":
-                parameter.default !== undefined && parameter.default !== null
-                  ? String(parameter.default)
-                  : "10",
-              "b2mml:DataInterpretation": "Constant",
-              "b2mml:DataType": parameter.unit ? "Measure" : "duration",
-              "b2mml:UnitOfMeasure": parameter.unit || "seconds",
-            },
-          });
-        });
-      }
-      return;
-    }
-
-    if (item.equipmentInfo.instance) {
-      equipmentInstances.add(item.equipmentInfo.instance);
-    }
-    if (Array.isArray(item.equipmentInfo.parameters)) {
-      item.equipmentInfo.parameters.forEach((parameter) => {
-        formulaParameters.push({
-          "b2mml:ID": String(parameter.id),
-          "b2mml:ParameterType": "ProcessParameter",
-          "b2mml:ParameterSubType": parameter.subType || "ST",
-          "b2mml:Value": {
-            "b2mml:ValueString":
-              parameter.value !== undefined && parameter.value !== null
-                ? String(parameter.value)
-                : "10",
-            "b2mml:DataInterpretation": "Constant",
-            "b2mml:DataType": parameter.dataType || "duration",
-            "b2mml:UnitOfMeasure": parameter.unit || "seconds",
-          },
-        });
-      });
-    }
-  });
-
-  if (Array.isArray(config.formulaParameters)) {
-    config.formulaParameters.forEach((parameter) => {
-      if (!parameter.id || parameter.value === undefined || parameter.value === null) {
-        return;
-      }
-      formulaParameters.push({
-        "b2mml:ID": String(parameter.id),
-        "b2mml:ParameterType": "ProcessParameter",
-        "b2mml:ParameterSubType": "ST",
-        "b2mml:Value": {
-          "b2mml:ValueString": String(parameter.value),
-          "b2mml:DataInterpretation": "Constant",
-          "b2mml:DataType": parameter.dataType || "duration",
-          "b2mml:UnitOfMeasure": parameter.unit || "seconds",
-        },
-      });
-    });
-  }
-
-  return { equipmentInstances, formulaParameters };
-}
-
 function buildEquipmentRequirements(config) {
-  if (!Array.isArray(config.equipmentRequirements)) {
-    return [];
-  }
-  return config.equipmentRequirements
+  return asArray(config.equipmentRequirements)
     .filter((requirement) => requirement?.id)
     .map((requirement) => ({
       "b2mml:ID": requirement.id,
-      "b2mml:Constraint": {
-        "b2mml:ID": "Material constraint",
-        "b2mml:Condition": requirement.constraint || "Material == H2O",
-      },
+      "b2mml:Constraint": requirement.constraint
+        ? {
+            "b2mml:ID": `${requirement.id}_constraint`,
+            "b2mml:Condition": requirement.constraint,
+          }
+        : null,
       "b2mml:Description":
-        requirement.description || "Equipment requirement for the process",
-    }));
+        requirement.description || "Equipment requirement for the master recipe",
+    }))
+    .map((requirement) => {
+      if (requirement["b2mml:Constraint"]) {
+        return requirement;
+      }
+      const { ["b2mml:Constraint"]: _omittedConstraint, ...withoutConstraint } =
+        requirement;
+      return withoutConstraint;
+    });
 }
 
 export function buildMasterRecipePayload(workspaceItems, connections, rawConfig) {
   const config = normalizeMasterConfig(rawConfig);
-  const { equipmentInstances, formulaParameters } =
-    collectEquipmentAndFormulaParameters(workspaceItems, config);
+  const executionModel = buildMasterExecutionModel(workspaceItems, connections);
   const { materialInputs, materialOutputs } = collectFormulaMaterials(workspaceItems);
-  const equipmentRequirements = buildEquipmentRequirements(config);
+  const formulaParameters =
+    executionModel.formulaParameters.length > 0
+      ? executionModel.formulaParameters
+      : normalizeLegacyFormulaParameters(config.formulaParameters);
 
-  const payload = {
+  return {
     listHeader: {
-      id: "ListHeadID",
-      createDate: new Date().toISOString(),
+      id: config.listHeaderId,
+      createDate: config.listHeaderCreateDate,
     },
-    description: config.description || "",
+    description: config.batchInfoDescription,
     masterRecipe: {
-      id: "MasterRecipeHC",
-      version: config.version || "",
-      versionDate: new Date().toISOString(),
-      description: config.description || "",
+      id: config.masterRecipeId,
+      version: config.masterRecipeVersion,
+      versionDate: config.masterRecipeVersionDate,
+      description: config.masterRecipeDescription,
       header: {
-        productId: config.productId || "",
-        productName: config.productName || "",
+        productId: config.productId,
+        productName: config.productName,
       },
-      equipmentRequirement: equipmentRequirements,
+      equipmentRequirement: buildEquipmentRequirements(config),
       formula: {
         parameter: formulaParameters,
         material: [
           ...materialInputs.map((material) => ({
             ...material,
             "b2mml:MaterialType": "Input",
-            "b2mml:Description":
-              material["b2mml:Description"] ||
-              `Input material ${material["b2mml:ID"]}`,
           })),
           ...materialOutputs.map((material) => ({
             ...material,
             "b2mml:MaterialType": "Output",
-            "b2mml:Description":
-              material["b2mml:Description"] ||
-              `Output material ${material["b2mml:ID"]}`,
           })),
         ],
         description:
           "Formula defines the Inputs, Intermediates, Outputs and Parameters of the Master Recipe",
       },
-      procedureLogic: buildProcedureLogic(workspaceItems, connections),
-      recipeElement: buildRecipeElements(workspaceItems),
+      procedureLogic: {
+        step: executionModel.steps,
+        transition: executionModel.transitions,
+        link: executionModel.links,
+      },
+      recipeElement: executionModel.recipeElements,
     },
-    equipmentElement: buildEquipmentElements(workspaceItems, equipmentInstances),
+    equipmentElement: executionModel.equipmentElements,
   };
-
-  return payload;
 }

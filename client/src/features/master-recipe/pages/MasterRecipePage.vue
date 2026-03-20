@@ -19,7 +19,8 @@
       :master-recipe-config="masterRecipeConfig" 
       id="workspace" 
       ref="workspaceRef"
-      mode="master"  />
+      mode="master"
+      @master-config-imported="onMasterConfigImported" />
     </template>
     <template #overlay>
       <!-- Master Recipe Configuration Modal -->
@@ -49,38 +50,64 @@ const {
   triggerImportWorkspace
 } = useRecipeWorkspace()
 
-// Master Recipe Configuration (fully empty by default)
-const masterRecipeConfig = ref({
-  productId: '',
-  productName: '',
-  version: '',
-  description: '',
-  formulaParameters: [],
-  equipmentRequirements: []
-});
+function createDefaultMasterRecipeConfig() {
+  return {
+    listHeaderId: 'ListHeadID',
+    listHeaderCreateDate: '',
+    batchInfoDescription: '',
+    masterRecipeId: 'MasterRecipeHC',
+    masterRecipeVersion: '',
+    masterRecipeVersionDate: '',
+    masterRecipeDescription: '',
+    productId: '',
+    productName: '',
+    version: '',
+    description: '',
+    formulaParameters: [],
+    equipmentRequirements: []
+  };
+}
+
+function normalizeImportedMasterRecipeConfig(config) {
+  const baseConfig = createDefaultMasterRecipeConfig();
+  const importedConfig = config || {};
+
+  return {
+    ...baseConfig,
+    ...importedConfig,
+    version:
+      typeof importedConfig.version === 'string'
+        ? importedConfig.version
+        : (typeof importedConfig.masterRecipeVersion === 'string'
+          ? importedConfig.masterRecipeVersion
+          : baseConfig.version),
+    description:
+      typeof importedConfig.description === 'string'
+        ? importedConfig.description
+        : (typeof importedConfig.masterRecipeDescription === 'string'
+          ? importedConfig.masterRecipeDescription
+          : (typeof importedConfig.batchInfoDescription === 'string'
+            ? importedConfig.batchInfoDescription
+            : baseConfig.description)),
+    formulaParameters: Array.isArray(importedConfig.formulaParameters)
+      ? importedConfig.formulaParameters
+      : baseConfig.formulaParameters,
+    equipmentRequirements: Array.isArray(importedConfig.equipmentRequirements)
+      ? importedConfig.equipmentRequirements
+      : baseConfig.equipmentRequirements,
+  };
+}
+
+const masterRecipeConfig = ref(createDefaultMasterRecipeConfig());
 
 // Load saved configuration with robust fallback
 const savedConfig = localStorage.getItem('masterRecipeConfig');
 if (savedConfig) {
   try {
     const parsed = JSON.parse(savedConfig);
-    masterRecipeConfig.value = {
-      productId: typeof parsed.productId === 'string' ? parsed.productId : '',
-      productName: typeof parsed.productName === 'string' ? parsed.productName : '',
-      version: typeof parsed.version === 'string' ? parsed.version : '',
-      description: typeof parsed.description === 'string' ? parsed.description : '',
-      formulaParameters: Array.isArray(parsed.formulaParameters) ? parsed.formulaParameters : [],
-      equipmentRequirements: Array.isArray(parsed.equipmentRequirements) ? parsed.equipmentRequirements : []
-    };
+    masterRecipeConfig.value = normalizeImportedMasterRecipeConfig(parsed);
   } catch (e) {
-    masterRecipeConfig.value = {
-      productId: '',
-      productName: '',
-      version: '',
-      description: '',
-      formulaParameters: [],
-      equipmentRequirements: []
-    };
+    masterRecipeConfig.value = createDefaultMasterRecipeConfig();
     console.warn('Failed to load saved master recipe config:', e);
   }
 }
@@ -93,6 +120,12 @@ function openMasterRecipeConfig() {
 
 function closeMasterRecipeConfig() {
   showConfigPanel.value = false;
+}
+
+function onMasterConfigImported(payload) {
+  const importedConfig = normalizeImportedMasterRecipeConfig(payload?.config);
+  masterRecipeConfig.value = importedConfig;
+  localStorage.setItem('masterRecipeConfig', JSON.stringify(importedConfig));
 }
 
 </script>

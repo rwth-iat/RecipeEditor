@@ -54,4 +54,86 @@ describe("MasterPropertyWindow", () => {
       "xs:integer"
     );
   });
+
+  test("uses completed step conditions and defaults imported procedures to recipe procedure", async () => {
+    const procedureElement = {
+      id: "Proc001",
+      name: "Mixing Step",
+      description: ["001:Mixing Step"],
+      type: "procedure",
+      processElementType: "MTP Operation",
+      equipmentInfo: {
+        source_type: "BatchML",
+        equipment_data: {
+          recipe_parameters: [],
+        },
+      },
+    };
+    const conditionElement = {
+      id: "Condition001",
+      name: "Condition001",
+      description: ["Condition after mixing"],
+      type: "recipe_element",
+      recipeElementType: "Condition",
+      conditionGroup: {
+        type: "group",
+        operator: "AND",
+        children: [
+          {
+            type: "condition",
+            keyword: "Step",
+            instance: "Proc001",
+            operator: "is",
+            value: "Completed",
+          },
+        ],
+      },
+    };
+
+    const wrapper = mount(MasterPropertyWindow, {
+      props: {
+        selectedElement: conditionElement,
+        mode: "master",
+        workspaceItems: [procedureElement, conditionElement],
+        connections: [],
+      },
+    });
+
+    expect(wrapper.text()).toContain('Step "001:Mixing Step" is Completed');
+    expect(wrapper.text()).not.toContain("Step == 0");
+
+    await wrapper.find(".open-condition-modal-btn").trigger("click");
+
+    const stepSelect = wrapper
+      .findAll("select")
+      .find((select) =>
+        select
+          .findAll("option")
+          .some((option) => option.element.value === procedureElement.id)
+      );
+
+    expect(stepSelect).toBeTruthy();
+    expect(
+      stepSelect.findAll("option").map((option) => option.element.value)
+    ).toContain(procedureElement.id);
+    expect(
+      stepSelect.findAll("option").map((option) => option.element.value)
+    ).not.toContain(conditionElement.id);
+
+    const procedureWrapper = mount(MasterPropertyWindow, {
+      props: {
+        selectedElement: procedureElement,
+        mode: "master",
+        workspaceItems: [procedureElement, conditionElement],
+        connections: [],
+      },
+    });
+
+    expect(procedureElement.processElementType).toBe(
+      "Recipe Procedure Containing Lower Level PFC"
+    );
+    expect(
+      procedureWrapper.find("#processElementType").element.value
+    ).toBe("Recipe Procedure Containing Lower Level PFC");
+  });
 });

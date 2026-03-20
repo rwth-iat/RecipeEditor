@@ -44,12 +44,19 @@ import {
     exportWorkspaceJson,
     importWorkspaceFile,
 } from "@/services/workspace";
+import { stringifyConditionGroup } from "@/services/recipe/master-recipe/conditions/conditionGroupUtils";
 const props = defineProps({
     main_workspace_items: Array,
     workspace_items: Array,
 });
 
-const emit = defineEmits(['changeSelectedElement', 'openPropertyWindow', 'update:workspace_items', 'saveWorkspace']);
+const emit = defineEmits([
+    'changeSelectedElement',
+    'openPropertyWindow',
+    'update:workspace_items',
+    'saveWorkspace',
+    'workspaceImported'
+]);
 const workspaceContentRef = ref(null)
 const jsplumbInstance = ref(null) //the jsplumb instance, this is a library which handles the drag and drop as well as the connections
 const jsplumbElements = ref([])
@@ -814,6 +821,11 @@ async function importWorkspace(event) {
     await addElements(importResult.items);
     await nextTick();
     addConnections(importResult.connections);
+    emit('workspaceImported', {
+        config: importResult.config || null,
+        sourceType: importResult.sourceType,
+        warnings: importResult.warnings || [],
+    });
 }
 
 
@@ -884,53 +896,24 @@ function getProcedureClass(item) {
     return map[item.processElementType] || map[item.processElementType?.replace(/\s+/g, ' ')] || 'RecipeProcedureContainingALowerLevelPFC';
 }
 
-function stringifyConditionGroup(group) {
-  if (!group) return '';
-  if (group.type === 'condition') {
-    if (!group.keyword || !group.operator || group.value === undefined || group.value === '') {
-      return '';
-    }
-    if (group.keyword === 'Step') {
-      return `Step "${group.instance || ''}" is Completed`;
-    } else {
-      const instancePart = group.instance ? `${group.instance} ` : '';
-      return `${group.keyword} ${instancePart}${group.operator} ${group.value}`;
-    }
-  }
-  if (!group.children || !group.children.length) return 'True';
-  if (group.operator === 'NOT') {
-    return `NOT (${stringifyConditionGroup(group.children[0])})`;
-  }
-  return group.children.map(child => stringifyConditionGroup(child)).filter(Boolean).join(` ${group.operator} `);
-}
-
 function generateConditionText(item) {
   if (item.recipeElementType !== 'Condition') {
     return item.condition || 'Condition';
   }
-  // Prefer new group structure if present
-  if (item.conditionGroup && item.conditionGroup.children && item.conditionGroup.children.length > 0) {
-    return stringifyConditionGroup(item.conditionGroup);
-  }
-  // Fallback to old logic
-  if (item.isAlwaysTrue) {
-    return 'True';
-  }
-  if (!item.conditionList || item.conditionList.length === 0) {
-    return 'True';
-  }
-  const conditionTexts = item.conditionList.map((condition, index) => {
-    if (!condition.keyword) return '';
-    let text = condition.keyword;
-    if (condition.instance) text += ' ' + condition.instance;
-    if (condition.operator) text += ' ' + condition.operator;
-    if (condition.value) text += ' ' + condition.value;
-    if (index < item.conditionList.length - 1 && condition.binaryOperator) {
-      text += ` ${condition.binaryOperator}`;
-    }
-    return text.trim();
-  }).filter(text => text.length > 0);
-  return conditionTexts.length > 0 ? conditionTexts.join(' ') : 'True';
+  const conditionText = stringifyConditionGroup(item.conditionGroup, {
+    quoteStepInstance: true,
+    resolveStepLabel: (stepId) => {
+      const targetItem = computedWorkspaceItems.value.find((candidate) => candidate.id === stepId);
+      if (!targetItem) {
+        return stepId;
+      }
+      if (Array.isArray(targetItem.description) && targetItem.description.length > 0) {
+        return targetItem.description[0] || targetItem.name || targetItem.id;
+      }
+      return targetItem.name || targetItem.id;
+    },
+  });
+  return conditionText || 'True';
 }
 </script>
 

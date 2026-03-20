@@ -142,21 +142,58 @@ watch(() => props.group, (val) => {
 // Watch local changes and emit updates to parent, with debug logging
 watch(groupRef, (val) => {
   emit('update:group', val);
-  console.log('ConditionGroupEditor groupRef update:', JSON.stringify(val, null, 2));
 }, { deep: true });
+
+watch(
+  () => groupRef.value?.operator,
+  (operator) => {
+    if (operator !== 'NOT') {
+      return;
+    }
+    if (!Array.isArray(groupRef.value.children)) {
+      groupRef.value.children = [];
+      return;
+    }
+    if (groupRef.value.children.length > 1) {
+      groupRef.value.children = groupRef.value.children.slice(0, 1);
+    }
+  },
+  { immediate: true }
+);
+
+watch(
+  () => groupRef.value?.children,
+  (children) => {
+    if (!Array.isArray(children)) {
+      return;
+    }
+
+    children.forEach((child) => {
+      if (child?.type === 'condition' && child.keyword === 'Step') {
+        child.operator = 'is';
+        child.value = 'Completed';
+      }
+    });
+  },
+  { deep: true, immediate: true }
+);
+
+function createDefaultCondition() {
+  return {
+    type: 'condition',
+    keyword: 'Step',
+    instance: '',
+    operator: 'is',
+    value: 'Completed'
+  };
+}
 
 /**
  * Adds a new condition to the current group
  * Creates a default condition with Level keyword and == operator
  */
 function addCondition() {
-  groupRef.value.children.push({
-    type: 'condition',
-    keyword: 'Step',        // Default keyword
-    instance: '',            // Instance name (e.g., "500")
-    operator: '==',          // Default comparison operator
-    value: '0'                // Condition value
-  });
+  groupRef.value.children.push(createDefaultCondition());
 }
 
 /**

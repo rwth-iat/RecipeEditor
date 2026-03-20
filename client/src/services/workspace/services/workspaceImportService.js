@@ -36,6 +36,7 @@ export function importWorkspaceFile({ filename, content, mode }) {
     return {
       items,
       connections: mapped.connections,
+      config: mapped.config || null,
       sourceType: WorkspaceSourceType.XML,
       warnings,
     };
@@ -50,6 +51,7 @@ export function importWorkspaceFile({ filename, content, mode }) {
             ? normalizeGeneralImportItems(parsedWorkspaceState.items)
             : parsedWorkspaceState.items,
         connections: parsedWorkspaceState.connections,
+        config: parsedWorkspaceState.config || null,
         sourceType: WorkspaceSourceType.WORKSPACE_JSON,
         warnings,
       };
@@ -65,6 +67,7 @@ export function importWorkspaceFile({ filename, content, mode }) {
       return {
         items,
         connections: mapped.connections,
+        config: mapped.config || null,
         sourceType: WorkspaceSourceType.RECIPE_JSON,
         warnings,
       };
@@ -74,6 +77,7 @@ export function importWorkspaceFile({ filename, content, mode }) {
     return {
       items: [],
       connections: [],
+      config: null,
       sourceType: WorkspaceSourceType.WORKSPACE_JSON,
       warnings,
     };
@@ -83,6 +87,7 @@ export function importWorkspaceFile({ filename, content, mode }) {
   return {
     items: [],
     connections: [],
+    config: null,
     sourceType: null,
     warnings,
   };

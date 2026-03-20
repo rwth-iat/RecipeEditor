@@ -242,7 +242,7 @@ async function addElementsFromFile(fileType, fileName) {
       const mtpProcesses = results.map(({ proc, equipmentData }) => ({
           name: proc.name,
           type: 'procedure',
-          processElementType: 'MTP Operation',
+          processElementType: 'Recipe Procedure Containing Lower Level PFC',
           procId: proc.procId,
           serviceId: proc.serviceId,
           selfCompleting: proc.selfCompleting,
@@ -288,7 +288,7 @@ async function addElementsFromFile(fileType, fileName) {
         return {
           name: item.capability[0].capability_name,
           type: 'procedure',
-          processElementType: 'AAS Capability',
+          processElementType: 'Recipe Procedure Containing Lower Level PFC',
           equipmentInfo: equipmentResponse.data
         };
       });
