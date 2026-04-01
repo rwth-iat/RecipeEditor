@@ -1,42 +1,40 @@
+from pathlib import Path
+
+from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
-from flask import flash, make_response
-import os
-import owlready2
 
-UPLOAD_FOLDER = './upload/'
 
-ALLOWED_EXTENSIONS = {'owl', 'aasx', 'xml', 'mtp', 'aml'}
+ALLOWED_EXTENSIONS = {"owl", "aasx", "xml", "mtp", "aml"}
 
-def upload_file(request, subfolder):
-  print("upload startet")
-  # check if the post request has the file part
-  if 'file' not in request.files:
-      print("no file given")
-      flash('No file part')
-      # return redirect(request.url)
-      return make_response(request.url, 400)
-  file = request.files['file']
-  # If the user does not select a file, the browser submits an
-  # empty file without a filename.
-  if file.filename == '':
-      print("filename is empty string")
-      flash('No selected file')
-      # return redirect(request.url)
-      return make_response(request.url, 400)
-  if file and allowed_file(file.filename):
-      print("file allowed")
-      filename = secure_filename(file.filename)
-      filepath = os.path.join(UPLOAD_FOLDER, subfolder, filename)
-      file.save(filepath)
 
-      # add to ontologies dict
-      onto = owlready2.get_ontology(filepath).load()
-      # return redirect(url_for('download_file', name=filename))
-      return make_response(request.url, 200)
-  print("file not allowed")
-  make_response("file not allowed or no post request")
-  return make_response(request.url, 400)
+def allowed_file(filename, allowed_extensions=None):
+    extensions = allowed_extensions or ALLOWED_EXTENSIONS
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in extensions
 
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def save_uploaded_file(file_storage: FileStorage, target_directory, filename: str | None = None) -> Path:
+    target_dir = Path(target_directory)
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    final_name = filename or secure_filename(file_storage.filename)
+    final_path = target_dir / final_name
+    file_storage.save(final_path)
+    return final_path
+
+
+def resolve_safe_file_path(target_directory, filename: str) -> Path:
+    target_dir = Path(target_directory).resolve()
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    candidate = (target_dir / Path(filename).name).resolve()
+    if candidate.parent != target_dir:
+        raise FileNotFoundError(filename)
+    return candidate
+
+
+def delete_uploaded_file(target_directory, filename: str) -> Path:
+    file_path = resolve_safe_file_path(target_directory, filename)
+    if not file_path.exists():
+        raise FileNotFoundError(filename)
+    file_path.unlink()
+    return file_path

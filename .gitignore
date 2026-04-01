@@ -12,3 +12,7 @@ server/__pycache__
 
 server/.pytest_cache/*
 server/.pytest_cache
+
+server/tools/robot/
+server/tools/jre/
+server/tools/*.zip

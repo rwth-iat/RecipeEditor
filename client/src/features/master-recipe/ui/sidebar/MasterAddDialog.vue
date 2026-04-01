@@ -1,22 +1,47 @@
 <template>
   <AddDialogContainer :elementType="element_type" @close="$emit('close')">
+    <template #header-actions>
+      <button
+        type="button"
+        class="dialog-header-icon-btn"
+        @click="readServerFiles(current_file_type)"
+        title="Reload files"
+        :disabled="isProcessingFile || isLoadingFiles || isDeletingFile"
+      >
+        <span class="reload">&#x21bb;</span>
+      </button>
+    </template>
+
     <form class="dialog-form">
       <span>Select MTP/AAS:</span>
       <div class="row-flex">
         <select v-model="current_file_type" name="FileType" id="fileTypeSelect"
-          :disabled="isProcessingFile" @change="readServerFiles(current_file_type)">
+          :disabled="isProcessingFile || isDeletingFile" @change="readServerFiles(current_file_type)">
           <!--<option value="">Select file type</option>-->
           <option value="mtp">MTP Files</option>
           <option value="aas">AAS Files</option>
         </select>
-        <button type="button" class="icon-btn" @click="readServerFiles(current_file_type)" title="Reload files"
-          :disabled="isProcessingFile || isLoadingFiles">
-          <span class="reload">&#x21bb;</span>
+        <button
+          type="button"
+          class="button-with-border--red dialog-delete-btn"
+          @click="deleteSelectedFile"
+          title="Delete selected file from server"
+          :disabled="!canDeleteSelectedFile"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+            <path
+              fill="currentColor"
+              d="M7 21q-.825 0-1.413-.588T5 19V6H4V4h5V3h6v1h5v2h-1v13q0 .825-.588 1.413T17 21H7ZM17 6H7v13h10V6ZM9 17h2V8H9v9Zm4 0h2V8h-2v9Z"
+            />
+          </svg>
         </button>
+      </div>
+      <div v-if="dialogMessage" class="dialog-status" :class="dialogStatusClass">
+        {{ dialogMessage }}
       </div>
       <div v-if="current_file_type && serverFiles.length > 0">
         <label for="file_select">Select File: </label>
-        <select id="file_select" v-model="current_file_name" name="file" :disabled="isProcessingFile">
+        <select id="file_select" v-model="current_file_name" name="file" :disabled="isProcessingFile || isDeletingFile">
           <option v-for="item in serverFiles" :value="item" :key="item">{{ item }}</option>
         </select>
         <div class="row-flex">
@@ -76,10 +101,13 @@ const fileInput = ref(null);
 
 const isLoadingFiles = ref(false);
 const isProcessingFile = ref(false);
+const isDeletingFile = ref(false);
 const processingProgress = ref('');
 const progressTotalProcedures = ref(0);
 const progressLoadedProcedures = ref(0);
 const progressParseDone = ref(false);
+const dialogMessage = ref('');
+const dialogStatus = ref('info');
 
 const client = axios.create({
   baseURL: ''
@@ -97,6 +125,15 @@ const progressCounterText = computed(
   () => `${progressLoadedProcedures.value}/${progressTotalProcedures.value}`
 );
 
+const dialogStatusClass = computed(() => `dialog-status--${dialogStatus.value}`);
+const canDeleteSelectedFile = computed(() => (
+  Boolean(current_file_type.value) &&
+  Boolean(current_file_name.value) &&
+  !isProcessingFile.value &&
+  !isLoadingFiles.value &&
+  !isDeletingFile.value
+));
+
 onMounted(() => {
   readServerFiles(current_file_type.value);
 });
@@ -105,6 +142,27 @@ function getFileNameWithoutExtension(name) {
   if (!name || typeof name !== 'string') return 'Imported Elements';
   const normalized = name.replace(/\\/g, '/').split('/').pop() || '';
   return normalized.replace(/\.[^/.]+$/, '') || normalized || 'Imported Elements';
+}
+
+function resetMessages() {
+  dialogMessage.value = '';
+  dialogStatus.value = 'info';
+}
+
+function setDialogMessage(message, status = 'info') {
+  dialogMessage.value = message || '';
+  dialogStatus.value = status;
+}
+
+function extractErrorMessage(error, fallbackMessage) {
+  const payload = error?.response?.data;
+  if (payload?.error) {
+    return payload.error;
+  }
+  if (typeof payload === 'string' && payload.trim()) {
+    return payload;
+  }
+  return fallbackMessage;
 }
 
 function resetProgressState() {
@@ -137,18 +195,28 @@ function setProgressMessage(message) {
 async function readServerFiles(fileType) {
   if (!fileType) {
     serverFiles.value = [];
+    current_file_name.value = '';
     return;
   }
 
   isLoadingFiles.value = true;
+  resetMessages();
+  const previousFiles = [...serverFiles.value];
+  const previousFileName = current_file_name.value;
   try {
     const response = await client.get(`/${fileType}`);
-    console.log(`read server ${fileType} files successful`);
-    serverFiles.value = response.data;
+    const normalizedFiles = Array.isArray(response.data) ? response.data : [];
+    serverFiles.value = normalizedFiles;
+    current_file_name.value = normalizedFiles.includes(previousFileName)
+      ? previousFileName
+      : (normalizedFiles[0] || '');
   } catch (error) {
-    console.log(`error trying to read server ${fileType} files`);
-    console.log(error);
-    serverFiles.value = [];
+    serverFiles.value = previousFiles;
+    current_file_name.value = previousFileName;
+    setDialogMessage(
+      extractErrorMessage(error, `Failed to load ${fileType.toUpperCase()} files from the server.`),
+      'error'
+    );
   } finally {
     isLoadingFiles.value = false;
   }
@@ -165,11 +233,12 @@ function getFileAcceptTypes(fileType) {
 
 async function uploadFileToServer(fileType) {
   if (!current_file.value || !current_file.value.name) {
-    console.error('No file selected');
+    setDialogMessage('No file selected.', 'error');
     return;
   }
 
   isLoadingFiles.value = true;
+  resetMessages();
   const formData = new FormData();
   formData.append('file', current_file.value);
 
@@ -177,16 +246,19 @@ async function uploadFileToServer(fileType) {
     await client.post(`/${fileType}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
-    console.log(`${fileType} file uploaded successfully`);
 
     await readServerFiles(fileType);
+    setDialogMessage(`${fileType.toUpperCase()} file uploaded successfully.`, 'success');
 
     current_file.value = {};
     if (fileInput.value) {
       fileInput.value.value = '';
     }
   } catch (error) {
-    console.error(`Error uploading ${fileType} file:`, error);
+    setDialogMessage(
+      extractErrorMessage(error, `Error uploading ${fileType.toUpperCase()} file.`),
+      'error'
+    );
   } finally {
     isLoadingFiles.value = false;
   }
@@ -194,11 +266,12 @@ async function uploadFileToServer(fileType) {
 
 async function addElementsFromFile(fileType, fileName) {
   if (!fileType || !fileName) {
-    console.error('No file type or file name selected');
+    setDialogMessage('No file type or file name selected.', 'error');
     return;
   }
 
   isProcessingFile.value = true;
+  resetMessages();
   initializeProgress(0);
   setProgressMessage('Parsing file...');
 
@@ -304,9 +377,37 @@ async function addElementsFromFile(fileType, fileName) {
   } catch (error) {
     console.error(`Error parsing ${fileType} file:`, error);
     setProgressMessage(`Error: ${error.response?.data?.message || error.message || 'Unknown error occurred'}`);
+    setDialogMessage(
+      extractErrorMessage(error, `Error parsing ${fileType.toUpperCase()} file.`),
+      'error'
+    );
   } finally {
     isProcessingFile.value = false;
     resetProgressState();
+  }
+}
+
+async function deleteSelectedFile() {
+  if (!canDeleteSelectedFile.value) {
+    return;
+  }
+
+  isDeletingFile.value = true;
+  resetMessages();
+  try {
+    const response = await client.delete(`/${current_file_type.value}/${encodeURIComponent(current_file_name.value)}`);
+    await readServerFiles(current_file_type.value);
+    setDialogMessage(
+      response.data?.message || `${current_file_name.value} deleted successfully.`,
+      'success'
+    );
+  } catch (error) {
+    setDialogMessage(
+      extractErrorMessage(error, `Failed to delete ${current_file_name.value}.`),
+      'error'
+    );
+  } finally {
+    isDeletingFile.value = false;
   }
 }
 

@@ -15,7 +15,8 @@ from OntologyAPI import ontology_api
 from AasAPI import aas_api, get_all_aasx_capabilities, get_all_aas_capabilities, get_aasx_id, parse_aas_equipment_info
 from MtpApi import parse_mtp_aml, pea_to_dict, get_filtered_equipment_info, get_master_recipe_equipment_info
 from AASxmlCapabilityParser import parse_capabilities_robust_from_bytes
-from Functions import upload_file, allowed_file
+from Functions import allowed_file, delete_uploaded_file, save_uploaded_file
+from manchesterConverter import get_default_robot_converter_command
 from werkzeug.utils import secure_filename
 
 ontologies = {}
@@ -27,6 +28,8 @@ ONTO_FOLDER = "ontologies/"
 AAS_FOLDER = "aasx/"
 MTP_FOLDER = "mtp/"
 RECIPE_FOLDER = "recipes/"
+MTP_ALLOWED_EXTENSIONS = {"mtp", "aml"}
+AAS_ALLOWED_EXTENSIONS = {"aasx", "xml"}
 
 def extract_zip(input_zip):
     input_zip=ZipFile(input_zip)
@@ -35,6 +38,18 @@ def extract_zip(input_zip):
 def create_app():
     app = Flask(__name__)
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+    ontology_upload_root = os.path.join(app.root_path, "upload", "ontologies")
+    app.config.setdefault("ONTOLOGY_UPLOAD_ROOT", ontology_upload_root)
+    app.config.setdefault("ONTOLOGY_STAGING_ROOT", os.path.join(ontology_upload_root, "staging"))
+    app.config.setdefault("MANCHESTER_CONVERTER_BASE_DIR", app.root_path)
+    app.config.setdefault("MANCHESTER_CONVERTER_AUTO_DISCOVERY", True)
+    app.config.setdefault(
+        "MANCHESTER_CONVERTER_CMD",
+        get_default_robot_converter_command(app.root_path),
+    )
+    app.config.setdefault("ONTOLOGY_CONVERTER_TIMEOUT_SECONDS", 60)
+    app.config.setdefault("MTP_UPLOAD_ROOT", os.path.join(app.root_path, "upload", "mtp"))
+    app.config.setdefault("AAS_UPLOAD_ROOT", os.path.join(app.root_path, "upload", "aasx"))
     app.secret_key = 'super secret key'
     app.config['SESSION_TYPE'] = 'filesystem'
     app.config['SWAGGER'] = {
@@ -139,7 +154,7 @@ def create_app():
             description: List of MTP files
         """
         try:
-            mtp_path = os.path.join(UPLOAD_FOLDER, MTP_FOLDER)
+            mtp_path = app.config["MTP_UPLOAD_ROOT"]
             if not os.path.exists(mtp_path):
                 os.makedirs(mtp_path)
             
@@ -170,14 +185,10 @@ def create_app():
         if file.filename == '':
             return jsonify({"error": "Empty filename"}), 400
         
-        if file and allowed_file(file.filename):
+        if file and allowed_file(file.filename, MTP_ALLOWED_EXTENSIONS):
             filename = secure_filename(file.filename)
-            mtp_path = os.path.join(UPLOAD_FOLDER, MTP_FOLDER)
-            if not os.path.exists(mtp_path):
-                os.makedirs(mtp_path)
-            
-            filepath = os.path.join(mtp_path, filename)
-            file.save(filepath)
+            mtp_path = app.config["MTP_UPLOAD_ROOT"]
+            save_uploaded_file(file, mtp_path, filename)
             return jsonify({"message": "MTP file uploaded successfully"}), 200
         
         return jsonify({"error": "File type not allowed"}), 400
@@ -198,10 +209,24 @@ def create_app():
             description: MTP file content
         """
         try:
-            mtp_path = os.path.join(UPLOAD_FOLDER, MTP_FOLDER)
+            mtp_path = app.config["MTP_UPLOAD_ROOT"]
             return send_from_directory(mtp_path, filename)
         except Exception as e:
             return jsonify({"error": str(e)}), 404
+
+    @app.route('/mtp/<filename>', methods=['DELETE'])
+    def delete_mtp_file(filename):
+        try:
+            deleted_path = delete_uploaded_file(app.config["MTP_UPLOAD_ROOT"], filename)
+            return jsonify({
+                "message": "MTP file deleted successfully.",
+                "filename": deleted_path.name,
+                "fileType": "mtp",
+            })
+        except FileNotFoundError:
+            return jsonify({"error": "File not found"}), 404
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
     @app.route('/mtp/<filename>/parse', methods=['GET'])
     def parse_stored_mtp(filename):
@@ -219,7 +244,7 @@ def create_app():
             description: Parsed MTP data
         """
         try:
-            mtp_path = os.path.join(UPLOAD_FOLDER, MTP_FOLDER, filename)
+            mtp_path = os.path.join(app.config["MTP_UPLOAD_ROOT"], filename)
             if not os.path.exists(mtp_path):
                 return jsonify({"error": "File not found"}), 404
             
@@ -248,7 +273,7 @@ def create_app():
             description: Equipment information from MTP file
         """
         try:
-            mtp_path = os.path.join(UPLOAD_FOLDER, MTP_FOLDER, filename)
+            mtp_path = os.path.join(app.config["MTP_UPLOAD_ROOT"], filename)
             if not os.path.exists(mtp_path):
                 return jsonify({"error": "File not found"}), 404
             
@@ -289,7 +314,7 @@ def create_app():
             description: Filtered equipment information for specific process
         """
         try:
-            mtp_path = os.path.join(UPLOAD_FOLDER, MTP_FOLDER, filename)
+            mtp_path = os.path.join(app.config["MTP_UPLOAD_ROOT"], filename)
             if not os.path.exists(mtp_path):
                 return jsonify({"error": "File not found"}), 404
             
@@ -331,7 +356,7 @@ def create_app():
             description: Master recipe specific equipment information
         """
         try:
-            mtp_path = os.path.join(UPLOAD_FOLDER, MTP_FOLDER, filename)
+            mtp_path = os.path.join(app.config["MTP_UPLOAD_ROOT"], filename)
             if not os.path.exists(mtp_path):
                 return jsonify({"error": "File not found"}), 404
             
@@ -365,7 +390,7 @@ def create_app():
             description: List of AAS files
         """
         try:
-            aas_path = os.path.join(UPLOAD_FOLDER, AAS_FOLDER)
+            aas_path = app.config["AAS_UPLOAD_ROOT"]
             if not os.path.exists(aas_path):
                 os.makedirs(aas_path)
             
@@ -396,14 +421,10 @@ def create_app():
         if file.filename == '':
             return jsonify({"error": "Empty filename"}), 400
         
-        if file and allowed_file(file.filename):
+        if file and allowed_file(file.filename, AAS_ALLOWED_EXTENSIONS):
             filename = secure_filename(file.filename)
-            aas_path = os.path.join(UPLOAD_FOLDER, AAS_FOLDER)
-            if not os.path.exists(aas_path):
-                os.makedirs(aas_path)
-            
-            filepath = os.path.join(aas_path, filename)
-            file.save(filepath)
+            aas_path = app.config["AAS_UPLOAD_ROOT"]
+            save_uploaded_file(file, aas_path, filename)
             return jsonify({"message": "AAS file uploaded successfully"}), 200
         
         return jsonify({"error": "File type not allowed"}), 400
@@ -424,10 +445,24 @@ def create_app():
             description: AAS file content
         """
         try:
-            aas_path = os.path.join(UPLOAD_FOLDER, AAS_FOLDER)
+            aas_path = app.config["AAS_UPLOAD_ROOT"]
             return send_from_directory(aas_path, filename)
         except Exception as e:
             return jsonify({"error": str(e)}), 404
+
+    @app.route('/aas/<filename>', methods=['DELETE'])
+    def delete_aas_file(filename):
+        try:
+            deleted_path = delete_uploaded_file(app.config["AAS_UPLOAD_ROOT"], filename)
+            return jsonify({
+                "message": "AAS file deleted successfully.",
+                "filename": deleted_path.name,
+                "fileType": "aas",
+            })
+        except FileNotFoundError:
+            return jsonify({"error": "File not found"}), 404
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
     @app.route('/aas/<filename>/parse', methods=['GET'])
     def parse_stored_aas(filename):
@@ -445,7 +480,7 @@ def create_app():
             description: Parsed AAS data
         """
         try:
-            aas_path = os.path.join(UPLOAD_FOLDER, AAS_FOLDER, filename)
+            aas_path = os.path.join(app.config["AAS_UPLOAD_ROOT"], filename)
             if not os.path.exists(aas_path):
                 return jsonify({"error": "File not found"}), 404
             
@@ -473,7 +508,7 @@ def create_app():
             description: Equipment information from AAS file
         """
         try:
-            aas_path = os.path.join(UPLOAD_FOLDER, AAS_FOLDER, filename)
+            aas_path = os.path.join(app.config["AAS_UPLOAD_ROOT"], filename)
             if not os.path.exists(aas_path):
                 return jsonify({"error": "File not found"}), 404
             

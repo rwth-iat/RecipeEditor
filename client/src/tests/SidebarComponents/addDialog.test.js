@@ -1,181 +1,340 @@
 import { mount } from "@vue/test-utils";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import flushPromises from "flush-promises";
+import { MATERIAL_CONTAINER_TYPE } from "@/services/recipe/general-recipe/materials/materialContainerUtils";
+
+const mockClient = vi.hoisted(() => ({
+  get: vi.fn(),
+  post: vi.fn(),
+  delete: vi.fn(),
+}));
+
+vi.mock("axios", () => ({
+  default: {
+    create: vi.fn(() => mockClient),
+  },
+}));
+
 import GeneralAddDialog from "@/features/general-recipe/ui/sidebar/GeneralAddDialog.vue";
-import { expect, test, afterAll } from "vitest";
-import axios from 'axios';
-import MockAdapter from 'axios-mock-adapter';
-import flushPromises from 'flush-promises';
 
-// Create an instance of the mock adapter
-const mock = new MockAdapter(axios);
+function mountDialog(elementType) {
+  return mount(GeneralAddDialog, {
+    props: {
+      element_type: elementType,
+    },
+  });
+}
 
-// Mock the GET requests
-mock
-  .onGet('/onto')
-  .reply(200, [
-    "Onto 1",
-    "Onto 2"
-  ]);
+function createOntologyFile(contents, filename, type = "application/octet-stream") {
+  return new File([contents], filename, { type });
+}
 
-mock
-  .onGet('/onto/test_ontology.owl/classes')
-  .reply(200, [
-    "Class A",
-    "Class B",
-    "Class C"
-  ]);
+describe("GeneralAddDialog", () => {
+  beforeEach(() => {
+    mockClient.get.mockReset();
+    mockClient.post.mockReset();
+    mockClient.delete.mockReset();
+  });
 
-const test_subclasses_payload = [
-   {"name":"Combining","children":[
-      {"name":"Absorbing","children":[
-         {"name":"Absorbing_child1","children":[]},
-         {"name":"Absorbing_child2","children":[]}]
+  it("loads process ontologies from the categorized endpoint", async () => {
+    mockClient.get.mockResolvedValueOnce({ data: [] });
+
+    mountDialog("Processes");
+    await flushPromises();
+
+    expect(mockClient.get).toHaveBeenCalledWith("/onto/processes");
+  });
+
+  it("loads material ontologies from the categorized endpoint", async () => {
+    mockClient.get.mockResolvedValueOnce({ data: [] });
+
+    mountDialog("Materials");
+    await flushPromises();
+
+    expect(mockClient.get).toHaveBeenCalledWith("/onto/materials");
+  });
+
+  it("shows a Turtle precheck hint and enables upload", async () => {
+    mockClient.get.mockResolvedValueOnce({ data: [] });
+    const wrapper = mountDialog("Materials");
+    await flushPromises();
+
+    const file = createOntologyFile(
+      "@prefix : <http://example.com/materials#> .\n@base <http://example.com/materials/> .\n",
+      "materials.ttl",
+      "text/turtle"
+    );
+
+    await wrapper.vm.onFileChange({ target: { files: [file] } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Detected Turtle ontology");
+    expect(wrapper.find("#add_to_server_btt").attributes("disabled")).toBeUndefined();
+  });
+
+  it("shows a Manchester precheck hint and enables upload", async () => {
+    mockClient.get.mockResolvedValueOnce({ data: [] });
+    const wrapper = mountDialog("Processes");
+    await flushPromises();
+
+    const file = createOntologyFile(
+      "Prefix: : <http://example.com/process#>\nOntology: <http://example.com/process>\n\nClass: :Capability\n",
+      "process.owl",
+      "text/plain"
+    );
+
+    await wrapper.vm.onFileChange({ target: { files: [file] } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Detected Manchester ontology");
+    expect(wrapper.find("#add_to_server_btt").attributes("disabled")).toBeUndefined();
+  });
+
+  it("shows an inline error for unsupported ontology content", async () => {
+    mockClient.get.mockResolvedValueOnce({ data: [] });
+    const wrapper = mountDialog("Processes");
+    await flushPromises();
+
+    const file = createOntologyFile("not an ontology file", "invalid.owl", "text/plain");
+
+    await wrapper.vm.onFileChange({ target: { files: [file] } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("could not be recognized");
+    expect(wrapper.find("#add_to_server_btt").attributes("disabled")).toBeDefined();
+  });
+
+  it("uploads an ontology, refreshes the list, and loads classes", async () => {
+    mockClient.get.mockImplementation((url) => {
+      if (url === "/onto/processes") {
+        if (mockClient.get.mock.calls.filter(([path]) => path === "/onto/processes").length === 1) {
+          return Promise.resolve({ data: [] });
+        }
+        return Promise.resolve({ data: ["uploaded.owl"] });
+      }
+      if (url === "/onto/processes/uploaded.owl/class-tree") {
+        return Promise.resolve({
+          data: [{ name: "ProcessRoot", children: [] }],
+        });
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+    mockClient.post.mockResolvedValueOnce({
+      data: {
+        message: "Ontology uploaded successfully.",
+        filename: "uploaded.owl",
+        category: "processes",
+        detectedFormat: "rdfxml",
+        canonicalFormat: "rdfxml",
       },
-      {"name":"Adsorbing","children":[]},
-      {"name":"Atomizing","children":[]},
-      {"name":"Dissolving","children":[]},
-      {"name":"Emulsifying","children":[]}]
-   }
-] 
-mock
-  .onGet('/onto/test_ontology.owl/Combining/subclasses')
-  .reply(200, test_subclasses_payload);
+    });
 
-// Rest of your test setup, for example:
-// import your Vue component, mount it, and write your test cases
+    const wrapper = mountDialog("Processes");
+    await flushPromises();
 
-// After all tests, reset the mock adapter
-afterAll(() => mock.reset());
+    const file = createOntologyFile(
+      '<?xml version="1.0"?><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:owl="http://www.w3.org/2002/07/owl#"></rdf:RDF>',
+      "uploaded.rdf",
+      "application/rdf+xml"
+    );
 
+    await wrapper.vm.onFileChange({ target: { files: [file] } });
+    await flushPromises();
 
-test("mount Materials component", async () => {
-   const wrapper = mount(GeneralAddDialog, {
-      propsData: {
-         element_type: 'Materials'
+    await wrapper.find("#add_to_server_btt").trigger("click");
+    await flushPromises();
+
+    expect(mockClient.post).toHaveBeenCalledWith(
+      "/onto/processes",
+      expect.any(FormData),
+      expect.objectContaining({
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+    );
+    expect(wrapper.vm.current_ontology).toBe("uploaded.owl");
+    expect(wrapper.vm.current_super_class).toBe("ProcessRoot");
+    expect(wrapper.text()).toContain("Stored as uploaded.owl");
+  });
+
+  it("emits subclasses loaded from the categorized endpoint", async () => {
+    const subclassesPayload = [
+      {
+        name: "ProcessRoot",
+        children: [{ name: "Mixing", children: [] }],
+      },
+    ];
+
+    mockClient.get.mockImplementation((url) => {
+      if (url === "/onto/processes") {
+        return Promise.resolve({ data: ["process.owl"] });
       }
-    })
-   expect(wrapper.props().element_type).toBe('Materials')
-   expect(GeneralAddDialog).toBeTruthy();
-
-});
-
-test("mount Processes component", async () => {
-   const wrapper = mount(GeneralAddDialog, {
-      propsData: {
-         element_type: 'Processes'
+      if (url === "/onto/processes/process.owl/class-tree") {
+        return Promise.resolve({
+          data: [{ name: "ProcessRoot", children: [] }],
+        });
       }
-    })
-   expect(wrapper.props().element_type).toBe('Processes')
-   expect(GeneralAddDialog).toBeTruthy();
-});
-
-// test("list available ontologies as options", async () => {
-//    const wrapper = mount(addDialog, {
-//       propsData: {
-//          element_type: 'Processes'
-//       }
-//     })
-//    expect(wrapper.props().element_type).toBe('Processes')
-//    expect(addDialog).toBeTruthy();
-//    await wrapper.vm.$nextTick();
-//    await wrapper.vm.$nextTick();
-//    // Find the options select element using wrapper.find()
-//    const ontoSelect = wrapper.find('#ontoSelect');
-//    // Access the options property and check the length
-//    const numOptions = ontoSelect.element.options.length;
-//    // should in this test always be 2 as it has the "addnew" and "capability_with_query" 
-//    expect(numOptions).toBe(3)
-//    expect(ontoSelect.element.options[0].textContent).toBe('Onto 1');
-//    expect(ontoSelect.element.options[1].textContent).toBe('Onto 2');
-//    expect(ontoSelect.element.options[2].textContent).toBe('add new to server');
-// });
-test("list available ontologies as options", async () => {
-  const wrapper = mount(GeneralAddDialog, { propsData: { element_type: 'Processes' } });
-  await flushPromises();              // wartet auf den GET /onto Mock
-  const ontoSelect = wrapper.find('#ontoSelect');
-  const numOptions = ontoSelect.element.options.length;
-  expect(numOptions).toBe(3);
-  expect(ontoSelect.element.options[0].textContent).toBe('Onto 1');
-  expect(ontoSelect.element.options[1].textContent).toBe('Onto 2');
-  expect(ontoSelect.element.options[2].textContent).toBe('add new to server');
-});
-
-// test("list classes of ontology as options", async () => {
-//    const wrapper = mount(addDialog, {
-//      propsData: {
-//        element_type: 'Processes'
-//      }
-//    });
-
-//    // Trigger the function that fetches ontology classes
-//    await wrapper.vm.readServerOntoClasses('test_ontology.owl');
-
-//    // Wait for the component to update after the API call
-//    // two ticks are needed, i dont know why
-//    await wrapper.vm.$nextTick();
-//    await wrapper.vm.$nextTick();
-
-//    // Now, find the options select element using wrapper.find()
-//    const classSelect = wrapper.find('#super_class_select');
-//    // Access the options property and check the length
-//    const numOptions = classSelect.element.options.length;
-
-//    // Assertions
-//    expect(numOptions).toBe(3); // Adjust the expected number of options based on your mock response
-//    expect(classSelect.element.options[0].textContent).toBe('Class A');
-//    expect(classSelect.element.options[1].textContent).toBe('Class B');
-//    expect(classSelect.element.options[2].textContent).toBe('Class C');
-//  });
-
-test("list classes of ontology as options", async () => {
-  const wrapper = mount(GeneralAddDialog, { propsData: { element_type: 'Processes' } });
-  await wrapper.vm.readServerOntoClasses('test_ontology.owl'); // löst den Mock aus
-  await flushPromises();              // wartet auf den GET /onto/.../classes Mock
-  const classSelect = wrapper.find('#super_class_select');
-  const numOptions = classSelect.element.options.length;
-  expect(numOptions).toBe(3);
-  expect(classSelect.element.options[0].textContent).toBe('Class A');
-  expect(classSelect.element.options[1].textContent).toBe('Class B');
-  expect(classSelect.element.options[2].textContent).toBe('Class C');
-});
-
-test("add subclasses button", async () => {
-   const wrapper = mount(GeneralAddDialog, {
-      propsData: {
-        element_type: 'Processes'
+      if (url === "/onto/processes/process.owl/ProcessRoot/subclasses") {
+        return Promise.resolve({ data: subclassesPayload });
       }
-   });
-    
-   /*
-   //set selected onto
-   let onto_select = wrapper.find("#ontoSelect")
-   await onto_select.setValue("test_ontology.owl");
-   await onto_select.trigger('change');
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
 
-   //set selected class
-   let class_select = wrapper.find("#super_class_select")
-   await class_select.setValue("Combining");
-   await class_select.trigger('change');
-   */
+    const wrapper = mountDialog("Processes");
+    await flushPromises();
 
-   // Update the value of current_ontology
-   wrapper.vm.current_ontology = 'test_ontology.owl';
-   wrapper.vm.current_super_class = 'Combining';
+    await wrapper.find("#add_elements_button").trigger("click");
+    await flushPromises();
 
-   await wrapper.vm.$nextTick();
+    expect(wrapper.emitted("add")).toBeTruthy();
+    expect(wrapper.emitted("add")[0][0]).toEqual({
+      title: "process",
+      items: subclassesPayload,
+    });
+  });
 
-   let add_elements_button = wrapper.find("#add_elements_button")
-   await add_elements_button.trigger('click');
+  it("normalizes imported material ontology items for workspace drag and drop", async () => {
+    const subclassesPayload = [
+      {
+        name: "MaterialRoot",
+        children: [{ name: "Copper", children: [] }],
+      },
+    ];
 
-   // Check if the 'myEvent' has been emitted
-   expect(wrapper.emitted('add')).toBeTruthy();
+    mockClient.get.mockImplementation((url) => {
+      if (url === "/onto/materials") {
+        return Promise.resolve({ data: ["materials.owl"] });
+      }
+      if (url === "/onto/materials/materials.owl/class-tree") {
+        return Promise.resolve({
+          data: [{ name: "MaterialRoot", children: [] }],
+        });
+      }
+      if (url === "/onto/materials/materials.owl/MaterialRoot/subclasses") {
+        return Promise.resolve({ data: subclassesPayload });
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
 
-   // Access the emitted event payload (if needed)
-   const emittedEventPayload = wrapper.emitted('add');
+    const wrapper = mountDialog("Materials");
+    await flushPromises();
 
-   // Perform assertions on the emitted payload
-   //expect(emittedEventPayload.length).toBe(1); // Event should have been emitted once
-   // TODO: not quite as expected
-   // array structure is a bit weird, need to look into it! 
-   expect(emittedEventPayload[1][0]).toEqual(test_subclasses_payload);
+    await wrapper.find("#add_elements_button").trigger("click");
+    await flushPromises();
 
+    expect(wrapper.emitted("add")).toBeTruthy();
+    expect(wrapper.emitted("add")[0][0]).toEqual({
+      title: "materials",
+      items: [
+        {
+          name: "MaterialRoot",
+          type: MATERIAL_CONTAINER_TYPE,
+          materialElementType: "Input",
+          children: [
+            {
+              name: "Copper",
+              type: MATERIAL_CONTAINER_TYPE,
+              materialElementType: "Input",
+              children: [],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("keeps the previous ontology selection when reload fails", async () => {
+    mockClient.get.mockImplementation((url) => {
+      if (url === "/onto/materials") {
+        const listCalls = mockClient.get.mock.calls.filter(([path]) => path === "/onto/materials").length;
+        if (listCalls === 1) {
+          return Promise.resolve({ data: ["materials.owl"] });
+        }
+        return Promise.reject(new Error("reload failed"));
+      }
+      if (url === "/onto/materials/materials.owl/class-tree") {
+        return Promise.resolve({
+          data: [{ name: "MaterialRoot", children: [] }],
+        });
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+
+    const wrapper = mountDialog("Materials");
+    await flushPromises();
+
+    expect(wrapper.vm.current_ontology).toBe("materials.owl");
+    expect(wrapper.vm.current_super_class).toBe("MaterialRoot");
+
+    await wrapper.vm.readServerOntologies();
+    await flushPromises();
+
+    expect(wrapper.vm.current_ontology).toBe("materials.owl");
+    expect(wrapper.vm.current_super_class).toBe("MaterialRoot");
+    expect(wrapper.text()).toContain("Failed to load ontologies from the server.");
+    expect(wrapper.find("#add_elements_button").attributes("disabled")).toBeUndefined();
+  });
+
+  it("renders the superclass selection as a tree and removes the relation field", async () => {
+    mockClient.get.mockImplementation((url) => {
+      if (url === "/onto/processes") {
+        return Promise.resolve({ data: ["OntoProCap.owl"] });
+      }
+      if (url === "/onto/processes/OntoProCap.owl/class-tree") {
+        return Promise.resolve({
+          data: [
+            {
+              name: "Capability",
+              children: [{ name: "Absorption", children: [] }],
+            },
+            {
+              name: "Process",
+              children: [],
+            },
+          ],
+        });
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+
+    const wrapper = mountDialog("Processes");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Capability");
+    expect(wrapper.text()).toContain("Process");
+    expect(wrapper.text()).not.toContain("Name of Relation");
+    expect(wrapper.find("#relation_input").exists()).toBe(false);
+    expect(wrapper.vm.current_super_class).toBe("Capability");
+  });
+
+  it("deletes the selected ontology via the server API", async () => {
+    mockClient.get.mockImplementation((url) => {
+      if (url === "/onto/processes") {
+        const callCount = mockClient.get.mock.calls.filter(([path]) => path === "/onto/processes").length;
+        return Promise.resolve({ data: callCount === 1 ? ["process.owl"] : [] });
+      }
+      if (url === "/onto/processes/process.owl/class-tree") {
+        return Promise.resolve({
+          data: [{ name: "ProcessRoot", children: [] }],
+        });
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+    mockClient.delete.mockResolvedValueOnce({
+      data: {
+        message: "Ontology deleted successfully.",
+        filename: "process.owl",
+        category: "processes",
+      },
+    });
+
+    const wrapper = mountDialog("Processes");
+    await flushPromises();
+
+    await wrapper.find("button.dialog-delete-btn").trigger("click");
+    await flushPromises();
+
+    expect(mockClient.delete).toHaveBeenCalledWith("/onto/processes/process.owl");
+    expect(wrapper.vm.current_ontology).toBe("new");
+    expect(wrapper.text()).toContain("Ontology deleted successfully.");
+  });
 });

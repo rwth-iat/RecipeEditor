@@ -182,7 +182,7 @@ function normalizeDroppedMaterialType(item) {
     if (item?.materialElementType === 'Output' || item?.name === 'Product') {
         return 'Output';
     }
-    return undefined;
+    return 'Input';
 }
 
 function onDrop(event) {
@@ -198,10 +198,6 @@ function onDrop(event) {
         type = MATERIAL_CONTAINER_TYPE;
         materialType = normalizeDroppedMaterialType(droppedItem);
         xOffset = 200;
-        if (!materialType) {
-            console.error('Unknown material type:', droppedItem?.name);
-            return;
-        }
     } else if (classes.includes('process_element')) {
         type = 'process';
         xOffset = 100;

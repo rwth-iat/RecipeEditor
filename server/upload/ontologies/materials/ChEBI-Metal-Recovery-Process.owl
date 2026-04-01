@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+>
+  <rdf:Description rdf:about="http://www.semanticweb.org/adam-wxt15od5v6pcimn/ontologies/2026/2/untitled-ontology-20/CopperSulfate">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/adam-wxt15od5v6pcimn/ontologies/2026/2/untitled-ontology-20/Material"/>
+    <rdfs:comment>CHEBI:23414</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/adam-wxt15od5v6pcimn/ontologies/2026/2/untitled-ontology-20/Water">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/adam-wxt15od5v6pcimn/ontologies/2026/2/untitled-ontology-20/Material"/>
+    <rdfs:comment>CHEBI:15377</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/adam-wxt15od5v6pcimn/ontologies/2026/2/untitled-ontology-20/SulfuricAcid">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/adam-wxt15od5v6pcimn/ontologies/2026/2/untitled-ontology-20/Material"/>
+    <rdfs:comment>CHEBI:26836</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/adam-wxt15od5v6pcimn/ontologies/2026/2/untitled-ontology-20">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/adam-wxt15od5v6pcimn/ontologies/2026/2/untitled-ontology-20/HydrogenPeroxide">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/adam-wxt15od5v6pcimn/ontologies/2026/2/untitled-ontology-20/Material"/>
+    <rdfs:comment>CHEBI:16240</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/adam-wxt15od5v6pcimn/ontologies/2026/2/untitled-ontology-20/Copper">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/adam-wxt15od5v6pcimn/ontologies/2026/2/untitled-ontology-20/Material"/>
+    <rdfs:comment>CHEBI:30052</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/adam-wxt15od5v6pcimn/ontologies/2026/2/untitled-ontology-20/Material">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+</rdf:RDF>

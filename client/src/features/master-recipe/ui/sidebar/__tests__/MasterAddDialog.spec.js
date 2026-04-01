@@ -1,9 +1,11 @@
 import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import flushPromises from 'flush-promises';
 
 const mockClient = vi.hoisted(() => ({
   get: vi.fn(),
-  post: vi.fn()
+  post: vi.fn(),
+  delete: vi.fn()
 }));
 
 vi.mock('axios', () => ({
@@ -26,6 +28,8 @@ describe('MasterAddDialog', () => {
   beforeEach(() => {
     mockClient.get.mockReset();
     mockClient.post.mockReset();
+    mockClient.delete.mockReset();
+    mockClient.get.mockResolvedValue({ data: [] });
   });
 
   it('shows deterministic progress values and style at 100%', async () => {
@@ -145,10 +149,39 @@ describe('MasterAddDialog', () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('#fileTypeSelect').attributes('disabled')).toBeDefined();
-    expect(wrapper.find('button.icon-btn').attributes('disabled')).toBeDefined();
+    expect(wrapper.find('button.dialog-header-icon-btn').attributes('disabled')).toBeDefined();
     expect(wrapper.find('#file_select').attributes('disabled')).toBeDefined();
     expect(wrapper.find('#add_elements_button').attributes('disabled')).toBeDefined();
     expect(wrapper.find('.uploader-section input[type="file"]').attributes('disabled')).toBeDefined();
     expect(wrapper.find('.uploader-section button.button').attributes('disabled')).toBeDefined();
+  });
+
+  it('deletes the selected MTP file via the server API', async () => {
+    mockClient.get.mockImplementation((url) => {
+      if (url === '/mtp') {
+        const callCount = mockClient.get.mock.calls.filter(([path]) => path === '/mtp').length;
+        return Promise.resolve({ data: callCount === 1 ? ['plant.mtp'] : [] });
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+    mockClient.delete.mockResolvedValueOnce({
+      data: {
+        message: 'MTP file deleted successfully.',
+        filename: 'plant.mtp',
+        fileType: 'mtp',
+      },
+    });
+
+    const wrapper = mountDialog();
+    await flushPromises();
+
+    expect(wrapper.vm.current_file_name).toBe('plant.mtp');
+
+    await wrapper.find('button.dialog-delete-btn').trigger('click');
+    await flushPromises();
+
+    expect(mockClient.delete).toHaveBeenCalledWith('/mtp/plant.mtp');
+    expect(wrapper.vm.current_file_name).toBe('');
+    expect(wrapper.text()).toContain('MTP file deleted successfully.');
   });
 });

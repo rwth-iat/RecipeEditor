@@ -1,14 +1,151 @@
 from server import create_app
 import pytest
-import json
+import io
 from pathlib import Path
+import sys
+import textwrap
+
+PROCESS_RDFXML = """<?xml version="1.0"?>
+<rdf:RDF xmlns="http://example.com/process#"
+     xml:base="http://example.com/process"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
+    <owl:Ontology rdf:about="http://example.com/process"/>
+    <owl:Class rdf:about="http://example.com/process#ProcessRoot"/>
+    <owl:Class rdf:about="http://example.com/process#Mixing">
+        <rdfs:subClassOf rdf:resource="http://example.com/process#ProcessRoot"/>
+    </owl:Class>
+</rdf:RDF>
+"""
+
+MATERIAL_RDFXML = """<?xml version="1.0"?>
+<rdf:RDF xmlns="http://example.com/material#"
+     xml:base="http://example.com/material"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
+    <owl:Ontology rdf:about="http://example.com/material"/>
+    <owl:Class rdf:about="http://example.com/material#MaterialRoot"/>
+    <owl:Class rdf:about="http://example.com/material#Water">
+        <rdfs:subClassOf rdf:resource="http://example.com/material#MaterialRoot"/>
+    </owl:Class>
+</rdf:RDF>
+"""
+
+MATERIAL_TURTLE = """@prefix : <http://example.com/turtle/material#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://example.com/turtle/material/> .
+
+<http://example.com/turtle/material> rdf:type owl:Ontology .
+:MaterialRoot rdf:type owl:Class .
+:Copper rdf:type owl:Class ;
+    rdfs:subClassOf :MaterialRoot .
+"""
+
+MANCHESTER_MATERIAL = """Prefix: : <http://example.com/manchester/material#>
+Prefix: owl: <http://www.w3.org/2002/07/owl#>
+Prefix: rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+Ontology: <http://example.com/manchester/material>
+
+Class: :MaterialRoot
+
+Class: :Copper
+    SubClassOf: :MaterialRoot
+"""
+
+
+def write_ontology(path, contents):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(contents, encoding="utf-8")
+
+
+def write_manchester_converter(path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        textwrap.dedent(
+            """
+            import re
+            import sys
+            from pathlib import Path
+
+            source_path = Path(sys.argv[1])
+            target_path = Path(sys.argv[2])
+            content = source_path.read_text(encoding='utf-8')
+
+            if 'Ontology:' not in content:
+                print('Missing Ontology declaration.', file=sys.stderr)
+                raise SystemExit(2)
+
+            ontology_match = re.search(r"Ontology:\\s*<([^>]+)>", content)
+            ontology_iri = ontology_match.group(1) if ontology_match else "http://example.com/manchester/generated"
+
+            classes = []
+            subclass_map = {}
+            current_class = None
+
+            for raw_line in content.splitlines():
+                line = raw_line.strip()
+                if line.startswith('Class:'):
+                    token = line.split('Class:', 1)[1].strip()
+                    token = token.rsplit('#', 1)[-1].strip('<>')
+                    token = token.lstrip(':')
+                    current_class = token
+                    classes.append(token)
+                elif current_class and line.startswith('SubClassOf:'):
+                    token = line.split('SubClassOf:', 1)[1].strip()
+                    token = token.rsplit('#', 1)[-1].strip('<>')
+                    token = token.lstrip(':')
+                    subclass_map[current_class] = token
+
+            lines = [
+                '<?xml version="1.0"?>',
+                '<rdf:RDF xmlns="{0}#" xml:base="{0}" xmlns:owl="http://www.w3.org/2002/07/owl#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">'.format(ontology_iri),
+                '  <owl:Ontology rdf:about="{0}"/>'.format(ontology_iri),
+            ]
+
+            for class_name in classes:
+                lines.append('  <owl:Class rdf:about="{0}#{1}">'.format(ontology_iri, class_name))
+                if class_name in subclass_map:
+                    lines.append('    <rdfs:subClassOf rdf:resource="{0}#{1}"/>'.format(ontology_iri, subclass_map[class_name]))
+                lines.append('  </owl:Class>')
+
+            lines.append('</rdf:RDF>')
+            target_path.write_text('\\n'.join(lines), encoding='utf-8')
+            """
+        ).strip(),
+        encoding="utf-8",
+    )
 
 
 # is run before the tests
 # creates an instance of the webserver
 @pytest.fixture
-def app():
+def app(tmp_path):
     app = create_app()
+    ontology_root = tmp_path / "ontologies"
+    staging_root = ontology_root / "staging"
+    mtp_root = tmp_path / "mtp"
+    aas_root = tmp_path / "aasx"
+    converter_script = tmp_path / "tools" / "manchester_converter.py"
+    write_manchester_converter(converter_script)
+    app.config.update(
+        TESTING=True,
+        ONTOLOGY_UPLOAD_ROOT=str(ontology_root),
+        ONTOLOGY_STAGING_ROOT=str(staging_root),
+        MANCHESTER_CONVERTER_CMD=[sys.executable, str(converter_script), "{input}", "{output}"],
+        ONTOLOGY_CONVERTER_TIMEOUT_SECONDS=10,
+        MTP_UPLOAD_ROOT=str(mtp_root),
+        AAS_UPLOAD_ROOT=str(aas_root),
+    )
+
+    write_ontology(ontology_root / "processes" / "ProcessOntology.owl", PROCESS_RDFXML)
+    write_ontology(ontology_root / "materials" / "MaterialOntology.owl", MATERIAL_RDFXML)
+    write_ontology(mtp_root / "plant.mtp", "<mtp />")
+    write_ontology(aas_root / "robot.xml", "<aas />")
     print(app.url_map)
     return app
 
@@ -56,44 +193,181 @@ def test_static_files(client):
 
 
 def test_get_onto(client):
-    response = client.get('/general-recipe-editor')
+    response = client.get('/onto/processes')
     assert response.status_code == 200
-    # Add more test assertions as needed
-
-
-'''
-def test_post_onto(client):
-    response = client.post('/onto')
-    assert response.status_code == 200
-    # Add more test assertions as needed
-'''
+    assert response.get_json() == ['ProcessOntology.owl']
 
 
 def test_get_specific_onto(client):
-    response = client.get('/onto/OntoProCap.owl')
+    response = client.get('/onto/processes/ProcessOntology.owl')
     assert response.status_code == 200
-    # Add more test assertions as needed
+    assert "ProcessRoot" in response.get_data(as_text=True)
 
 
 def test_get_onto_classes(client):
-    response = client.get('/onto/OntoProCap.owl/classes')
+    response = client.get('/onto/processes/ProcessOntology.owl/classes')
     assert response.status_code == 200
-    
-    # # check if the real classes are correctly returned
-    # response_obj = json.loads(response.text)
-    # wanted_response = ["Absorbing","Combining","Separating","Gas","Liquid","Solid","Acoustic_gas_cleaning","Briquetting","Actuator","Component","Adsorbing","Agglomerating","OperationChangingMaterial","Agitator","Stirring","AnalogValve","Valve","On/OffValve","Atomizing","Dosing","BarrelPump","Pump","Beading","Dividing","Detach","BranchL","ControlledValve","Branching","ProcessSpecificCapability","CapabilityConstraint","CentrifugalPump","Centrifuging","Store","Changing_the_enthalpy","PressureAdjustment","Tempering","Circulation","GeneralCapabilityEffecting","Compacting","Resource","Condenser","HeatExchanger","Cooling","Heater","Condensing","Container","ControlledConatiner","FEA","ControlledHeater","ControlledPump","ControlledReactor","Heating","Cooling_of_gases","Cooling_of_liquids","Cooling_of_solids","Crushing","Crystallising","Cutting","Cycloning","Decanting","Defibering","DensityMeasuring","GeneralCapabilityMeasuring","Density_sorting","DepthConstraint","Desorbing","Dialysing","Dispersion_granulating","Dissolving","Distilling","DosierPump","DosingFlow","DosingVolumen","Draining","Drying","Electric-magnetic_Crushing","ElectricalField","Electrical_gas_cleaning","Electro-osmosis","Electro_sorting","Electrodialysing","Electrophoretising","Emulsifying","Energy","Form","Evaporating","Exsorbing","Extracting","FBranchL","FlowSensor","FPumpL","Filtering","Filtration","Flaking","Floating","FlowConstraint","FlowMeasuring","FlowPumpThing","Sensor","FlowStoping","Foam_braking","Foam_creating","Foaming","ForceMeasuring","ProductObjectMaterial","Formless","Freeze","FrequencyMeasuring","Fusing","Gas_centrifuging","Gas_washing","GeneralCapability","Given_geometric_shape","Grease_adhesion_sorting","Grinding","Heating_of_gases","Heating_of_liquids","Heating_of_solids","HumidityMeasuring","Hydroclassifying","Hydrocycloning","Impact_separating","Impact_sorting","Kneading","LAgitatorL","LevelSensor","LContainerL","LPumpL","LTAgitatorL","TemperatureSensor","LTHeaterL","LengthConstraint","LevelMeasuring","Magnetically_separating","Melting","Milling","Mixing","Mixing_of_Gases","Mixing_of_Liquids","Moistening_of_Gases","PHMeasuring","PHSensor","Picking","Pipeline","PressureConstraint","PressureMeasuring","PressureSensor","Pumping","Quenching_Granulating","Rasp","Rectifying","Refining","Roll_granulating","RotationConstraint","Rubbing","Sedimenting","Segregating","Separation_diffusion","Sieving","Sifting","Sintering","Smoothing","Soaking","Solidifying","Solubility_displacing","SpeedMeasuring","Spraying","Squeezing","Sublimating","Suspending","Swelling","TAgitatorL","TemperatureMeasuring","THeaterL","Tabletting","TemperaturConstraint","Thermal_Shredding","Thermal_sorting","Vaporating","Vaporize","Volatilizing","VolomenConstraint","VolumenPumpThing","WeightMeasuring","Zone_melting","SystemCapability"]
-    # assert response_obj == wanted_response
+    assert response.get_json() == ["Mixing", "ProcessRoot"]
 
 
-# def test_get_onto_subclasses(client):
-#     response = client.get('/onto/OntoProCap.owl/Combining/subclasses')
-#     assert response.status_code == 200
+def test_get_onto_class_tree(client):
+    response = client.get('/onto/processes/ProcessOntology.owl/class-tree')
+    assert response.status_code == 200
 
-#     # check if correct subclasses are returned
-#     response_obj = json.loads(response.text)
-    
-#     wanted_response = [{"name":"Combining","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Combining","dataType":"uriReference","key":"Capability_with_Query.Combining"}]}],"children":[{"name":"Absorbing","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Absorbing","dataType":"uriReference","key":"Capability_with_Query.Absorbing"}]}],"children":[]},{"name":"Adsorbing","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Adsorbing","dataType":"uriReference","key":"Capability_with_Query.Adsorbing"}]}],"children":[]},{"name":"Atomizing","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Atomizing","dataType":"uriReference","key":"Capability_with_Query.Atomizing"}]}],"children":[]},{"name":"Dissolving","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Dissolving","dataType":"uriReference","key":"Capability_with_Query.Dissolving"}]}],"children":[]},{"name":"Emulsifying","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Emulsifying","dataType":"uriReference","key":"Capability_with_Query.Emulsifying"}]}],"children":[]},{"name":"Foam_creating","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Foam_creating","dataType":"uriReference","key":"Capability_with_Query.Foam_creating"}]}],"children":[]},{"name":"Fusing","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Fusing","dataType":"uriReference","key":"Capability_with_Query.Fusing"}]}],"children":[]},{"name":"Kneading","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Kneading","dataType":"uriReference","key":"Capability_with_Query.Kneading"}]}],"children":[]},{"name":"Mixing","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Mixing","dataType":"uriReference","key":"Capability_with_Query.Mixing"}]}],"children":[]},{"name":"Mixing_of_Gases","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Mixing_of_Gases","dataType":"uriReference","key":"Capability_with_Query.Mixing_of_Gases"}]}],"children":[]},{"name":"Mixing_of_Liquids","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Mixing_of_Liquids","dataType":"uriReference","key":"Capability_with_Query.Mixing_of_Liquids"}]}],"children":[]},{"name":"Moistening_of_Gases","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Moistening_of_Gases","dataType":"uriReference","key":"Capability_with_Query.Moistening_of_Gases"}]}],"children":[]},{"name":"Rubbing","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Rubbing","dataType":"uriReference","key":"Capability_with_Query.Rubbing"}]}],"children":[]},{"name":"Smoothing","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Smoothing","dataType":"uriReference","key":"Capability_with_Query.Smoothing"}]}],"children":[]},{"name":"Soaking","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Soaking","dataType":"uriReference","key":"Capability_with_Query.Soaking"}]}],"children":[]},{"name":"Spraying","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Spraying","dataType":"uriReference","key":"Capability_with_Query.Spraying"}]}],"children":[]},{"name":"Suspending","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Suspending","dataType":"uriReference","key":"Capability_with_Query.Suspending"}]}],"children":[]},{"name":"Swelling","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Swelling","dataType":"uriReference","key":"Capability_with_Query.Swelling"}]}],"children":[]},{"name":"Volatilizing","otherInformation":[{"otherInfoID":"SemanticDescription","description":["URI referencing the Ontology Class definition"],"otherValue":[{"valueString":"http://www.acplt.de/Capability#Volatilizing","dataType":"uriReference","key":"Capability_with_Query.Volatilizing"}]}],"children":[]}]}]
-#     assert response_obj == wanted_response
+    response_obj = response.get_json()
+    assert response_obj[0]["name"] == "ProcessRoot"
+    assert response_obj[0]["children"][0]["name"] == "Mixing"
+
+
+def test_delete_ontology(client, app):
+    ontology_root = Path(app.config["ONTOLOGY_UPLOAD_ROOT"])
+    ontology_path = ontology_root / "processes" / "ProcessOntology.owl"
+
+    response = client.delete('/onto/processes/ProcessOntology.owl')
+
+    assert response.status_code == 200
+    assert response.get_json()["filename"] == "ProcessOntology.owl"
+    assert not ontology_path.exists()
+
+
+def test_get_onto_subclasses(client):
+    response = client.get('/onto/processes/ProcessOntology.owl/ProcessRoot/subclasses')
+    assert response.status_code == 200
+
+    response_obj = response.get_json()
+    assert response_obj[0]["name"] == "ProcessRoot"
+    assert response_obj[0]["children"][0]["name"] == "Mixing"
+
+
+def test_post_onto_rdfxml_processes(client):
+    response = client.post(
+        '/onto/processes',
+        data={
+            'file': (io.BytesIO(PROCESS_RDFXML.encode('utf-8')), 'UploadedProcess.rdf')
+        },
+        content_type='multipart/form-data'
+    )
+
+    assert response.status_code == 201
+    payload = response.get_json()
+    assert payload["category"] == "processes"
+    assert payload["canonicalFormat"] == "rdfxml"
+    assert payload["filename"].endswith(".owl")
+
+
+def test_post_onto_turtle_materials(client):
+    response = client.post(
+        '/onto/materials',
+        data={
+            'file': (io.BytesIO(MATERIAL_TURTLE.encode('utf-8')), 'Copper.ttl')
+        },
+        content_type='multipart/form-data'
+    )
+
+    assert response.status_code == 201
+    payload = response.get_json()
+    assert payload["category"] == "materials"
+    assert payload["detectedFormat"] == "turtle"
+
+    classes_response = client.get(f'/onto/materials/{payload["filename"]}/classes')
+    assert classes_response.status_code == 200
+    assert classes_response.get_json() == ["Copper", "MaterialRoot"]
+
+
+def test_post_onto_manchester_materials(client):
+    response = client.post(
+        '/onto/materials',
+        data={
+            'file': (io.BytesIO(MANCHESTER_MATERIAL.encode('utf-8')), 'ManchesterMaterial.owl')
+        },
+        content_type='multipart/form-data'
+    )
+
+    assert response.status_code == 201
+    payload = response.get_json()
+    assert payload["category"] == "materials"
+    assert payload["detectedFormat"] == "manchester"
+
+    classes_response = client.get(f'/onto/materials/{payload["filename"]}/classes')
+    assert classes_response.status_code == 200
+    assert classes_response.get_json() == ["Copper", "MaterialRoot"]
+
+
+def test_post_onto_invalid_returns_422(client):
+    response = client.post(
+        '/onto/materials',
+        data={
+            'file': (io.BytesIO(b'not an ontology'), 'broken.owl')
+        },
+        content_type='multipart/form-data'
+    )
+
+    assert response.status_code == 422
+    payload = response.get_json()
+    assert "unsupported" in payload["error"].lower() or "invalid" in payload["error"].lower()
+
+
+def test_post_onto_manchester_without_converter_returns_422(client, app):
+    app.config["MANCHESTER_CONVERTER_CMD"] = []
+    app.config["MANCHESTER_CONVERTER_AUTO_DISCOVERY"] = False
+
+    response = client.post(
+        '/onto/materials',
+        data={
+            'file': (io.BytesIO(MANCHESTER_MATERIAL.encode('utf-8')), 'ManchesterMaterial.owl')
+        },
+        content_type='multipart/form-data'
+    )
+
+    assert response.status_code == 422
+    payload = response.get_json()
+    assert "conversion is not configured" in payload["details"].lower()
+
+
+def test_delete_mtp_file(client, app):
+    mtp_path = Path(app.config["MTP_UPLOAD_ROOT"]) / "plant.mtp"
+
+    response = client.delete('/mtp/plant.mtp')
+
+    assert response.status_code == 200
+    assert response.get_json()["filename"] == "plant.mtp"
+    assert not mtp_path.exists()
+
+
+def test_delete_aas_file(client, app):
+    aas_path = Path(app.config["AAS_UPLOAD_ROOT"]) / "robot.xml"
+
+    response = client.delete('/aas/robot.xml')
+
+    assert response.status_code == 200
+    assert response.get_json()["filename"] == "robot.xml"
+    assert not aas_path.exists()
+
+
+def test_get_onto_skips_invalid_files(client, app):
+    ontology_root = Path(app.config["ONTOLOGY_UPLOAD_ROOT"])
+    write_ontology(ontology_root / "processes" / "broken.owl", "not an ontology")
+
+    response = client.get('/onto/processes')
+    assert response.status_code == 200
+    assert response.get_json() == ['ProcessOntology.owl']
+
+
+def test_collision_adds_date_prefix(client, app):
+    ontology_root = Path(app.config["ONTOLOGY_UPLOAD_ROOT"])
+    write_ontology(ontology_root / "processes" / "duplicate.owl", PROCESS_RDFXML)
+
+    response = client.post(
+        '/onto/processes',
+        data={
+            'file': (io.BytesIO(PROCESS_RDFXML.encode('utf-8')), 'duplicate.rdf')
+        },
+        content_type='multipart/form-data'
+    )
+
+    assert response.status_code == 201
+    assert response.get_json()["filename"] != "duplicate.owl"
+    assert response.get_json()["filename"].endswith("duplicate.owl")
 
 #### TODO: re-enable when validation is correct
 # def test_validate(client):

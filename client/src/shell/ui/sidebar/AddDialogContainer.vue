@@ -2,9 +2,12 @@
   <div id="addElements" class="settings">
     <div class="dialog-header">
       <h3>Add {{ elementType }}</h3>
-      <button class="close-btn" @click="$emit('close')" title="Close">
-        <span class="icon--red">x</span>
-      </button>
+      <div class="dialog-header-actions">
+        <slot name="header-actions" />
+        <button class="close-btn" @click="$emit('close')" title="Close">
+          <span class="icon--red">x</span>
+        </button>
+      </div>
     </div>
     <slot />
   </div>
@@ -52,6 +55,12 @@ defineEmits(['close']);
   font-size: 1.25rem;
   margin: 0;
   letter-spacing: 0.5px;
+}
+
+.dialog-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .close-btn {
@@ -104,6 +113,53 @@ defineEmits(['close']);
 
 :deep(.icon-btn:hover) {
   background: #e0eaff;
+}
+
+:deep(.dialog-header-icon-btn) {
+  background: none;
+  border: none;
+  color: #6ca0f6;
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 50%;
+  transition: background 0.2s, color 0.2s;
+}
+
+:deep(.dialog-header-icon-btn:hover:not(:disabled)) {
+  background: #e0eaff;
+}
+
+:deep(.dialog-header-icon-btn:disabled) {
+  color: #7f8a98;
+  cursor: not-allowed;
+}
+
+:deep(.dialog-delete-btn) {
+  float: none;
+  margin: 0;
+  padding: 0 8px;
+  min-height: 34px;
+  border: 1px solid var(--red);
+  background: #fff;
+  color: var(--red);
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+}
+
+:deep(.dialog-delete-btn:hover:not(:disabled)) {
+  background: lightpink;
+}
+
+:deep(.dialog-delete-btn:disabled) {
+  border-color: #7f8a98;
+  color: #7f8a98;
+  background: #d6dce2;
+  cursor: not-allowed;
 }
 
 :deep(.button) {
@@ -298,5 +354,28 @@ defineEmits(['close']);
 :deep(.dialog-form select option) {
   color: #23272f !important;
   background: #f4f6fa !important;
+}
+
+:deep(.dialog-status) {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+:deep(.dialog-status--info) {
+  background: #20334d;
+  border-color: #4b8dd8;
+}
+
+:deep(.dialog-status--success) {
+  background: #1f3a2b;
+  border-color: #4caf73;
+}
+
+:deep(.dialog-status--error) {
+  background: #4a2525;
+  border-color: #d77575;
 }
 </style>
