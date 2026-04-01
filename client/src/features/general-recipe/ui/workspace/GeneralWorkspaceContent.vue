@@ -34,7 +34,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed, watch, nextTick } from 'vue';
+import { onBeforeUnmount, onMounted, ref, computed, watch, nextTick } from 'vue';
 import { newInstance, ready, EVENT_DRAG_STOP } from "@jsplumb/browser-ui";
 import { downloadTextFile } from "@/services/common/fileDownload";
 import {
@@ -46,6 +46,7 @@ import {
 import { buildGeneralWorkspaceHierarchy } from "@/services/workspace/mapping/generalWorkspaceHierarchy";
 import { normalizeConnection } from "@/services/workspace/core/connectionUtils";
 import { createDefaultDotEndpointDefinition } from "@/services/workspace/core/jsPlumbEndpointUtils";
+import { createJsPlumbElementLayoutObserver } from "@/services/workspace/core/jsPlumbLayoutObserverUtils";
 import { reconcileMaterialEndpoints } from "@/services/workspace/core/generalMaterialEndpointUtils";
 import {
     ensureParallelIndicatorDefaults,
@@ -78,6 +79,9 @@ const workspaceContentRef = ref(null);
 const jsplumbInstance = ref(null);
 const jsplumbElements = ref([]);
 const managedElements = ref({});
+const layoutObserver = createJsPlumbElementLayoutObserver({
+    getInstance: () => jsplumbInstance.value,
+});
 const zoomLevel = ref(1);
 const initialWorkspaceWidth = 10000;
 const initialWorkspaceHeight = 10000;
@@ -117,7 +121,7 @@ onMounted(async () => {
             emit('update:workspace_items', updated);
         });
 
-        watch(computedWorkspaceItems, createUpdateItemListHandler(jsplumbInstance, jsplumbElements, managedElements), { deep: true });
+        watch(computedWorkspaceItems, createUpdateItemListHandler(jsplumbInstance, jsplumbElements, managedElements, layoutObserver), { deep: true });
         watch(
             () => getMaterialTypeSignatures(computedWorkspaceItems.value),
             syncMaterialTypeChanges,
@@ -130,6 +134,11 @@ onMounted(async () => {
         );
         watch(computedWorkspaceItems, updateWorkspaceBounds, { deep: true, immediate: true });
     });
+});
+
+onBeforeUnmount(() => {
+    stopPanning();
+    layoutObserver.disconnect();
 });
 
 const computedWorkspaceItems = computed({
@@ -381,6 +390,7 @@ function syncMaterialEndpoints(instance, elementRef, item) {
     if (changed) {
         instance.revalidate?.(elementRef);
         instance.repaintEverything?.();
+        layoutObserver.schedule(elementRef);
     }
 }
 
@@ -600,6 +610,7 @@ function rebuildParallelIndicatorEndpoints(item) {
     jsplumbInstance.value.deleteConnectionsForElement(elementRef);
     jsplumbInstance.value.removeAllEndpoints(elementRef);
     addJsPlumbEndpoints(jsplumbInstance.value, elementRef, item);
+    layoutObserver.observe(elementRef);
     jsplumbInstance.value.revalidate?.(elementRef);
 
     connectionsToRestore.forEach((connection) => {
@@ -609,7 +620,7 @@ function rebuildParallelIndicatorEndpoints(item) {
     jsplumbInstance.value.repaintEverything?.();
 }
 
-function createUpdateItemListHandler(instance, jsplumbElementsRef, managedElementsRef) {
+function createUpdateItemListHandler(instance, jsplumbElementsRef, managedElementsRef, layoutObserverRef) {
     return async () => {
         await nextTick();
         await nextTick();
@@ -623,12 +634,17 @@ function createUpdateItemListHandler(instance, jsplumbElementsRef, managedElemen
                 (element) => element.id === item.id
             );
             if (!elementRef || managedElementsRef.value[item.id] === true) {
+                if (elementRef) {
+                    layoutObserverRef.observe(elementRef);
+                }
                 return;
             }
 
+            layoutObserverRef.observe(elementRef);
             elementRef.style.left = `${item.x}px`;
             elementRef.style.top = `${item.y}px`;
             addJsPlumbEndpoints(instance.value, elementRef, item);
+            layoutObserverRef.schedule(elementRef);
             managedElementsRef.value[item.id] = true;
         });
     };
@@ -752,6 +768,7 @@ async function clearWorkspace() {
             (element) => element.id === item.id
         );
         if (elementRef !== undefined) {
+            layoutObserver.unobserve(elementRef);
             jsplumbInstance.value?.removeAllEndpoints(elementRef);
         }
     }
@@ -817,6 +834,8 @@ async function addElements(list) {
             elementRef.style.top = `${element.y}px`;
             await nextTick();
             await addJsPlumbEndpoints(jsplumbInstance.value, elementRef, element);
+            layoutObserver.observe(elementRef);
+            layoutObserver.schedule(elementRef);
             managedElements.value[element.id] = true;
         }
     }
@@ -828,6 +847,7 @@ function deleteElement(item) {
         (element) => element.id === item.id
     );
     if (elementRef !== undefined) {
+        layoutObserver.unobserve(elementRef);
         jsplumbInstance.value.removeAllEndpoints(elementRef);
         jsplumbInstance.value.deleteConnectionsForElement(elementRef);
         elementRef.remove();

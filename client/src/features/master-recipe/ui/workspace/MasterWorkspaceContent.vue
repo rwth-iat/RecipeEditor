@@ -36,7 +36,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed, watch, nextTick } from 'vue';
+import { onBeforeUnmount, onMounted, ref, computed, watch, nextTick } from 'vue';
 import { newInstance, ready, EVENT_DRAG_STOP } from "@jsplumb/browser-ui";
 import { downloadTextFile } from "@/services/common/fileDownload";
 import {
@@ -45,6 +45,7 @@ import {
     importWorkspaceFile,
 } from "@/services/workspace";
 import { createDefaultDotEndpointDefinition } from "@/services/workspace/core/jsPlumbEndpointUtils";
+import { createJsPlumbElementLayoutObserver } from "@/services/workspace/core/jsPlumbLayoutObserverUtils";
 import { stringifyConditionGroup } from "@/services/recipe/master-recipe/conditions/conditionGroupUtils";
 const props = defineProps({
     main_workspace_items: Array,
@@ -62,6 +63,9 @@ const workspaceContentRef = ref(null)
 const jsplumbInstance = ref(null) //the jsplumb instance, this is a library which handles the drag and drop as well as the connections
 const jsplumbElements = ref([])
 const managedElements = ref({}) //object to mark to which elements Endpoints where already added. That why when detecting a change in workspace elemets we know which items are new 
+const layoutObserver = createJsPlumbElementLayoutObserver({
+    getInstance: () => jsplumbInstance.value,
+})
 const zoomLevel = ref(1)
 const initialWorkspaceWidth = 10000
 const initialWorkspaceHeight = 10000
@@ -100,10 +104,15 @@ onMounted(async () => {
             });
 
             // Set up a watcher to handle further changes in the workspace items
-            watch(computedWorkspaceItems, createUpdateItemListHandler(jsplumbInstance, jsplumbElements, managedElements), { deep: true });
+            watch(computedWorkspaceItems, createUpdateItemListHandler(jsplumbInstance, jsplumbElements, managedElements, layoutObserver), { deep: true });
             watch(computedWorkspaceItems, updateWorkspaceBounds, { deep: true, immediate: true });
         });
     }
+});
+
+onBeforeUnmount(() => {
+    stopPanning();
+    layoutObserver.disconnect();
 });
 
 
@@ -446,7 +455,7 @@ function checkEndpoints(instance, elementRef, item) {
     }
 }
 
-function createUpdateItemListHandler(instance, jsplumbElements, managedElements) {
+function createUpdateItemListHandler(instance, jsplumbElements, managedElements, layoutObserverRef) {
     return async (newItems) => {
         console.debug("workspace_items updated, watcher triggered");
         await nextTick(); //wait one tick otherwise the new workspace item is not yet in jsplumbElements
@@ -465,9 +474,11 @@ function createUpdateItemListHandler(instance, jsplumbElements, managedElements)
                 return; // onoly returns the pushedItems.forEach function, effectively working as a continue
             }
 
+            layoutObserverRef.observe(elementRef)
             if (managedElements.value[pushedItem.id] === true) {
                 console.debug("pushed element already managed: ", pushedItem);
                 checkEndpoints(instance.value, elementRef, pushedItem)
+                layoutObserverRef.schedule(elementRef)
                 return;
             }
 
@@ -475,6 +486,7 @@ function createUpdateItemListHandler(instance, jsplumbElements, managedElements)
             elementRef.style.left = pushedItem.x + "px";
             elementRef.style.top = pushedItem.y + "px";
             addJsPlumbEndpoints(instance.value, elementRef, pushedItem);
+            layoutObserverRef.schedule(elementRef)
             managedElements.value[pushedItem.id] = true;
         });
     };
@@ -591,6 +603,7 @@ async function clearWorkspace() {
             (element) => element.id === item.id
         );
         if (elementRef !== undefined) {
+            layoutObserver.unobserve(elementRef);
             jsplumbInstance.value.removeAllEndpoints(elementRef);
         }
     }
@@ -644,6 +657,8 @@ async function addElements(list) {
 
                 // Add the necessary jsPlumb endpoints for this element
                 await addJsPlumbEndpoints(jsplumbInstance.value, elementRef, element);
+                layoutObserver.observe(elementRef);
+                layoutObserver.schedule(elementRef);
             }
         }
     }
@@ -657,6 +672,7 @@ function deleteElement(item) {
         (element) => element.id === item.id
     );
     if (elementRef !== undefined) {
+        layoutObserver.unobserve(elementRef);
         jsplumbInstance.value.removeAllEndpoints(elementRef);
         jsplumbInstance.value.deleteConnectionsForElement(elementRef)
         elementRef.remove();
