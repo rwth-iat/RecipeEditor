@@ -6,6 +6,7 @@ import { mapMasterXmlTreeToWorkspace } from "../mapping/masterXmlToWorkspaceMapp
 import { mapRecipeJsonToWorkspace } from "../mapping/recipeJsonToWorkspaceMapper";
 import { WorkspaceMode, WorkspaceSourceType } from "../core/workspaceTypes";
 import { upgradeGeneralWorkspaceItems } from "../../recipe/general-recipe/materials/materialContainerUtils";
+import { ensureParallelIndicatorDefaults } from "../core/generalParallelIndicatorUtils";
 
 function isJsonFilename(filename) {
   return typeof filename === "string" && filename.toLowerCase().endsWith(".json");
@@ -16,7 +17,31 @@ function isXmlFilename(filename) {
 }
 
 function normalizeGeneralImportItems(items) {
-  return upgradeGeneralWorkspaceItems(items);
+  return upgradeGeneralWorkspaceItems(items).map((item) =>
+    normalizeGeneralImportItem(item)
+  );
+}
+
+function normalizeGeneralImportItem(item) {
+  const normalizedItem = ensureParallelIndicatorDefaults(item);
+  if (normalizedItem?.type !== "process") {
+    return normalizedItem;
+  }
+
+  return {
+    ...normalizedItem,
+    materials: Array.isArray(normalizedItem?.materials)
+      ? normalizedItem.materials.map((child) => normalizeGeneralImportItem(child))
+      : normalizedItem?.materials,
+    procedureChartElement: Array.isArray(normalizedItem?.procedureChartElement)
+      ? normalizedItem.procedureChartElement.map((child) =>
+          normalizeGeneralImportItem(child)
+        )
+      : normalizedItem?.procedureChartElement,
+    processElement: Array.isArray(normalizedItem?.processElement)
+      ? normalizedItem.processElement.map((child) => normalizeGeneralImportItem(child))
+      : normalizedItem?.processElement,
+  };
 }
 
 export function importWorkspaceFile({ filename, content, mode }) {

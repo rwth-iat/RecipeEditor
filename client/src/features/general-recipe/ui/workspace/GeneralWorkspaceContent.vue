@@ -1,7 +1,7 @@
 <template>
     <div class="workspace_content" ref="workspaceContentRef" :style="workspaceStyle" @drop="$event => onDrop($event)" @dragenter.prevent
         @dragover.prevent draggable="false" @wheel.prevent="onWheel" @mousemove="updateMouse" @mousedown="startPanning">
-        <div :class="'workspace_element'" v-for="item in computedWorkspaceItems" :key="item.id"
+        <div :class="getWorkspaceElementHostClass(item)" v-for="item in computedWorkspaceItems" :key="item.id"
             :ref="skipUnwrap.jsplumbElements" :id="item.id" @click="handleClick(item)">
             <div v-if="isMaterialContainer(item)" class="flowChartLabel" style="float: right;">
                 <span
@@ -44,7 +44,22 @@ import {
     importWorkspaceFile,
 } from "@/services/workspace";
 import { buildGeneralWorkspaceHierarchy } from "@/services/workspace/mapping/generalWorkspaceHierarchy";
+import { normalizeConnection } from "@/services/workspace/core/connectionUtils";
+import { createDefaultDotEndpointDefinition } from "@/services/workspace/core/jsPlumbEndpointUtils";
 import { reconcileMaterialEndpoints } from "@/services/workspace/core/generalMaterialEndpointUtils";
+import {
+    ensureParallelIndicatorDefaults,
+    getParallelBranchCount,
+    getParallelBranchPortId,
+    getParallelFixedSourcePortId,
+    getParallelFixedTargetPortId,
+    isParallelIndicatorItem,
+    isParallelIndicatorType,
+    isParallelSplitType,
+    PARALLEL_INDICATOR_HEIGHT,
+    PARALLEL_INDICATOR_MARGIN,
+    PARALLEL_INDICATOR_WIDTH,
+} from "@/services/workspace/core/generalParallelIndicatorUtils";
 import {
     MATERIAL_CONTAINER_TYPE,
     createMaterialContainerItem,
@@ -72,6 +87,9 @@ const workspaceStyle = computed(() => ({
     width: `${workspaceWidth.value}px`,
     height: `${workspaceHeight.value}px`
 }));
+const NEXT_OPERATION_INDICATOR_WIDTH = 80;
+const NEXT_OPERATION_INDICATOR_HEIGHT = 60;
+const PARALLEL_INDICATOR_LINE_ANCHOR_OFFSET = 12;
 
 let skipUnwrap = { jsplumbElements };
 
@@ -103,6 +121,11 @@ onMounted(async () => {
         watch(
             () => getMaterialTypeSignatures(computedWorkspaceItems.value),
             syncMaterialTypeChanges,
+            { flush: 'post' }
+        );
+        watch(
+            () => getParallelIndicatorSignatures(computedWorkspaceItems.value),
+            syncParallelIndicatorChanges,
             { flush: 'post' }
         );
         watch(computedWorkspaceItems, updateWorkspaceBounds, { deep: true, immediate: true });
@@ -185,6 +208,10 @@ function normalizeDroppedMaterialType(item) {
     return 'Input';
 }
 
+function isNextOperationIndicatorItem(item) {
+    return item?.type === 'chart_element' && item?.procedureChartElementType === 'Next Operation Indicator';
+}
+
 function onDrop(event) {
     event.preventDefault();
 
@@ -203,7 +230,13 @@ function onDrop(event) {
         xOffset = 100;
     } else if (classes.includes('chart_element')) {
         type = 'chart_element';
-        xOffset = 100;
+        if (isParallelIndicatorType(droppedItem?.procedureChartElementType)) {
+            xOffset = PARALLEL_INDICATOR_WIDTH / 2;
+        } else if (droppedItem?.procedureChartElementType === 'Next Operation Indicator') {
+            xOffset = NEXT_OPERATION_INDICATOR_WIDTH / 2;
+        } else {
+            xOffset = 100;
+        }
     } else {
         console.error('neither material nor process dropped into workspace');
         return;
@@ -246,7 +279,7 @@ function onDrop(event) {
             ],
         });
     } else {
-        item = {
+        item = ensureParallelIndicatorDefaults({
             ...droppedItem,
             x,
             y,
@@ -256,7 +289,7 @@ function onDrop(event) {
             amount: {},
             procedureChartElementType: droppedItem.procedureChartElementType || '',
             processElementType: droppedItem.processElementType || '',
-        };
+        });
     }
 
     computedWorkspaceItems.value.push(item);
@@ -280,18 +313,23 @@ async function resetJsPlumb() {
 }
 
 function addEndpoint(instance, element, options) {
-    let anchor;
-    if (options.source) {
-        anchor = 'Bottom';
-    } else if (options.target) {
-        anchor = 'Top';
+    let anchor = options.anchor;
+    if (!anchor) {
+        if (options.source) {
+            anchor = 'Bottom';
+        } else if (options.target) {
+            anchor = 'Top';
+        }
     }
 
     return instance.addEndpoint(element, {
         source: options.source,
         target: options.target,
         anchor,
-        endpoint: { type: 'Dot' }
+        ...createDefaultDotEndpointDefinition(),
+        maxConnections: options.maxConnections ?? -1,
+        portId: options.portId,
+        uuid: options.uuid,
     });
 }
 
@@ -300,32 +338,28 @@ function addJsPlumbEndpoints(instance, element, item) {
         return;
     }
 
+    initializeEndpointCollections(item);
+
     if (isMaterialContainer(item)) {
-        item.sourceEndpoints = [];
-        item.targetEndpoints = [];
         syncMaterialEndpoints(instance, element, item);
         return;
     }
 
-    const sourceEndpoints = [];
-    const targetEndpoints = [];
-
     if (item.type === 'process') {
-        sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
-        targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
+        registerSourceEndpoint(item, addEndpoint(instance, element, { source: true, target: false }));
+        registerTargetEndpoint(item, addEndpoint(instance, element, { source: false, target: true }));
     } else if (item.type === 'chart_element') {
         if (item.procedureChartElementType === 'Previous Operation Indicator') {
-            sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
+            registerSourceEndpoint(item, addEndpoint(instance, element, { source: true, target: false }));
         } else if (item.procedureChartElementType === 'Next Operation Indicator') {
-            targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
+            registerTargetEndpoint(item, addEndpoint(instance, element, { source: false, target: true }));
+        } else if (isParallelIndicatorItem(item)) {
+            addParallelIndicatorEndpoints(instance, element, item);
         } else {
-            sourceEndpoints.push(addEndpoint(instance, element, { source: true, target: false }));
-            targetEndpoints.push(addEndpoint(instance, element, { source: false, target: true }));
+            registerSourceEndpoint(item, addEndpoint(instance, element, { source: true, target: false }));
+            registerTargetEndpoint(item, addEndpoint(instance, element, { source: false, target: true }));
         }
     }
-
-    item.sourceEndpoints = sourceEndpoints;
-    item.targetEndpoints = targetEndpoints;
 }
 
 function syncMaterialEndpoints(instance, elementRef, item) {
@@ -393,6 +427,188 @@ async function syncMaterialTypeChanges(newSignatures, oldSignatures = []) {
         });
 }
 
+function getParallelIndicatorSignatures(items) {
+    return (items || [])
+        .filter((item) => isParallelIndicatorItem(item))
+        .map((item) => `${item.id}::${getParallelBranchCount(item)}`);
+}
+
+async function syncParallelIndicatorChanges(newSignatures, oldSignatures = []) {
+    if (!jsplumbInstance.value || oldSignatures.length === 0) {
+        return;
+    }
+
+    const previousCounts = new Map(
+        oldSignatures.map((signature) => {
+            const separatorIndex = signature.indexOf('::');
+            return [
+                signature.slice(0, separatorIndex),
+                Number.parseInt(signature.slice(separatorIndex + 2), 10),
+            ];
+        })
+    );
+
+    await nextTick();
+
+    computedWorkspaceItems.value
+        .filter((item) => isParallelIndicatorItem(item))
+        .forEach((item) => {
+            const previousCount = previousCounts.get(item.id);
+            const currentCount = getParallelBranchCount(item);
+            if (previousCount === undefined || previousCount === currentCount) {
+                return;
+            }
+
+            rebuildParallelIndicatorEndpoints(item);
+        });
+}
+
+function initializeEndpointCollections(item) {
+    item.sourceEndpoints = [];
+    item.targetEndpoints = [];
+    item.sourceEndpointMap = {};
+    item.targetEndpointMap = {};
+}
+
+function registerSourceEndpoint(item, endpoint) {
+    item.sourceEndpoints.push(endpoint);
+    if (endpoint?.portId) {
+        item.sourceEndpointMap[endpoint.portId] = endpoint;
+    }
+}
+
+function registerTargetEndpoint(item, endpoint) {
+    item.targetEndpoints.push(endpoint);
+    if (endpoint?.portId) {
+        item.targetEndpointMap[endpoint.portId] = endpoint;
+    }
+}
+
+function createParallelAnchor(x, y) {
+    return [x, y, 0, y === 0 ? -1 : 1, 0, y === 0 ? PARALLEL_INDICATOR_LINE_ANCHOR_OFFSET : -PARALLEL_INDICATOR_LINE_ANCHOR_OFFSET];
+}
+
+function getParallelBranchAnchorX(index, branchCount) {
+    if (branchCount <= 1) {
+        return 0.5;
+    }
+
+    const availableWidth = PARALLEL_INDICATOR_WIDTH - (PARALLEL_INDICATOR_MARGIN * 2);
+    const branchOffset = ((index - 1) * availableWidth) / (branchCount - 1);
+    return (PARALLEL_INDICATOR_MARGIN + branchOffset) / PARALLEL_INDICATOR_WIDTH;
+}
+
+function createEndpointUuid(itemId, portId) {
+    return `${itemId}:${portId}`;
+}
+
+function addParallelIndicatorEndpoints(instance, element, item) {
+    const itemType = item.procedureChartElementType;
+    const branchCount = getParallelBranchCount(item);
+
+    if (isParallelSplitType(itemType)) {
+        const targetPortId = getParallelFixedTargetPortId(itemType);
+        registerTargetEndpoint(
+            item,
+            addEndpoint(instance, element, {
+                source: false,
+                target: true,
+                anchor: createParallelAnchor(0.5, 0),
+                maxConnections: 1,
+                portId: targetPortId,
+                uuid: createEndpointUuid(item.id, targetPortId),
+            })
+        );
+
+        for (let index = 1; index <= branchCount; index += 1) {
+            const portId = getParallelBranchPortId(itemType, index);
+            registerSourceEndpoint(
+                item,
+                addEndpoint(instance, element, {
+                    source: true,
+                    target: false,
+                    anchor: createParallelAnchor(getParallelBranchAnchorX(index, branchCount), 1),
+                    maxConnections: 1,
+                    portId,
+                    uuid: createEndpointUuid(item.id, portId),
+                })
+            );
+        }
+        return;
+    }
+
+    const sourcePortId = getParallelFixedSourcePortId(itemType);
+    registerSourceEndpoint(
+        item,
+        addEndpoint(instance, element, {
+            source: true,
+            target: false,
+            anchor: createParallelAnchor(0.5, 1),
+            maxConnections: 1,
+            portId: sourcePortId,
+            uuid: createEndpointUuid(item.id, sourcePortId),
+        })
+    );
+
+    for (let index = 1; index <= branchCount; index += 1) {
+        const portId = getParallelBranchPortId(itemType, index);
+        registerTargetEndpoint(
+            item,
+            addEndpoint(instance, element, {
+                source: false,
+                target: true,
+                anchor: createParallelAnchor(getParallelBranchAnchorX(index, branchCount), 0),
+                maxConnections: 1,
+                portId,
+                uuid: createEndpointUuid(item.id, portId),
+            })
+        );
+    }
+}
+
+function getStoredConnectionsForItem(itemId) {
+    return getJsPlumbConnections().filter(
+        (connection) => connection.sourceId === itemId || connection.targetId === itemId
+    );
+}
+
+function getEndpointForConnection(item, connection, side) {
+    const endpointPortId = side === 'source' ? connection?.sourcePortId : connection?.targetPortId;
+    const endpointMap = side === 'source' ? item?.sourceEndpointMap : item?.targetEndpointMap;
+    const endpoints = side === 'source' ? item?.sourceEndpoints : item?.targetEndpoints;
+
+    if (endpointPortId && endpointMap?.[endpointPortId]) {
+        return endpointMap[endpointPortId];
+    }
+
+    return endpoints?.[0];
+}
+
+function rebuildParallelIndicatorEndpoints(item) {
+    if (!jsplumbInstance.value || !isParallelIndicatorItem(item)) {
+        return;
+    }
+
+    const elementRef = jsplumbElements.value.find(
+        (element) => element.id === item.id
+    );
+    if (!elementRef) {
+        return;
+    }
+
+    const connectionsToRestore = getStoredConnectionsForItem(item.id);
+    jsplumbInstance.value.deleteConnectionsForElement(elementRef);
+    jsplumbInstance.value.removeAllEndpoints(elementRef);
+    addJsPlumbEndpoints(jsplumbInstance.value, elementRef, item);
+    jsplumbInstance.value.revalidate?.(elementRef);
+
+    connectionsToRestore.forEach((connection) => {
+        connectWorkspaceConnection(connection);
+    });
+
+    jsplumbInstance.value.repaintEverything?.();
+}
+
 function createUpdateItemListHandler(instance, jsplumbElementsRef, managedElementsRef) {
     return async () => {
         await nextTick();
@@ -423,6 +639,12 @@ function getItemSize(item) {
         return { width: 50, height: 50 };
     }
     if (item?.type === 'chart_element') {
+        if (isParallelIndicatorItem(item)) {
+            return { width: PARALLEL_INDICATOR_WIDTH, height: PARALLEL_INDICATOR_HEIGHT };
+        }
+        if (isNextOperationIndicatorItem(item)) {
+            return { width: NEXT_OPERATION_INDICATOR_WIDTH, height: NEXT_OPERATION_INDICATOR_HEIGHT };
+        }
         return { width: 200, height: 80 };
     }
     if (item?.type === 'process') {
@@ -553,7 +775,23 @@ function normalizeWorkspaceElement(item) {
     if (isMaterialContainer(item) || item?.type === 'material') {
         return normalizeMaterialContainer(item);
     }
-    return item;
+    const normalizedItem = ensureParallelIndicatorDefaults(item);
+    if (normalizedItem?.type !== 'process') {
+        return normalizedItem;
+    }
+
+    return {
+        ...normalizedItem,
+        materials: Array.isArray(normalizedItem?.materials)
+            ? normalizedItem.materials.map((child) => normalizeWorkspaceElement(child))
+            : normalizedItem?.materials,
+        procedureChartElement: Array.isArray(normalizedItem?.procedureChartElement)
+            ? normalizedItem.procedureChartElement.map((child) => normalizeWorkspaceElement(child))
+            : normalizedItem?.procedureChartElement,
+        processElement: Array.isArray(normalizedItem?.processElement)
+            ? normalizedItem.processElement.map((child) => normalizeWorkspaceElement(child))
+            : normalizedItem?.processElement,
+    };
 }
 
 async function addElements(list) {
@@ -579,6 +817,7 @@ async function addElements(list) {
             elementRef.style.top = `${element.y}px`;
             await nextTick();
             await addJsPlumbEndpoints(jsplumbInstance.value, elementRef, element);
+            managedElements.value[element.id] = true;
         }
     }
     await nextTick();
@@ -617,25 +856,35 @@ function deleteEndpoint(item, endpoint) {
 
 function addConnections(connections) {
     for (const connection of connections || []) {
-        const sourceElementRef = computedWorkspaceItems.value.find(
-            (element) => element.id === connection.sourceId
-        );
-        const targetElementRef = computedWorkspaceItems.value.find(
-            (element) => element.id === connection.targetId
-        );
-        if (!sourceElementRef || !targetElementRef) {
-            console.warn('either sourceElement or targetElement is undefined', connection);
-            continue;
-        }
-        if (!sourceElementRef.sourceEndpoints?.length || !targetElementRef.targetEndpoints?.length) {
-            console.warn('Skipping connection due to missing endpoints:', connection);
-            continue;
-        }
-        jsplumbInstance.value.connect({
-            source: sourceElementRef.sourceEndpoints[0],
-            target: targetElementRef.targetEndpoints[0]
-        });
+        connectWorkspaceConnection(connection);
     }
+}
+
+function connectWorkspaceConnection(connection) {
+    const normalizedConnection = normalizeConnection(connection);
+    const sourceElementRef = computedWorkspaceItems.value.find(
+        (element) => element.id === normalizedConnection.sourceId
+    );
+    const targetElementRef = computedWorkspaceItems.value.find(
+        (element) => element.id === normalizedConnection.targetId
+    );
+    if (!sourceElementRef || !targetElementRef) {
+        console.warn('either sourceElement or targetElement is undefined', normalizedConnection);
+        return;
+    }
+
+    const sourceEndpoint = getEndpointForConnection(sourceElementRef, normalizedConnection, 'source');
+    const targetEndpoint = getEndpointForConnection(targetElementRef, normalizedConnection, 'target');
+
+    if (!sourceEndpoint || !targetEndpoint) {
+        console.warn('Skipping connection due to missing endpoints:', normalizedConnection);
+        return;
+    }
+
+    jsplumbInstance.value.connect({
+        source: sourceEndpoint,
+        target: targetEndpoint
+    });
 }
 
 function createUniqueId() {
@@ -686,10 +935,14 @@ function findNextAvailableId(nestedList, basename) {
 }
 
 function getJsPlumbConnections() {
-    return (jsplumbInstance.value?.getConnections?.() || []).map((connection) => ({
-        sourceId: connection.sourceId,
-        targetId: connection.targetId,
-    }));
+    return (jsplumbInstance.value?.getConnections?.() || []).map((connection) =>
+        normalizeConnection({
+            sourceId: connection.sourceId,
+            targetId: connection.targetId,
+            sourcePortId: connection.endpoints?.[0]?.portId,
+            targetPortId: connection.endpoints?.[1]?.portId,
+        })
+    );
 }
 
 function exportWorkspace() {
@@ -760,9 +1013,17 @@ function getWorkspaceElementClass(item) {
     return [
         isMaterialContainer(item) ? 'material' : item?.type || '',
         item?.type || '',
+        isParallelIndicatorItem(item) ? 'parallel_indicator' : '',
         item?.materialType || '',
         toCssToken(item?.processElementType),
         toCssToken(item?.procedureChartElementType)
+    ].filter(Boolean).join(' ');
+}
+
+function getWorkspaceElementHostClass(item) {
+    return [
+        'workspace_element',
+        isNextOperationIndicatorItem(item) ? 'next_operation_indicator_host' : '',
     ].filter(Boolean).join(' ');
 }
 
@@ -806,6 +1067,14 @@ function getMaterialLabelLines(item) {
     position: absolute;
     text-align: center;
     align-items: center;
+}
+
+.next_operation_indicator_host {
+    width: 80px;
+    height: 60px;
+    justify-content: center;
+    align-items: flex-start;
+    overflow: visible;
 }
 
 /*
@@ -974,52 +1243,38 @@ function getMaterialLabelLines(item) {
     border-color: transparent transparent black transparent;
 }
 
-/* StartParallelIndicator */
-.StartParallelIndicator {
-    width: 300px;
-    height: 20px;
-    /* Adjust the height as needed */
-    border-top: 2px dashed #000;
-    /* Change the color to your desired color */
-    border-bottom: 2px dashed #000;
-    /* Change the color to your desired color */
-    background-color: white;
+/* Parallel indicators are rendered as horizontal synchronization bars. */
+.parallel_indicator {
+    position: relative;
+    width: 450px;
+    height: 48px;
+    background-color: transparent;
 }
 
-/* StartParallelIndicator */
-.EndParallelIndicator {
-    width: 300px;
-    height: 20px;
-    /* Adjust the height as needed */
-    border-top: 2px dashed #000;
-    /* Change the color to your desired color */
-    border-bottom: 2px dashed #000;
-    /* Change the color to your desired color */
-    background-color: white;
+.parallel_indicator::before,
+.parallel_indicator::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top-width: 4px;
+    border-top-style: solid;
+    border-top-color: #000;
 }
 
-/* StartParallelIndicator */
-.StartOptionalParallelIndicator {
-    width: 300px;
-    height: 20px;
-    /* Adjust the height as needed */
-    border-top: 2px dashed #000;
-    /* Change the color to your desired color */
-    border-bottom: 2px dashed #000;
-    /* Change the color to your desired color */
-    background-color: white;
+.parallel_indicator::before {
+    top: 10px;
 }
 
-/* StartParallelIndicator */
-.EndOptionalParallelIndicator {
-    width: 400px;
-    height: 20px;
-    /* Adjust the height as needed */
-    border-top: 2px dashed #000;
-    /* Change the color to your desired color */
-    border-bottom: 2px dashed #000;
-    /* Change the color to your desired color */
-    background-color: white;
+.parallel_indicator::after {
+    bottom: 10px;
+}
+
+.StartOptionalParallelIndicator::before,
+.StartOptionalParallelIndicator::after,
+.EndOptionalParallelIndicator::before,
+.EndOptionalParallelIndicator::after {
+    border-top-style: dashed;
 }
 
 .Annotation {

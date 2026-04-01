@@ -20,6 +20,7 @@
     <ChartElementPropertySection
       v-if="computedSelectedElement?.type === 'chart_element'"
       v-model:selectedElement="computedSelectedElement"
+      :connections="connections"
     />
   </PropertyWindowContainer>
 </template>

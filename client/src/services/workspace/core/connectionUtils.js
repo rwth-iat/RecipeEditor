@@ -1,8 +1,17 @@
 export function normalizeConnection(connection) {
-  return {
+  const normalized = {
     sourceId: connection?.sourceId ?? "",
     targetId: connection?.targetId ?? "",
   };
+
+  if (typeof connection?.sourcePortId === "string" && connection.sourcePortId.length > 0) {
+    normalized.sourcePortId = connection.sourcePortId;
+  }
+  if (typeof connection?.targetPortId === "string" && connection.targetPortId.length > 0) {
+    normalized.targetPortId = connection.targetPortId;
+  }
+
+  return normalized;
 }
 
 export function dedupeConnections(connections) {
@@ -13,7 +22,7 @@ export function dedupeConnections(connections) {
     if (!normalized.sourceId || !normalized.targetId) {
       return;
     }
-    const key = `${normalized.sourceId}|${normalized.targetId}`;
+    const key = `${normalized.sourceId}|${normalized.sourcePortId || ""}|${normalized.targetId}|${normalized.targetPortId || ""}`;
     if (seen.has(key)) {
       return;
     }

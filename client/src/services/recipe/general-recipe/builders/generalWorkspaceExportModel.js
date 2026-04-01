@@ -22,7 +22,11 @@ function dedupeConnections(connections) {
     if (typeof sourceId !== "string" || typeof targetId !== "string") {
       return false;
     }
-    const key = `${sourceId}::${targetId}`;
+    const sourcePortId =
+      typeof connection?.sourcePortId === "string" ? connection.sourcePortId : "";
+    const targetPortId =
+      typeof connection?.targetPortId === "string" ? connection.targetPortId : "";
+    const key = `${sourceId}::${sourcePortId}::${targetId}::${targetPortId}`;
     if (seen.has(key)) {
       return false;
     }
@@ -54,10 +58,19 @@ function normalizeConnection(connection) {
     return null;
   }
 
-  return {
+  const normalized = {
     sourceId,
     targetId,
   };
+
+  if (typeof connection?.sourcePortId === "string" && connection.sourcePortId.length > 0) {
+    normalized.sourcePortId = connection.sourcePortId;
+  }
+  if (typeof connection?.targetPortId === "string" && connection.targetPortId.length > 0) {
+    normalized.targetPortId = connection.targetPortId;
+  }
+
+  return normalized;
 }
 
 function collectWorkspaceExportEntries(

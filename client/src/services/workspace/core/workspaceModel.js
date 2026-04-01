@@ -22,6 +22,7 @@ const generalWorkspaceFields = [
   "otherInformation",
   "processElementType",
   "procedureChartElementType",
+  "parallelBranchCount",
 ];
 
 const masterWorkspaceFields = [

@@ -44,6 +44,7 @@ import {
     exportWorkspaceJson,
     importWorkspaceFile,
 } from "@/services/workspace";
+import { createDefaultDotEndpointDefinition } from "@/services/workspace/core/jsPlumbEndpointUtils";
 import { stringifyConditionGroup } from "@/services/recipe/master-recipe/conditions/conditionGroupUtils";
 const props = defineProps({
     main_workspace_items: Array,
@@ -283,7 +284,7 @@ function addEndpoint(instance, element, options) {
         source: options.source,
         target: options.target,
         anchor: anchor,
-        endpoint: { type: "Dot" }
+        ...createDefaultDotEndpointDefinition(),
     });
     return sourceEndpoint
 }

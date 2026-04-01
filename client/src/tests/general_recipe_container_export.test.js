@@ -117,3 +117,186 @@ test("builds MaterialInformation.xml from child materials inside visible materia
   expect(result.xml).toContain("<b2mml:ID>BoilingPoint</b2mml:ID>");
 });
 
+test("exports parallel indicator links without leaking workspace-only port metadata", () => {
+  const workspaceItems = [
+    {
+      id: "StageSplit001",
+      type: "process",
+      description: "Parallel stage",
+      processElementType: "Process Stage",
+      processElementParameter: [],
+      resourceConstraint: [],
+      otherInformation: [],
+      x: 0,
+      y: 0,
+    },
+    {
+      id: "BeforeSplit001",
+      type: "process",
+      parentId: "StageSplit001",
+      description: "Before split",
+      processElementType: "Process Operation",
+      processElementParameter: [],
+      resourceConstraint: [],
+      otherInformation: [],
+      x: 0,
+      y: 0,
+    },
+    {
+      id: "ParallelSplit001",
+      type: "chart_element",
+      parentId: "StageSplit001",
+      description: "",
+      procedureChartElementType: "Start Parallel Indicator",
+      parallelBranchCount: 3,
+      x: 0,
+      y: 0,
+    },
+    {
+      id: "BranchLeft001",
+      type: "process",
+      parentId: "StageSplit001",
+      description: "Left branch",
+      processElementType: "Process Operation",
+      processElementParameter: [],
+      resourceConstraint: [],
+      otherInformation: [],
+      x: 0,
+      y: 0,
+    },
+    {
+      id: "BranchMiddle001",
+      type: "process",
+      parentId: "StageSplit001",
+      description: "Middle branch",
+      processElementType: "Process Operation",
+      processElementParameter: [],
+      resourceConstraint: [],
+      otherInformation: [],
+      x: 0,
+      y: 0,
+    },
+    {
+      id: "BranchRight001",
+      type: "process",
+      parentId: "StageSplit001",
+      description: "Right branch",
+      processElementType: "Process Operation",
+      processElementParameter: [],
+      resourceConstraint: [],
+      otherInformation: [],
+      x: 0,
+      y: 0,
+    },
+  ];
+
+  const connections = [
+    {
+      sourceId: "BeforeSplit001",
+      targetId: "ParallelSplit001",
+      targetPortId: "in-center",
+    },
+    {
+      sourceId: "ParallelSplit001",
+      sourcePortId: "out-branch-1",
+      targetId: "BranchLeft001",
+    },
+    {
+      sourceId: "ParallelSplit001",
+      sourcePortId: "out-branch-2",
+      targetId: "BranchMiddle001",
+    },
+    {
+      sourceId: "ParallelSplit001",
+      sourcePortId: "out-branch-3",
+      targetId: "BranchRight001",
+    },
+  ];
+
+  const result = buildGeneralRecipeXml({ workspaceItems, connections });
+  const recipe = result.document["b2mml:GRecipe"];
+  const stage = recipe["b2mml:ProcessProcedure"]["b2mml:ProcessElement"][0];
+
+  expect(result.schemaWarnings).toEqual([]);
+  expect(stage["b2mml:ProcedureChartElement"]).toEqual([
+    {
+      "b2mml:ID": "ParallelSplit001",
+      "b2mml:ProcedureChartElementType": "Start Parallel Indicator",
+    },
+  ]);
+  expect(stage["b2mml:DirectedLink"].map((entry) => ({
+    from: entry["b2mml:FromID"],
+    to: entry["b2mml:ToID"],
+  }))).toEqual([
+    { from: "BeforeSplit001", to: "ParallelSplit001" },
+    { from: "ParallelSplit001", to: "BranchLeft001" },
+    { from: "ParallelSplit001", to: "BranchMiddle001" },
+    { from: "ParallelSplit001", to: "BranchRight001" },
+  ]);
+  expect(result.xml).not.toContain("out-branch-");
+  expect(result.xml).not.toContain("in-center");
+});
+
+test("exports repeated directed links when multiple parallel branches target the same process step", () => {
+  const workspaceItems = [
+    {
+      id: "StageSplit001",
+      type: "process",
+      description: "Parallel stage",
+      processElementType: "Process Stage",
+      processElementParameter: [],
+      resourceConstraint: [],
+      otherInformation: [],
+      x: 0,
+      y: 0,
+    },
+    {
+      id: "ParallelSplit001",
+      type: "chart_element",
+      parentId: "StageSplit001",
+      description: "",
+      procedureChartElementType: "Start Parallel Indicator",
+      parallelBranchCount: 3,
+      x: 0,
+      y: 0,
+    },
+    {
+      id: "BranchShared001",
+      type: "process",
+      parentId: "StageSplit001",
+      description: "Shared branch target",
+      processElementType: "Process Operation",
+      processElementParameter: [],
+      resourceConstraint: [],
+      otherInformation: [],
+      x: 0,
+      y: 0,
+    },
+  ];
+
+  const connections = [
+    {
+      sourceId: "ParallelSplit001",
+      sourcePortId: "out-branch-1",
+      targetId: "BranchShared001",
+    },
+    {
+      sourceId: "ParallelSplit001",
+      sourcePortId: "out-branch-2",
+      targetId: "BranchShared001",
+    },
+  ];
+
+  const result = buildGeneralRecipeXml({ workspaceItems, connections });
+  const stage = result.document["b2mml:GRecipe"]["b2mml:ProcessProcedure"]["b2mml:ProcessElement"][0];
+
+  expect(result.schemaWarnings).toEqual([]);
+  expect(stage["b2mml:DirectedLink"].map((entry) => ({
+    from: entry["b2mml:FromID"],
+    to: entry["b2mml:ToID"],
+  }))).toEqual([
+    { from: "ParallelSplit001", to: "BranchShared001" },
+    { from: "ParallelSplit001", to: "BranchShared001" },
+  ]);
+});
+

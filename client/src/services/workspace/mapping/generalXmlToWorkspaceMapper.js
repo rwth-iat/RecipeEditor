@@ -1,5 +1,16 @@
 import { dedupeConnections } from "../core/connectionUtils";
 import {
+  ensureParallelIndicatorDefaults,
+  getParallelBranchCount,
+  getParallelBranchPortId,
+  getParallelFixedSourcePortId,
+  getParallelFixedTargetPortId,
+  isParallelIndicatorItem,
+  isParallelJoinType,
+  isParallelSplitType,
+  normalizeParallelBranchCount,
+} from "../core/generalParallelIndicatorUtils";
+import {
   MATERIAL_CONTAINER_TYPE,
   createEmptyContainerMaterial,
   normalizeContainerMaterials,
@@ -188,7 +199,7 @@ function normalizeProcess(processElement, parentId) {
 }
 
 function normalizeProcedureChartElement(procedureChartElement, parentId) {
-  return {
+  return ensureParallelIndicatorDefaults({
     id: getId(procedureChartElement?.ID),
     type: "chart_element",
     parentId,
@@ -196,7 +207,7 @@ function normalizeProcedureChartElement(procedureChartElement, parentId) {
     y: typeof procedureChartElement?.y === "number" ? procedureChartElement.y : 0,
     description: normalizeText(procedureChartElement?.Description),
     procedureChartElementType: normalizeText(procedureChartElement?.ProcedureChartElementType),
-  };
+  });
 }
 
 function mergeContainer(existing, incoming) {
@@ -252,16 +263,86 @@ function mergeProcess(existing, incoming) {
 }
 
 function mergeProcedureChartElement(existing, incoming) {
+  const procedureChartElementType =
+    incoming?.procedureChartElementType || existing?.procedureChartElementType || "";
+
   return {
     ...existing,
     ...incoming,
     description: incoming?.description || existing?.description || "",
-    procedureChartElementType:
-      incoming?.procedureChartElementType || existing?.procedureChartElementType || "",
+    procedureChartElementType,
+    parallelBranchCount: normalizeParallelBranchCount(
+      procedureChartElementType,
+      incoming?.parallelBranchCount ?? existing?.parallelBranchCount
+    ),
     parentId: incoming?.parentId ?? existing?.parentId ?? null,
     x: typeof incoming?.x === "number" ? incoming.x : existing?.x ?? 0,
     y: typeof incoming?.y === "number" ? incoming.y : existing?.y ?? 0,
   };
+}
+
+function decorateParallelIndicatorConnections(connections, itemsById) {
+  const splitBranchCounts = new Map();
+  const joinBranchCounts = new Map();
+
+  const decoratedConnections = connections.map((connection) => {
+    const decoratedConnection = {
+      ...connection,
+      sourcePortId:
+        typeof connection?.sourcePortId === "string" ? connection.sourcePortId : "",
+      targetPortId:
+        typeof connection?.targetPortId === "string" ? connection.targetPortId : "",
+    };
+
+    const sourceItem = itemsById.get(connection.sourceId);
+    if (isParallelIndicatorItem(sourceItem)) {
+      const sourceType = sourceItem.procedureChartElementType;
+      if (isParallelSplitType(sourceType)) {
+        const nextBranchIndex = (splitBranchCounts.get(sourceItem.id) || 0) + 1;
+        splitBranchCounts.set(sourceItem.id, nextBranchIndex);
+        decoratedConnection.sourcePortId =
+          decoratedConnection.sourcePortId ||
+          getParallelBranchPortId(sourceType, nextBranchIndex);
+      } else {
+        decoratedConnection.sourcePortId =
+          decoratedConnection.sourcePortId || getParallelFixedSourcePortId(sourceType);
+      }
+    }
+
+    const targetItem = itemsById.get(connection.targetId);
+    if (isParallelIndicatorItem(targetItem)) {
+      const targetType = targetItem.procedureChartElementType;
+      if (isParallelJoinType(targetType)) {
+        const nextBranchIndex = (joinBranchCounts.get(targetItem.id) || 0) + 1;
+        joinBranchCounts.set(targetItem.id, nextBranchIndex);
+        decoratedConnection.targetPortId =
+          decoratedConnection.targetPortId ||
+          getParallelBranchPortId(targetType, nextBranchIndex);
+      } else {
+        decoratedConnection.targetPortId =
+          decoratedConnection.targetPortId || getParallelFixedTargetPortId(targetType);
+      }
+    }
+
+    return decoratedConnection;
+  });
+
+  itemsById.forEach((item, itemId) => {
+    if (!isParallelIndicatorItem(item)) {
+      return;
+    }
+
+    const relevantBranchCount = isParallelSplitType(item.procedureChartElementType)
+      ? splitBranchCounts.get(itemId) || 0
+      : joinBranchCounts.get(itemId) || 0;
+
+    item.parallelBranchCount = normalizeParallelBranchCount(
+      item.procedureChartElementType,
+      Math.max(getParallelBranchCount(item), relevantBranchCount)
+    );
+  });
+
+  return decoratedConnections;
 }
 
 function addOrMergeItem(itemsById, item, warnings) {
@@ -631,9 +712,14 @@ export function mapGeneralXmlTreeToWorkspace(xmlTree) {
     })
     .filter(Boolean);
 
+  const decoratedConnections = decorateParallelIndicatorConnections(
+    connections,
+    itemsById
+  );
+
   return {
     items: Array.from(itemsById.values()),
-    connections: dedupeConnections(connections),
+    connections: dedupeConnections(decoratedConnections),
     warnings,
   };
 }

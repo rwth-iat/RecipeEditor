@@ -74,4 +74,56 @@ describe("buildGeneralWorkspaceHierarchy", () => {
       { sourceId: "PrevIndicator001", targetId: "Operation001" },
     ]);
   });
+
+  test("retains parallel branch counts and port-aware links when nesting chart elements", () => {
+    const result = buildGeneralWorkspaceHierarchy(
+      [
+        {
+          id: "StageSplit001",
+          type: "process",
+          parentId: null,
+          processElementType: "Process Stage",
+          description: "Parallel stage",
+        },
+        {
+          id: "ParallelSplit001",
+          type: "chart_element",
+          parentId: "StageSplit001",
+          procedureChartElementType: "Start Parallel Indicator",
+          parallelBranchCount: 3,
+          description: "",
+        },
+        {
+          id: "BranchLeft001",
+          type: "process",
+          parentId: "StageSplit001",
+          processElementType: "Process Operation",
+          description: "Left branch",
+        },
+      ],
+      [
+        {
+          sourceId: "ParallelSplit001",
+          sourcePortId: "out-branch-1",
+          targetId: "BranchLeft001",
+        },
+      ]
+    );
+
+    expect(result.items[0].procedureChartElement).toMatchObject([
+      {
+        id: "ParallelSplit001",
+        type: "chart_element",
+        procedureChartElementType: "Start Parallel Indicator",
+        parallelBranchCount: 3,
+      },
+    ]);
+    expect(result.items[0].directedLink).toEqual([
+      {
+        sourceId: "ParallelSplit001",
+        sourcePortId: "out-branch-1",
+        targetId: "BranchLeft001",
+      },
+    ]);
+  });
 });

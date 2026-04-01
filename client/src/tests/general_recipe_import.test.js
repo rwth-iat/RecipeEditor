@@ -401,6 +401,213 @@ const AMBIGUOUS_LEGACY_LINK_GENERAL_RECIPE_XML = `<?xml version="1.0" encoding="
   </b2mml:ProcessProcedure>
 </b2mml:GRecipe>`;
 
+function buildParallelIndicatorRecipeXml({
+  recipeId,
+  stageId,
+  indicatorId,
+  indicatorType,
+  processIds,
+  directedLinks,
+}) {
+  const processElementsXml = processIds
+    .map(
+      (processId) => `
+      <b2mml:ProcessElement>
+        <b2mml:ID>${processId}</b2mml:ID>
+        <b2mml:ProcessElementType>Process Operation</b2mml:ProcessElementType>
+      </b2mml:ProcessElement>`
+    )
+    .join("");
+
+  const directedLinksXml = directedLinks
+    .map(
+      (link, index) => `
+      <b2mml:DirectedLink>
+        <b2mml:ID>DL_${index + 1}</b2mml:ID>
+        <b2mml:FromID>${link.sourceId}</b2mml:FromID>
+        <b2mml:ToID>${link.targetId}</b2mml:ToID>
+      </b2mml:DirectedLink>`
+    )
+    .join("");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<b2mml:GRecipe xmlns:b2mml="http://www.mesa.org/xml/B2MML">
+  <b2mml:ID>${recipeId}</b2mml:ID>
+  <b2mml:GRecipeType>General</b2mml:GRecipeType>
+  <b2mml:ProcessProcedure>
+    <b2mml:ID>Procedure1</b2mml:ID>
+    <b2mml:ProcessElementType>Process</b2mml:ProcessElementType>
+    <b2mml:ProcessElement>
+      <b2mml:ID>${stageId}</b2mml:ID>
+      <b2mml:ProcessElementType>Process Stage</b2mml:ProcessElementType>
+      <b2mml:ProcedureChartElement>
+        <b2mml:ID>${indicatorId}</b2mml:ID>
+        <b2mml:ProcedureChartElementType>${indicatorType}</b2mml:ProcedureChartElementType>
+      </b2mml:ProcedureChartElement>
+      ${directedLinksXml}
+      ${processElementsXml}
+    </b2mml:ProcessElement>
+  </b2mml:ProcessProcedure>
+</b2mml:GRecipe>`;
+}
+
+const PARALLEL_INDICATOR_IMPORT_CASES = [
+  {
+    label: "Start Parallel Indicator",
+    recipeId: "ParallelSplitRecipe001",
+    stageId: "ParallelSplitStage001",
+    indicatorId: "ParallelSplit001",
+    indicatorType: "Start Parallel Indicator",
+    processIds: [
+      "BeforeSplit001",
+      "BranchLeft001",
+      "BranchMiddle001",
+      "BranchRight001",
+    ],
+    directedLinks: [
+      { sourceId: "BeforeSplit001", targetId: "ParallelSplit001" },
+      { sourceId: "ParallelSplit001", targetId: "BranchLeft001" },
+      { sourceId: "ParallelSplit001", targetId: "BranchMiddle001" },
+      { sourceId: "ParallelSplit001", targetId: "BranchRight001" },
+    ],
+    expectedConnections: [
+      {
+        sourceId: "BeforeSplit001",
+        targetId: "ParallelSplit001",
+        targetPortId: "in-center",
+      },
+      {
+        sourceId: "ParallelSplit001",
+        targetId: "BranchLeft001",
+        sourcePortId: "out-branch-1",
+      },
+      {
+        sourceId: "ParallelSplit001",
+        targetId: "BranchMiddle001",
+        sourcePortId: "out-branch-2",
+      },
+      {
+        sourceId: "ParallelSplit001",
+        targetId: "BranchRight001",
+        sourcePortId: "out-branch-3",
+      },
+    ],
+    expectedBranchCount: 3,
+  },
+  {
+    label: "End Parallel Indicator",
+    recipeId: "ParallelJoinRecipe001",
+    stageId: "ParallelJoinStage001",
+    indicatorId: "ParallelJoin001",
+    indicatorType: "End Parallel Indicator",
+    processIds: [
+      "JoinBranchLeft001",
+      "JoinBranchMiddle001",
+      "JoinBranchRight001",
+      "AfterJoin001",
+    ],
+    directedLinks: [
+      { sourceId: "JoinBranchLeft001", targetId: "ParallelJoin001" },
+      { sourceId: "JoinBranchMiddle001", targetId: "ParallelJoin001" },
+      { sourceId: "JoinBranchRight001", targetId: "ParallelJoin001" },
+      { sourceId: "ParallelJoin001", targetId: "AfterJoin001" },
+    ],
+    expectedConnections: [
+      {
+        sourceId: "JoinBranchLeft001",
+        targetId: "ParallelJoin001",
+        targetPortId: "in-branch-1",
+      },
+      {
+        sourceId: "JoinBranchMiddle001",
+        targetId: "ParallelJoin001",
+        targetPortId: "in-branch-2",
+      },
+      {
+        sourceId: "JoinBranchRight001",
+        targetId: "ParallelJoin001",
+        targetPortId: "in-branch-3",
+      },
+      {
+        sourceId: "ParallelJoin001",
+        targetId: "AfterJoin001",
+        sourcePortId: "out-center",
+      },
+    ],
+    expectedBranchCount: 3,
+  },
+  {
+    label: "Start Optional Parallel Indicator",
+    recipeId: "OptionalParallelSplitRecipe001",
+    stageId: "OptionalParallelSplitStage001",
+    indicatorId: "OptionalParallelSplit001",
+    indicatorType: "Start Optional Parallel Indicator",
+    processIds: [
+      "BeforeOptionalSplit001",
+      "OptionalBranchLeft001",
+      "OptionalBranchRight001",
+    ],
+    directedLinks: [
+      { sourceId: "BeforeOptionalSplit001", targetId: "OptionalParallelSplit001" },
+      { sourceId: "OptionalParallelSplit001", targetId: "OptionalBranchLeft001" },
+      { sourceId: "OptionalParallelSplit001", targetId: "OptionalBranchRight001" },
+    ],
+    expectedConnections: [
+      {
+        sourceId: "BeforeOptionalSplit001",
+        targetId: "OptionalParallelSplit001",
+        targetPortId: "in-center",
+      },
+      {
+        sourceId: "OptionalParallelSplit001",
+        targetId: "OptionalBranchLeft001",
+        sourcePortId: "out-branch-1",
+      },
+      {
+        sourceId: "OptionalParallelSplit001",
+        targetId: "OptionalBranchRight001",
+        sourcePortId: "out-branch-2",
+      },
+    ],
+    expectedBranchCount: 2,
+  },
+  {
+    label: "End Optional Parallel Indicator",
+    recipeId: "OptionalParallelJoinRecipe001",
+    stageId: "OptionalParallelJoinStage001",
+    indicatorId: "OptionalParallelJoin001",
+    indicatorType: "End Optional Parallel Indicator",
+    processIds: [
+      "OptionalJoinLeft001",
+      "OptionalJoinRight001",
+      "AfterOptionalJoin001",
+    ],
+    directedLinks: [
+      { sourceId: "OptionalJoinLeft001", targetId: "OptionalParallelJoin001" },
+      { sourceId: "OptionalJoinRight001", targetId: "OptionalParallelJoin001" },
+      { sourceId: "OptionalParallelJoin001", targetId: "AfterOptionalJoin001" },
+    ],
+    expectedConnections: [
+      {
+        sourceId: "OptionalJoinLeft001",
+        targetId: "OptionalParallelJoin001",
+        targetPortId: "in-branch-1",
+      },
+      {
+        sourceId: "OptionalJoinRight001",
+        targetId: "OptionalParallelJoin001",
+        targetPortId: "in-branch-2",
+      },
+      {
+        sourceId: "OptionalParallelJoin001",
+        targetId: "AfterOptionalJoin001",
+        sourcePortId: "out-center",
+      },
+    ],
+    expectedBranchCount: 2,
+  },
+];
+
 function importGeneralRecipe(content) {
   return importWorkspaceFile({
     filename: "recipe.xml",
@@ -411,6 +618,13 @@ function importGeneralRecipe(content) {
 
 function findItem(items, id) {
   return items.find((item) => item.id === id);
+}
+
+function findConnection(connections, sourceId, targetId) {
+  return connections.find(
+    (connection) =>
+      connection.sourceId === sourceId && connection.targetId === targetId
+  );
 }
 
 test("hides the top-level ProcessProcedure and resolves legacy material links to visible containers", () => {
@@ -610,6 +824,85 @@ test("imports procedure chart elements and links from nested process elements", 
     sourceId: "StageInput001",
     targetId: "Operation001",
   });
+  expect(result.warnings).toEqual([]);
+});
+
+test.each(PARALLEL_INDICATOR_IMPORT_CASES)(
+  "imports $label with derived branch counts and port ids",
+  ({
+    recipeId,
+    stageId,
+    indicatorId,
+    indicatorType,
+    processIds,
+    directedLinks,
+    expectedConnections,
+    expectedBranchCount,
+  }) => {
+    const result = importGeneralRecipe(
+      buildParallelIndicatorRecipeXml({
+        recipeId,
+        stageId,
+        indicatorId,
+        indicatorType,
+        processIds,
+        directedLinks,
+      })
+    );
+
+    expect(findItem(result.items, indicatorId)).toMatchObject({
+      type: "chart_element",
+      parentId: stageId,
+      procedureChartElementType: indicatorType,
+      parallelBranchCount: expectedBranchCount,
+    });
+    expect(result.connections).toHaveLength(directedLinks.length);
+
+    expectedConnections.forEach((expectedConnection) => {
+      expect(
+        findConnection(
+          result.connections,
+          expectedConnection.sourceId,
+          expectedConnection.targetId
+        )
+      ).toMatchObject(expectedConnection);
+    });
+
+    expect(result.warnings).toEqual([]);
+  }
+);
+
+test("imports repeated directed links to the same process step on distinct parallel ports", () => {
+  const result = importGeneralRecipe(
+    buildParallelIndicatorRecipeXml({
+      recipeId: "ParallelSplitRecipeDuplicate001",
+      stageId: "ParallelSplitStageDuplicate001",
+      indicatorId: "ParallelSplitDuplicate001",
+      indicatorType: "Start Parallel Indicator",
+      processIds: ["BranchShared001"],
+      directedLinks: [
+        { sourceId: "ParallelSplitDuplicate001", targetId: "BranchShared001" },
+        { sourceId: "ParallelSplitDuplicate001", targetId: "BranchShared001" },
+      ],
+    })
+  );
+
+  expect(findItem(result.items, "ParallelSplitDuplicate001")).toMatchObject({
+    procedureChartElementType: "Start Parallel Indicator",
+    parallelBranchCount: 2,
+  });
+  expect(result.connections).toEqual([
+    {
+      sourceId: "ParallelSplitDuplicate001",
+      sourcePortId: "out-branch-1",
+      targetId: "BranchShared001",
+    },
+    {
+      sourceId: "ParallelSplitDuplicate001",
+      sourcePortId: "out-branch-2",
+      targetId: "BranchShared001",
+    },
+  ]);
   expect(result.warnings).toEqual([]);
 });
 
