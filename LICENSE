@@ -35,6 +35,9 @@ The following dependencies have licenses that may impose additional restrictions
    - GPL-3.0 URL: https://www.gnu.org/licenses/gpl-3.0.en.html
    - LGPL-3.0 URL: https://www.gnu.org/licenses/lgpl-3.0.en.html
 
+3. **ROBOT** Licensed under the 3-Clause BSD License (BSD-3-Clause)
+   - BSD 3-Clause URL: https://opensource.org/license/bsd-3-clause
+
 Please ensure that you comply with the terms of these licenses when using, 
 distributing, or modifying the code from these dependencies. 
 
