@@ -73,10 +73,29 @@ def get_class_tree(category, filename):
     return jsonify(class_tree)
 
 
+@ontology_api.route("/onto/<category>/<filename>/subclasses", methods=["GET"])
+def get_subclasses_by_iri(category, filename):
+    try:
+        subclasses = get_ontology_subclasses(
+            current_app.config,
+            category,
+            filename,
+            class_iri=request.args.get("classIri"),
+        )
+    except OntologyServiceError as exc:
+        return build_error_response(exc)
+    return jsonify(subclasses)
+
+
 @ontology_api.route("/onto/<category>/<filename>/<super_class>/subclasses", methods=["GET"])
 def get_subclasses(category, filename, super_class):
     try:
-        subclasses = get_ontology_subclasses(current_app.config, category, filename, super_class)
+        subclasses = get_ontology_subclasses(
+            current_app.config,
+            category,
+            filename,
+            class_name=super_class,
+        )
     except OntologyServiceError as exc:
         return build_error_response(exc)
     return jsonify(subclasses)

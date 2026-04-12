@@ -69,6 +69,41 @@ E-Mail: {m.winter, i.putri}@iat.rwth-aachen.de</rdfs:comment>
     
 
 
+    <!-- http://www.w3.org/2001/XMLSchema#string -->
+
+    <rdfs:Datatype rdf:about="http://www.w3.org/2001/XMLSchema#string"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#providesCapability -->
+
+    <owl:ObjectProperty rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#providesCapability">
+        <rdfs:domain rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Resource"/>
+        <rdfs:range rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Capability"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#requiresCapability -->
+
+    <owl:ObjectProperty rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#requiresCapability">
+        <rdfs:domain rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Process"/>
+        <rdfs:range rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Capability"/>
+    </owl:ObjectProperty>
+    
+
+
     <!-- 
     ///////////////////////////////////////////////////////////////////////////////////////
     //
@@ -135,7 +170,12 @@ E-Mail: {m.winter, i.putri}@iat.rwth-aachen.de</rdfs:comment>
 
     <!-- http://css.iat.rwth-aachen.de/OntoProCap#Capability -->
 
-    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Capability"/>
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Capability">
+        <rdfs:comment>Implementation-independent description of a function in industrial production to achieve an effect in the physical or virtual world. (Capability–Skill–Service (CSS) model)</rdfs:comment>
+        <rdfs:label xml:lang="en">Capability</rdfs:label>
+        <rdfs:label xml:lang="de">Fähigkeit</rdfs:label>
+        <rdfs:seeAlso>https://www.plattform-i40.de/IP/Redaktion/DE/Downloads/Publikation/CapabilitiesSkillsServices.html</rdfs:seeAlso>
+    </owl:Class>
     
 
 
@@ -168,7 +208,7 @@ E-Mail: {m.winter, i.putri}@iat.rwth-aachen.de</rdfs:comment>
     <!-- http://css.iat.rwth-aachen.de/OntoProCap#Combination -->
 
     <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Combination">
-        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TransformationCapability"/>
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Transformation"/>
         <rdfs:comment xml:lang="en">A combination in terms of unit operation means to get together different process steps to achieve a particular one.</rdfs:comment>
     </owl:Class>
     
@@ -205,7 +245,7 @@ E-Mail: {m.winter, i.putri}@iat.rwth-aachen.de</rdfs:comment>
     <!-- http://css.iat.rwth-aachen.de/OntoProCap#Conveying -->
 
     <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Conveying">
-        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TransportCapability"/>
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Transport"/>
         <owl:disjointWith rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Dosing"/>
     </owl:Class>
     
@@ -298,7 +338,7 @@ E-Mail: {m.winter, i.putri}@iat.rwth-aachen.de</rdfs:comment>
     <!-- http://css.iat.rwth-aachen.de/OntoProCap#Dosing -->
 
     <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Dosing">
-        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TransportCapability"/>
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Transport"/>
     </owl:Class>
     
 
@@ -360,7 +400,7 @@ E-Mail: {m.winter, i.putri}@iat.rwth-aachen.de</rdfs:comment>
     <!-- http://css.iat.rwth-aachen.de/OntoProCap#EnthalpyChange -->
 
     <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#EnthalpyChange">
-        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TransformationCapability"/>
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Transformation"/>
         <rdfs:comment xml:lang="en">EnthalpyChange in terms of unit operation considers a conversion of energy which often result in a change of the state of aggregation.</rdfs:comment>
     </owl:Class>
     
@@ -408,7 +448,7 @@ Leaching is the removal of a soluble fraction, in the form of a solution, from a
     <!-- http://css.iat.rwth-aachen.de/OntoProCap#Fragmentation -->
 
     <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Fragmentation">
-        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TransformationCapability"/>
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Transformation"/>
         <rdfs:comment xml:lang="en">Fragmentation in terms of unit operation is the breakup of solid material for further processing.</rdfs:comment>
     </owl:Class>
     
@@ -480,7 +520,7 @@ Leaching is the removal of a soluble fraction, in the form of a solution, from a
     <!-- http://css.iat.rwth-aachen.de/OntoProCap#HoldingTemperature -->
 
     <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#HoldingTemperature">
-        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#StorageCapability"/>
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Storage"/>
     </owl:Class>
     
 
@@ -683,9 +723,18 @@ Leaching is the removal of a soluble fraction, in the form of a solution, from a
     <!-- http://css.iat.rwth-aachen.de/OntoProCap#Process -->
 
     <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Process">
-        <rdfs:comment xml:lang="en">351-42-33, process, &lt;in control technology&gt;: &quot;complete set of interacting operations in a system by which matter, energy or information is transformed, transported or stored&quot;</rdfs:comment>
+        <rdfs:comment xml:lang="en">351-42-33, process, &lt;in control technology&gt;: &quot;complete set of interacting operations in a system by which matter, energy or information is transformed, transported or stored&quot; (IEC 60050)</rdfs:comment>
+        <rdfs:comment>A process describes the desired behavior of a process operator, by means of a solution neutral description of inputs and outputs. Products, energies, and information are converted into new products, energies, and information by a process operator. The process operator implements this conversion with the help of technical resources. (VDI 3682)</rdfs:comment>
+        <rdfs:comment>Equivalent to bfo:process.
+Process is an occurrent that has some temporal proper part and for some time, process has some material entity as participant. (Basic Formal Ontology (BFO))</rdfs:comment>
+        <rdfs:comment>Equivalent to prov:Activity.
+An activity is something that occurs over a period of time and acts upon or with entities; it may include consuming, processing, transforming, modifying, relocating, using, or generating entities. (Provenance Ontology (PROV-O))</rdfs:comment>
+        <rdfs:comment>Production-relevant activity at any level of granularity that might affect materials and is performed by resources. (Capability–Skill–Service (CSS) model)</rdfs:comment>
         <rdfs:label xml:lang="en">Process</rdfs:label>
         <rdfs:label xml:lang="de">Prozess</rdfs:label>
+        <rdfs:seeAlso>https://github.com/bfo-ontology/BFO-2020</rdfs:seeAlso>
+        <rdfs:seeAlso>https://www.plattform-i40.de/IP/Redaktion/DE/Downloads/Publikation/CapabilitiesSkillsServices.html</rdfs:seeAlso>
+        <rdfs:seeAlso>https://www.w3.org/TR/prov-o/#Activity</rdfs:seeAlso>
         <rdfs:seeAlso rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://www.electropedia.org/iev/iev.nsf/display?openform&amp;ievref=351-42-33</rdfs:seeAlso>
     </owl:Class>
     
@@ -705,6 +754,26 @@ Leaching is the removal of a soluble fraction, in the form of a solution, from a
     <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Rectification">
         <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Separation"/>
         <rdfs:comment xml:lang="en">Rectification is the separation of the constituents of a liquid mixture by successive distillations (partial vaporizations and condensations) and is obtained via the use of an integral of differential process. (Perry)</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Resource -->
+
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Resource">
+        <rdfs:comment>171-01-22, functional unit, &lt;in information processing&gt;: &quot;entity of hardware or software, or both, capable of accomplishing a specified purpose&quot;</rdfs:comment>
+        <rdfs:comment>Entity capable of performing functions specified as capabilities and potentially implemented as skills. [compare definition of “Functional Unit”] (Capability–Skill–Service (CSS) model)</rdfs:comment>
+        <rdfs:comment>Equivalent to bfo:continuant
+A continuant is an entity that persists, endures, or continues to exist through time while maintaining its identity. (Basic Formal Ontology (BFO))</rdfs:comment>
+        <rdfs:comment>Equivalent to prov:Entity
+An entity is a physical, digital, conceptual, or other kind of thing with some fixed aspects; entities may be real or imaginary. (Provenance Ontology (PROV-O))</rdfs:comment>
+        <rdfs:comment>The technical resource is able to implement certain processes and is an abstract description of a system. (VDI 3682-1)</rdfs:comment>
+        <rdfs:label xml:lang="en">Resource</rdfs:label>
+        <rdfs:label xml:lang="de">Ressource</rdfs:label>
+        <rdfs:seeAlso>https://github.com/bfo-ontology/BFO-2020</rdfs:seeAlso>
+        <rdfs:seeAlso>https://www.electropedia.org/iev/iev.nsf/display?openform&amp;ievref=171-01-22</rdfs:seeAlso>
+        <rdfs:seeAlso>https://www.plattform-i40.de/IP/Redaktion/DE/Downloads/Publikation/CapabilitiesSkillsServices.html</rdfs:seeAlso>
+        <rdfs:seeAlso>https://www.w3.org/TR/prov-o/#Entity</rdfs:seeAlso>
     </owl:Class>
     
 
@@ -730,7 +799,7 @@ Leaching is the removal of a soluble fraction, in the form of a solution, from a
     <!-- http://css.iat.rwth-aachen.de/OntoProCap#Separation -->
 
     <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Separation">
-        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#TransformationCapability"/>
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Transformation"/>
         <rdfs:comment xml:lang="en">Separation in terms of unit operation means to achieve single components of a mixture by means of physical of chemical phenomenon.</rdfs:comment>
     </owl:Class>
     
@@ -799,9 +868,9 @@ Leaching is the removal of a soluble fraction, in the form of a solution, from a
     
 
 
-    <!-- http://css.iat.rwth-aachen.de/OntoProCap#StorageCapability -->
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Storage -->
 
-    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#StorageCapability">
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Storage">
         <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Capability"/>
         <rdfs:comment xml:lang="en">Capability to store materials, energy or information.</rdfs:comment>
         <rdfs:comment xml:lang="de">Fähigkeit, Stoffe, Energie oder Informationen zu speichern.</rdfs:comment>
@@ -812,7 +881,7 @@ Leaching is the removal of a soluble fraction, in the form of a solution, from a
     <!-- http://css.iat.rwth-aachen.de/OntoProCap#Storing -->
 
     <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Storing">
-        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#StorageCapability"/>
+        <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Storage"/>
     </owl:Class>
     
 
@@ -886,9 +955,9 @@ Leaching is the removal of a soluble fraction, in the form of a solution, from a
     
 
 
-    <!-- http://css.iat.rwth-aachen.de/OntoProCap#TransformationCapability -->
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Transformation -->
 
-    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#TransformationCapability">
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Transformation">
         <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Capability"/>
         <rdfs:comment xml:lang="en">Capability to change the properties of a material, energy or information flow (e.g. temperature, chemical composition, position).</rdfs:comment>
         <rdfs:comment xml:lang="de">Fähigkeit, Eigenschaften eines Stoff-, Energie- oder Informationsstroms zu ändern (z.B. Temperatur, chemische Zusammensetzung, Position).</rdfs:comment>
@@ -896,9 +965,9 @@ Leaching is the removal of a soluble fraction, in the form of a solution, from a
     
 
 
-    <!-- http://css.iat.rwth-aachen.de/OntoProCap#TransportCapability -->
+    <!-- http://css.iat.rwth-aachen.de/OntoProCap#Transport -->
 
-    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#TransportCapability">
+    <owl:Class rdf:about="http://css.iat.rwth-aachen.de/OntoProCap#Transport">
         <rdfs:subClassOf rdf:resource="http://css.iat.rwth-aachen.de/OntoProCap#Capability"/>
         <rdfs:comment xml:lang="en">Capability to transport substances, energy or information.</rdfs:comment>
         <rdfs:comment xml:lang="de">Fähigkeit, Stoffe, Energie oder Informationen zu transportieren.</rdfs:comment>

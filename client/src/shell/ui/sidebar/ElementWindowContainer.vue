@@ -30,7 +30,13 @@
             </svg>
           </button>
         </div>
-        <Recursive_component :items="group.items" :indentationLevel="0" :classes="elementClass" />
+        <Recursive_component
+          :items="group.items"
+          :indentationLevel="0"
+          :classes="elementClass"
+          :graphNodes="group.graphNodes"
+          :itemDefaults="group.itemDefaults"
+        />
       </div>
     </div>
   </div>
@@ -91,12 +97,20 @@ function normalizeImportedGroup(payload) {
 
   let items = [];
   let title = 'Imported Elements';
+  let graphNodes = null;
+  let itemDefaults = {};
 
   if (Array.isArray(payload)) {
     items = payload;
   } else if (Array.isArray(payload.items)) {
     items = payload.items;
     if (payload.title) title = payload.title;
+    if (payload.graphNodes && typeof payload.graphNodes === 'object') {
+      graphNodes = payload.graphNodes;
+    }
+    if (payload.itemDefaults && typeof payload.itemDefaults === 'object') {
+      itemDefaults = { ...payload.itemDefaults };
+    }
   }
 
   if (!Array.isArray(items) || items.length === 0) return null;
@@ -104,7 +118,9 @@ function normalizeImportedGroup(payload) {
   return {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     title: title.toString().trim() || 'Imported Elements',
-    items: clonePackages(items)
+    items: clonePackages(items),
+    graphNodes,
+    itemDefaults,
   };
 }
 

@@ -29,6 +29,34 @@ function createOntologyFile(contents, filename, type = "application/octet-stream
   return new File([contents], filename, { type });
 }
 
+function createDeferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+function createOntologyClassGraph(rootIris, nodes) {
+  return {
+    rootIris,
+    nodes,
+  };
+}
+
+function createOntologyGraphNode({ iri, name, label = "", childIris = [], parentIris = [] }) {
+  return {
+    iri,
+    name,
+    label,
+    childIris,
+    parentIris,
+    otherInformation: [],
+  };
+}
+
 describe("GeneralAddDialog", () => {
   beforeEach(() => {
     mockClient.get.mockReset();
@@ -52,6 +80,43 @@ describe("GeneralAddDialog", () => {
     await flushPromises();
 
     expect(mockClient.get).toHaveBeenCalledWith("/onto/materials");
+  });
+
+  it("shows an ontology loading message while ontologies are loading", async () => {
+    const deferredOntologies = createDeferred();
+
+    mockClient.get.mockImplementation((url) => {
+      if (url === "/onto/materials") {
+        return deferredOntologies.promise;
+      }
+      if (url === "/onto/materials/materials.owl/class-tree") {
+        return Promise.resolve({
+          data: createOntologyClassGraph(
+            ["http://example.com/material#MaterialRoot"],
+            {
+              "http://example.com/material#MaterialRoot": createOntologyGraphNode({
+                iri: "http://example.com/material#MaterialRoot",
+                name: "MaterialRoot",
+              }),
+            }
+          ),
+        });
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+
+    const wrapper = mountDialog("Materials");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Loading ontologies from server. Large ontology files can take some time.");
+    expect(wrapper.find(".ontology-loading-note").exists()).toBe(true);
+    expect(wrapper.find("#ontoSelect").attributes("disabled")).toBeDefined();
+
+    deferredOntologies.resolve({ data: ["materials.owl"] });
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain("Loading ontologies from server. Large ontology files can take some time.");
+    expect(wrapper.vm.current_ontology).toBe("materials.owl");
   });
 
   it("shows a Turtle precheck hint and enables upload", async () => {
@@ -114,7 +179,15 @@ describe("GeneralAddDialog", () => {
       }
       if (url === "/onto/processes/uploaded.owl/class-tree") {
         return Promise.resolve({
-          data: [{ name: "ProcessRoot", children: [] }],
+          data: createOntologyClassGraph(
+            ["http://example.com/process#ProcessRoot"],
+            {
+              "http://example.com/process#ProcessRoot": createOntologyGraphNode({
+                iri: "http://example.com/process#ProcessRoot",
+                name: "ProcessRoot",
+              }),
+            }
+          ),
         });
       }
       return Promise.reject(new Error(`Unexpected GET ${url}`));
@@ -153,16 +226,24 @@ describe("GeneralAddDialog", () => {
     );
     expect(wrapper.vm.current_ontology).toBe("uploaded.owl");
     expect(wrapper.vm.current_super_class).toBe("ProcessRoot");
+    expect(wrapper.vm.current_super_class_iri).toBe("http://example.com/process#ProcessRoot");
     expect(wrapper.text()).toContain("Stored as uploaded.owl");
   });
 
-  it("emits subclasses loaded from the categorized endpoint", async () => {
-    const subclassesPayload = [
-      {
+  it("emits imported ontology groups from the loaded process class graph", async () => {
+    const processGraphNodes = {
+      "http://example.com/process#ProcessRoot": createOntologyGraphNode({
+        iri: "http://example.com/process#ProcessRoot",
         name: "ProcessRoot",
-        children: [{ name: "Mixing", children: [] }],
-      },
-    ];
+        label: "Process Root",
+        childIris: ["http://example.com/process#Mixing"],
+      }),
+      "http://example.com/process#Mixing": createOntologyGraphNode({
+        iri: "http://example.com/process#Mixing",
+        name: "Mixing",
+        parentIris: ["http://example.com/process#ProcessRoot"],
+      }),
+    };
 
     mockClient.get.mockImplementation((url) => {
       if (url === "/onto/processes") {
@@ -170,11 +251,11 @@ describe("GeneralAddDialog", () => {
       }
       if (url === "/onto/processes/process.owl/class-tree") {
         return Promise.resolve({
-          data: [{ name: "ProcessRoot", children: [] }],
+          data: createOntologyClassGraph(
+            ["http://example.com/process#ProcessRoot"],
+            processGraphNodes
+          ),
         });
-      }
-      if (url === "/onto/processes/process.owl/ProcessRoot/subclasses") {
-        return Promise.resolve({ data: subclassesPayload });
       }
       return Promise.reject(new Error(`Unexpected GET ${url}`));
     });
@@ -188,17 +269,40 @@ describe("GeneralAddDialog", () => {
     expect(wrapper.emitted("add")).toBeTruthy();
     expect(wrapper.emitted("add")[0][0]).toEqual({
       title: "process",
-      items: subclassesPayload,
+      items: [
+        {
+          iri: "http://example.com/process#ProcessRoot",
+          name: "Process Root",
+          displayName: "Process Root",
+          ontologyClassName: "ProcessRoot",
+          label: "Process Root",
+          childIris: ["http://example.com/process#Mixing"],
+          otherInformation: [],
+          children: [],
+          childrenLoaded: false,
+          expanded: false,
+        },
+      ],
+      graphNodes: processGraphNodes,
+      itemDefaults: {},
     });
   });
 
-  it("normalizes imported material ontology items for workspace drag and drop", async () => {
-    const subclassesPayload = [
-      {
+  it("emits material ontology imports with sidebar defaults and graph references", async () => {
+    const materialGraphNodes = {
+      "http://example.com/material#MaterialRoot": createOntologyGraphNode({
+        iri: "http://example.com/material#MaterialRoot",
         name: "MaterialRoot",
-        children: [{ name: "Copper", children: [] }],
-      },
-    ];
+        label: "Material Root",
+        childIris: ["http://example.com/material#Copper"],
+      }),
+      "http://example.com/material#Copper": createOntologyGraphNode({
+        iri: "http://example.com/material#Copper",
+        name: "Copper",
+        label: "Copper",
+        parentIris: ["http://example.com/material#MaterialRoot"],
+      }),
+    };
 
     mockClient.get.mockImplementation((url) => {
       if (url === "/onto/materials") {
@@ -206,11 +310,11 @@ describe("GeneralAddDialog", () => {
       }
       if (url === "/onto/materials/materials.owl/class-tree") {
         return Promise.resolve({
-          data: [{ name: "MaterialRoot", children: [] }],
+          data: createOntologyClassGraph(
+            ["http://example.com/material#MaterialRoot"],
+            materialGraphNodes
+          ),
         });
-      }
-      if (url === "/onto/materials/materials.owl/MaterialRoot/subclasses") {
-        return Promise.resolve({ data: subclassesPayload });
       }
       return Promise.reject(new Error(`Unexpected GET ${url}`));
     });
@@ -226,19 +330,25 @@ describe("GeneralAddDialog", () => {
       title: "materials",
       items: [
         {
-          name: "MaterialRoot",
+          iri: "http://example.com/material#MaterialRoot",
+          name: "Material Root",
+          displayName: "Material Root",
+          ontologyClassName: "MaterialRoot",
+          label: "Material Root",
+          childIris: ["http://example.com/material#Copper"],
           type: MATERIAL_CONTAINER_TYPE,
           materialElementType: "Input",
-          children: [
-            {
-              name: "Copper",
-              type: MATERIAL_CONTAINER_TYPE,
-              materialElementType: "Input",
-              children: [],
-            },
-          ],
+          otherInformation: [],
+          children: [],
+          childrenLoaded: false,
+          expanded: false,
         },
       ],
+      graphNodes: materialGraphNodes,
+      itemDefaults: {
+        type: MATERIAL_CONTAINER_TYPE,
+        materialElementType: "Input",
+      },
     });
   });
 
@@ -253,7 +363,15 @@ describe("GeneralAddDialog", () => {
       }
       if (url === "/onto/materials/materials.owl/class-tree") {
         return Promise.resolve({
-          data: [{ name: "MaterialRoot", children: [] }],
+          data: createOntologyClassGraph(
+            ["http://example.com/material#MaterialRoot"],
+            {
+              "http://example.com/material#MaterialRoot": createOntologyGraphNode({
+                iri: "http://example.com/material#MaterialRoot",
+                name: "MaterialRoot",
+              }),
+            }
+          ),
         });
       }
       return Promise.reject(new Error(`Unexpected GET ${url}`));
@@ -264,33 +382,56 @@ describe("GeneralAddDialog", () => {
 
     expect(wrapper.vm.current_ontology).toBe("materials.owl");
     expect(wrapper.vm.current_super_class).toBe("MaterialRoot");
+    expect(wrapper.vm.current_super_class_iri).toBe("http://example.com/material#MaterialRoot");
 
     await wrapper.vm.readServerOntologies();
     await flushPromises();
 
     expect(wrapper.vm.current_ontology).toBe("materials.owl");
     expect(wrapper.vm.current_super_class).toBe("MaterialRoot");
+    expect(wrapper.vm.current_super_class_iri).toBe("http://example.com/material#MaterialRoot");
     expect(wrapper.text()).toContain("Failed to load ontologies from the server.");
     expect(wrapper.find("#add_elements_button").attributes("disabled")).toBeUndefined();
   });
 
-  it("renders the superclass selection as a tree and removes the relation field", async () => {
+  it("renders ontology labels and initially selects the first root with children", async () => {
     mockClient.get.mockImplementation((url) => {
       if (url === "/onto/processes") {
         return Promise.resolve({ data: ["OntoProCap.owl"] });
       }
       if (url === "/onto/processes/OntoProCap.owl/class-tree") {
         return Promise.resolve({
-          data: [
+          data: createOntologyClassGraph(
+            [
+              "http://example.com/process#LeafRoot",
+              "http://example.com/process#Capability",
+              "http://example.com/process#Process",
+            ],
             {
-              name: "Capability",
-              children: [{ name: "Absorption", children: [] }],
-            },
-            {
-              name: "Process",
-              children: [],
-            },
-          ],
+              "http://example.com/process#LeafRoot": createOntologyGraphNode({
+                iri: "http://example.com/process#LeafRoot",
+                name: "LeafRoot",
+                label: "Leaf Root",
+              }),
+              "http://example.com/process#Capability": createOntologyGraphNode({
+                iri: "http://example.com/process#Capability",
+                name: "Capability",
+                label: "Capability Label",
+                childIris: ["http://example.com/process#Absorption"],
+              }),
+              "http://example.com/process#Absorption": createOntologyGraphNode({
+                iri: "http://example.com/process#Absorption",
+                name: "Absorption",
+                label: "Absorption Label",
+                parentIris: ["http://example.com/process#Capability"],
+              }),
+              "http://example.com/process#Process": createOntologyGraphNode({
+                iri: "http://example.com/process#Process",
+                name: "Process",
+                label: "Process Label",
+              }),
+            }
+          ),
         });
       }
       return Promise.reject(new Error(`Unexpected GET ${url}`));
@@ -299,11 +440,52 @@ describe("GeneralAddDialog", () => {
     const wrapper = mountDialog("Processes");
     await flushPromises();
 
-    expect(wrapper.text()).toContain("Capability");
-    expect(wrapper.text()).toContain("Process");
+    expect(wrapper.text()).toContain("Leaf Root");
+    expect(wrapper.text()).toContain("Capability Label");
+    expect(wrapper.text()).toContain("Process Label");
     expect(wrapper.text()).not.toContain("Name of Relation");
     expect(wrapper.find("#relation_input").exists()).toBe(false);
-    expect(wrapper.vm.current_super_class).toBe("Capability");
+    expect(wrapper.vm.current_super_class).toBe("Capability Label");
+    expect(wrapper.vm.current_super_class_iri).toBe("http://example.com/process#Capability");
+    expect(wrapper.vm.ontology_class_tree[0].expanded).toBe(false);
+    expect(wrapper.vm.ontology_class_tree[1].expanded).toBe(true);
+    expect(wrapper.vm.ontology_class_tree[2].expanded).toBe(false);
+  });
+
+  it("shows a loading state while ontology classes are loading", async () => {
+    const deferredClassTree = createDeferred();
+
+    mockClient.get.mockImplementation((url) => {
+      if (url === "/onto/processes") {
+        return Promise.resolve({ data: ["slow.owl"] });
+      }
+      if (url === "/onto/processes/slow.owl/class-tree") {
+        return deferredClassTree.promise;
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+
+    const wrapper = mountDialog("Processes");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Loading ontology classes. Large ontologies can take some time.");
+    expect(wrapper.find("#add_elements_button").attributes("disabled")).toBeDefined();
+
+    deferredClassTree.resolve({
+      data: createOntologyClassGraph(
+        ["http://example.com/process#Capability"],
+        {
+          "http://example.com/process#Capability": createOntologyGraphNode({
+            iri: "http://example.com/process#Capability",
+            name: "Capability",
+          }),
+        }
+      ),
+    });
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain("Loading ontology classes. Large ontologies can take some time.");
+    expect(wrapper.vm.current_super_class_iri).toBe("http://example.com/process#Capability");
   });
 
   it("deletes the selected ontology via the server API", async () => {
@@ -314,7 +496,15 @@ describe("GeneralAddDialog", () => {
       }
       if (url === "/onto/processes/process.owl/class-tree") {
         return Promise.resolve({
-          data: [{ name: "ProcessRoot", children: [] }],
+          data: createOntologyClassGraph(
+            ["http://example.com/process#ProcessRoot"],
+            {
+              "http://example.com/process#ProcessRoot": createOntologyGraphNode({
+                iri: "http://example.com/process#ProcessRoot",
+                name: "ProcessRoot",
+              }),
+            }
+          ),
         });
       }
       return Promise.reject(new Error(`Unexpected GET ${url}`));

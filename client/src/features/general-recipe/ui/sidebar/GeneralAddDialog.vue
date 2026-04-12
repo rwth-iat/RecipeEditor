@@ -6,7 +6,7 @@
         class="dialog-header-icon-btn"
         @click="readServerOntologies"
         title="Reload ontologies"
-        :disabled="isLoadingOntologies || isUploadingOntology || isDeletingOntology"
+        :disabled="isLoadingOntologies || isLoadingOntologyTree || isUploadingOntology || isDeletingOntology"
       >
         <span class="reload">&#x21bb;</span>
       </button>
@@ -19,7 +19,7 @@
           v-model="current_ontology"
           name="Ontology"
           id="ontoSelect"
-          :disabled="isLoadingOntologies || isUploadingOntology"
+          :disabled="isLoadingOntologies || isLoadingOntologyTree || isUploadingOntology"
           @change="onOntologyChange"
         >
           <option
@@ -46,6 +46,10 @@
           </svg>
         </button>
       </div>
+
+      <p v-if="isLoadingOntologies" class="ontology-tree-empty ontology-loading-note" aria-live="polite">
+        Loading ontologies from server. Large ontology files can take some time.
+      </p>
 
       <div v-if="dialogMessage" class="dialog-status" :class="dialogStatusClass">
         {{ dialogMessage }}
@@ -88,15 +92,19 @@
       <div v-else-if="current_ontology">
         <label>Select Name of Superclass: </label>
         <div class="ontology-tree-panel">
+          <p v-if="isLoadingOntologyTree" class="ontology-tree-empty">
+            Loading ontology classes. Large ontologies can take some time.
+          </p>
           <OntologyClassTree
-            v-if="ontology_class_tree.length > 0"
+            v-else-if="ontology_class_tree.length > 0"
             :items="ontology_class_tree"
-            :selectedClass="current_super_class"
+            :selectedClassIri="current_super_class_iri"
             @select="selectSuperClass"
+            @toggle="toggleOntologyTreeNode"
           />
           <p v-else class="ontology-tree-empty">No ontology classes are available for selection.</p>
         </div>
-        <div v-if="current_super_class" class="dialog-status dialog-status--info selected-superclass-note">
+        <div v-if="current_super_class_iri" class="dialog-status dialog-status--info selected-superclass-note">
           Selected superclass: {{ current_super_class }}
         </div>
         <div class="row-flex">
@@ -104,8 +112,8 @@
             id="add_elements_button"
             class="button"
             type="button"
-            :disabled="!current_super_class"
-            @click="addElements(current_ontology, current_super_class)"
+            :disabled="!current_super_class_iri || isLoadingOntologyTree"
+            @click="addElements(current_ontology, current_super_class_iri, current_super_class)"
           >
             <h5>ADD {{ element_type }} to Sidebar</h5>
           </button>
@@ -131,13 +139,16 @@ const emit = defineEmits(['close', 'add']);
 
 const current_ontology = ref('');
 const current_super_class = ref('');
+const current_super_class_iri = ref('');
 const serverOntologies = ref([]);
+const ontology_class_graph = ref(createEmptyOntologyClassGraph());
 const ontology_class_tree = ref([]);
 const current_file = ref(null);
 const fileInput = ref(null);
 
 const isUploadingOntology = ref(false);
 const isLoadingOntologies = ref(false);
+const isLoadingOntologyTree = ref(false);
 const isDeletingOntology = ref(false);
 
 const dialogMessage = ref('');
@@ -171,6 +182,7 @@ const canDeleteSelectedOntology = computed(() => (
   Boolean(current_ontology.value) &&
   current_ontology.value !== 'new' &&
   !isLoadingOntologies.value &&
+  !isLoadingOntologyTree.value &&
   !isUploadingOntology.value &&
   !isDeletingOntology.value
 ));
@@ -213,34 +225,215 @@ function normalizeOntologyListPayload(payload) {
     : [];
 }
 
-function normalizeOntologyClassTreePayload(payload) {
-  return Array.isArray(payload)
-    ? payload.map(item => normalizeOntologyClassTreeNode(item, true))
-    : [];
-}
-
-function normalizeOntologyClassTreeNode(item, expanded = false) {
-  const normalizedChildren = Array.isArray(item?.children)
-    ? item.children.map(child => normalizeOntologyClassTreeNode(child))
-    : [];
-
+function createEmptyOntologyClassGraph() {
   return {
-    ...item,
-    expanded,
-    children: normalizedChildren,
+    rootIris: [],
+    nodes: {},
   };
 }
 
-function collectClassNames(tree, classNames = []) {
-  for (const node of Array.isArray(tree) ? tree : []) {
-    if (typeof node?.name === 'string' && node.name.trim()) {
-      classNames.push(node.name);
+function normalizeOntologyClassGraphPayload(payload) {
+  const normalizedGraph = createEmptyOntologyClassGraph();
+  const rawNodes = payload?.nodes && typeof payload.nodes === 'object' ? payload.nodes : {};
+
+  for (const [rawNodeKey, rawNodeValue] of Object.entries(rawNodes)) {
+    const iri = normalizeOntologyClassIri(rawNodeValue?.iri || rawNodeKey);
+    if (!iri) {
+      continue;
     }
-    if (Array.isArray(node?.children) && node.children.length > 0) {
-      collectClassNames(node.children, classNames);
-    }
+
+    normalizedGraph.nodes[iri] = {
+      iri,
+      name: normalizeOntologyClassName(rawNodeValue, iri),
+      label: normalizeOntologyClassLabel(rawNodeValue),
+      childIris: normalizeOntologyClassIriList(rawNodeValue?.childIris),
+      parentIris: normalizeOntologyClassIriList(rawNodeValue?.parentIris),
+      otherInformation: Array.isArray(rawNodeValue?.otherInformation) ? rawNodeValue.otherInformation : [],
+    };
   }
-  return classNames;
+
+  for (const node of Object.values(normalizedGraph.nodes)) {
+    node.childIris = node.childIris.filter(childIri => normalizedGraph.nodes[childIri] && childIri !== node.iri);
+    node.parentIris = node.parentIris.filter(parentIri => normalizedGraph.nodes[parentIri] && parentIri !== node.iri);
+  }
+
+  normalizedGraph.rootIris = normalizeOntologyClassIriList(payload?.rootIris)
+    .filter(rootIri => normalizedGraph.nodes[rootIri]);
+
+  if (normalizedGraph.rootIris.length === 0) {
+    normalizedGraph.rootIris = Object.values(normalizedGraph.nodes)
+      .filter(node => node.parentIris.length === 0)
+      .map(node => node.iri);
+  }
+
+  return normalizedGraph;
+}
+
+function normalizeOntologyClassIri(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeOntologyClassIriList(values) {
+  const normalizedValues = [];
+  const seen = new Set();
+
+  for (const value of Array.isArray(values) ? values : []) {
+    const normalizedValue = normalizeOntologyClassIri(value);
+    if (!normalizedValue || seen.has(normalizedValue)) {
+      continue;
+    }
+    seen.add(normalizedValue);
+    normalizedValues.push(normalizedValue);
+  }
+
+  return normalizedValues;
+}
+
+function normalizeOntologyClassName(item, iri) {
+  if (typeof item?.name === 'string' && item.name.trim()) {
+    return item.name.trim();
+  }
+
+  if (!iri) {
+    return 'Unnamed Class';
+  }
+
+  const iriSuffix = iri.includes('#')
+    ? iri.split('#').pop()
+    : iri.split('/').pop();
+
+  return iriSuffix || 'Unnamed Class';
+}
+
+function normalizeOntologyClassLabel(item) {
+  return typeof item?.label === 'string' ? item.label.trim() : '';
+}
+
+function getOntologyClassDisplayText(item, iri) {
+  const label = normalizeOntologyClassLabel(item);
+  if (label) {
+    return label;
+  }
+
+  return normalizeOntologyClassName(item, iri);
+}
+
+function createOntologyTreeNodeFromGraph(graph, iri) {
+  const normalizedIri = normalizeOntologyClassIri(iri);
+  const graphNode = graph?.nodes?.[normalizedIri];
+  if (!graphNode) {
+    return null;
+  }
+
+  return {
+    iri: normalizedIri,
+    name: graphNode.name,
+    label: graphNode.label,
+    displayName: getOntologyClassDisplayText(graphNode, normalizedIri),
+    childIris: [...graphNode.childIris],
+    parentIris: [...graphNode.parentIris],
+    otherInformation: [...graphNode.otherInformation],
+    children: [],
+    childrenLoaded: false,
+    expanded: false,
+  };
+}
+
+function buildOntologyClassTreeFromGraph(graph, preferredSelectionIri = '') {
+  const items = normalizeOntologyClassIriList(graph?.rootIris)
+    .map(rootIri => createOntologyTreeNodeFromGraph(graph, rootIri))
+    .filter(Boolean);
+
+  const selectedIri = graph?.nodes?.[normalizeOntologyClassIri(preferredSelectionIri)]
+    ? normalizeOntologyClassIri(preferredSelectionIri)
+    : (
+        items.find(item => Array.isArray(item?.childIris) && item.childIris.length > 0)?.iri ||
+        items[0]?.iri ||
+        ''
+      );
+
+  if (selectedIri) {
+    applyExpandedSelectionPath(items, selectedIri, graph);
+  }
+
+  return {
+    items,
+    selectedNode: selectedIri
+      ? {
+          iri: selectedIri,
+          name: getOntologyClassDisplayText(graph.nodes[selectedIri], selectedIri),
+        }
+      : null,
+  };
+}
+
+function ensureOntologyTreeNodeChildrenLoaded(item, graph = ontology_class_graph.value) {
+  if (!item || typeof item !== 'object' || item.childrenLoaded) {
+    return;
+  }
+
+  item.children = normalizeOntologyClassIriList(item.childIris)
+    .map(childIri => createOntologyTreeNodeFromGraph(graph, childIri))
+    .filter(Boolean);
+  item.childrenLoaded = true;
+}
+
+function collapseOntologyClassTree(items) {
+  for (const item of Array.isArray(items) ? items : []) {
+    item.expanded = false;
+    collapseOntologyClassTree(item.children);
+  }
+}
+
+function findOntologyClassPathIris(graph, selectedIri) {
+  const normalizedIri = normalizeOntologyClassIri(selectedIri);
+  if (!normalizedIri || !graph?.nodes?.[normalizedIri]) {
+    return [];
+  }
+
+  const pathIris = [];
+  const visited = new Set();
+  let currentIri = normalizedIri;
+
+  while (currentIri && graph.nodes[currentIri] && !visited.has(currentIri)) {
+    visited.add(currentIri);
+    pathIris.push(currentIri);
+    currentIri = graph.nodes[currentIri].parentIris.find(parentIri => graph.nodes[parentIri]) || '';
+  }
+
+  return pathIris.reverse();
+}
+
+function findOntologyTreeItemByIri(items, iri) {
+  return (Array.isArray(items) ? items : []).find(item => item?.iri === iri) || null;
+}
+
+function applyExpandedSelectionPath(items, selectedIri, graph = ontology_class_graph.value) {
+  const pathIris = findOntologyClassPathIris(graph, selectedIri);
+  let currentItems = Array.isArray(items) ? items : [];
+
+  for (const pathIri of pathIris) {
+    const currentItem = findOntologyTreeItemByIri(currentItems, pathIri);
+    if (!currentItem) {
+      break;
+    }
+
+    currentItem.expanded = true;
+    ensureOntologyTreeNodeChildrenLoaded(currentItem, graph);
+    currentItems = currentItem.children;
+  }
+}
+
+function toggleOntologyTreeNode(item) {
+  if (!item || typeof item !== 'object') {
+    return;
+  }
+
+  if (!item.expanded) {
+    ensureOntologyTreeNodeChildrenLoaded(item);
+  }
+
+  item.expanded = !item.expanded;
 }
 
 function extractErrorMessage(error, fallbackMessage) {
@@ -335,8 +528,10 @@ async function readServerOntologies({ preferredOntology = null } = {}) {
   resetMessages();
   const previousOntologies = [...serverOntologies.value];
   const previousOntology = current_ontology.value;
+  const previousClassGraph = ontology_class_graph.value;
   const previousClassTree = [...ontology_class_tree.value];
   const previousSuperClass = current_super_class.value;
+  const previousSuperClassIri = current_super_class_iri.value;
   try {
     const response = await client.get(getOntologyBasePath());
     const normalizedOntologies = normalizeOntologyListPayload(response.data);
@@ -357,8 +552,10 @@ async function readServerOntologies({ preferredOntology = null } = {}) {
   } catch (error) {
     serverOntologies.value = previousOntologies;
     current_ontology.value = previousOntology || (previousOntologies[0] || 'new');
+    ontology_class_graph.value = previousClassGraph;
     ontology_class_tree.value = previousClassTree;
     current_super_class.value = previousSuperClass;
+    current_super_class_iri.value = previousSuperClassIri;
     setDialogMessage(
       extractErrorMessage(error, 'Failed to load ontologies from the server.'),
       'error'
@@ -373,26 +570,39 @@ async function readServerOntologies({ preferredOntology = null } = {}) {
 
 async function readServerOntoClassTree(name) {
   if (!name || name === 'new') {
+    ontology_class_graph.value = createEmptyOntologyClassGraph();
     ontology_class_tree.value = [];
     current_super_class.value = '';
+    current_super_class_iri.value = '';
     return;
   }
 
+  const preferredSelectionIri = current_super_class_iri.value;
+  isLoadingOntologyTree.value = true;
+  ontology_class_graph.value = createEmptyOntologyClassGraph();
+  ontology_class_tree.value = [];
+  current_super_class.value = '';
+  current_super_class_iri.value = '';
+
   try {
     const response = await client.get(`${getOntologyBasePath()}/${encodeURIComponent(name)}/class-tree`);
-    const normalizedTree = normalizeOntologyClassTreePayload(response.data);
-    const availableClasses = collectClassNames(normalizedTree);
-    ontology_class_tree.value = normalizedTree;
-    current_super_class.value = availableClasses.includes(current_super_class.value)
-      ? current_super_class.value
-      : (normalizedTree[0]?.name || '');
+    const normalizedGraph = normalizeOntologyClassGraphPayload(response.data);
+    const normalizedTreePayload = buildOntologyClassTreeFromGraph(normalizedGraph, preferredSelectionIri);
+    ontology_class_graph.value = normalizedGraph;
+    ontology_class_tree.value = normalizedTreePayload.items;
+    current_super_class.value = normalizedTreePayload.selectedNode?.name || '';
+    current_super_class_iri.value = normalizedTreePayload.selectedNode?.iri || '';
   } catch (error) {
+    ontology_class_graph.value = createEmptyOntologyClassGraph();
     ontology_class_tree.value = [];
     current_super_class.value = '';
+    current_super_class_iri.value = '';
     setDialogMessage(
       extractErrorMessage(error, `Failed to load the class tree for ontology '${name}'.`),
       'error'
     );
+  } finally {
+    isLoadingOntologyTree.value = false;
   }
 }
 
@@ -401,36 +611,64 @@ async function onOntologyChange() {
   await readServerOntoClassTree(current_ontology.value);
 }
 
-function selectSuperClass(className) {
-  current_super_class.value = className;
-}
-
-function normalizeImportedOntologyNode(item) {
-  if (!item || typeof item !== 'object') {
-    return item;
+function selectSuperClass(selection) {
+  const selectedIri = normalizeOntologyClassIri(selection?.iri);
+  if (!selectedIri) {
+    return;
   }
 
-  const normalizedChildren = Array.isArray(item.children)
-    ? item.children.map(child => normalizeImportedOntologyNode(child))
-    : [];
+  current_super_class.value = getOntologyClassDisplayText(selection, selectedIri);
+  current_super_class_iri.value = selectedIri;
+  collapseOntologyClassTree(ontology_class_tree.value);
+  applyExpandedSelectionPath(ontology_class_tree.value, selectedIri);
+}
 
-  const normalizedItem = {
-    ...item,
-    children: normalizedChildren,
-  };
-
+function createImportedOntologyItemDefaults() {
   if (ontologyCategory.value === 'materials') {
-    normalizedItem.type = MATERIAL_CONTAINER_TYPE;
-    normalizedItem.materialElementType = normalizedItem.materialElementType || 'Input';
+    return {
+      type: MATERIAL_CONTAINER_TYPE,
+      materialElementType: 'Input',
+    };
   }
 
-  return normalizedItem;
+  return {};
 }
 
-function normalizeImportedOntologyItems(items) {
-  return Array.isArray(items)
-    ? items.map(item => normalizeImportedOntologyNode(item))
-    : [];
+function createImportedOntologySidebarItem(graph, iri) {
+  const normalizedIri = normalizeOntologyClassIri(iri);
+  const graphNode = graph?.nodes?.[normalizedIri];
+  if (!graphNode) {
+    return null;
+  }
+
+  const displayName = getOntologyClassDisplayText(graphNode, normalizedIri);
+  return {
+    ...createImportedOntologyItemDefaults(),
+    iri: normalizedIri,
+    name: displayName,
+    displayName,
+    ontologyClassName: graphNode.name,
+    label: graphNode.label,
+    childIris: [...graphNode.childIris],
+    otherInformation: [...graphNode.otherInformation],
+    children: [],
+    childrenLoaded: false,
+    expanded: false,
+  };
+}
+
+function buildImportedOntologyPayload(ontoName, classIri) {
+  const importedItem = createImportedOntologySidebarItem(ontology_class_graph.value, classIri);
+  if (!importedItem) {
+    return null;
+  }
+
+  return {
+    title: getFileNameWithoutExtension(ontoName),
+    items: [importedItem],
+    graphNodes: ontology_class_graph.value.nodes,
+    itemDefaults: createImportedOntologyItemDefaults(),
+  };
 }
 
 async function assessSelectedFile(file) {
@@ -546,25 +784,21 @@ async function deleteSelectedOntology() {
   }
 }
 
-async function addOnto(ontoName, className) {
-  try {
-    const response = await client.get(
-      `${getOntologyBasePath()}/${encodeURIComponent(ontoName)}/${encodeURIComponent(className)}/subclasses`
-    );
-    emit('add', {
-      title: getFileNameWithoutExtension(ontoName),
-      items: normalizeImportedOntologyItems(response.data)
-    });
-  } catch (error) {
+function addOnto(ontoName, classIri, className) {
+  const importedPayload = buildImportedOntologyPayload(ontoName, classIri);
+  if (!importedPayload) {
     setDialogMessage(
-      extractErrorMessage(error, `Failed to load subclasses for '${className}'.`),
+      `Failed to add ontology class '${className || classIri}' to the sidebar.`,
       'error'
     );
+    return;
   }
+
+  emit('add', importedPayload);
 }
 
-function addElements(ontoName, className) {
-  addOnto(ontoName, className);
+function addElements(ontoName, classIri, className) {
+  addOnto(ontoName, classIri, className);
 }
 
 onMounted(() => {
@@ -586,6 +820,10 @@ onMounted(() => {
   margin: 0;
   color: #c8d1dc;
   font-size: 0.95rem;
+}
+
+.ontology-loading-note {
+  margin-top: 10px;
 }
 
 .selected-superclass-note {

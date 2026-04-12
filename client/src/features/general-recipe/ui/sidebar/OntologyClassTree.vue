@@ -2,19 +2,19 @@
   <ul class="ontology-class-tree" role="tree">
     <li
       v-for="item in items"
-      :key="item.name"
+      :key="item.iri || item.name"
       class="ontology-class-tree__item"
       role="treeitem"
       :aria-expanded="hasChildItems(item) ? String(Boolean(item.expanded)) : undefined"
-      :aria-selected="String(selectedClass === item.name)"
+      :aria-selected="String(selectedClassIri === item.iri)"
     >
       <div class="ontology-class-tree__row" :style="getIndentationStyle(indentationLevel)">
         <button
           v-if="hasChildItems(item)"
           type="button"
           class="ontology-class-tree__toggle"
-          :aria-label="item.expanded ? `Collapse ${item.name}` : `Expand ${item.name}`"
-          @click.stop="toggleItem(item)"
+          :aria-label="item.expanded ? `Collapse ${item.displayName || item.label || item.name}` : `Expand ${item.displayName || item.label || item.name}`"
+          @click.stop="$emit('toggle', item)"
         >
           {{ item.expanded ? '-' : '+' }}
         </button>
@@ -23,19 +23,20 @@
         <button
           type="button"
           class="ontology-class-tree__label"
-          :class="{ 'ontology-class-tree__label--selected': selectedClass === item.name }"
-          @click.stop="$emit('select', item.name)"
+          :class="{ 'ontology-class-tree__label--selected': selectedClassIri === item.iri }"
+          @click.stop="$emit('select', { iri: item.iri, name: item.name, label: item.label, displayName: item.displayName })"
         >
-          {{ item.name }}
+          {{ item.displayName || item.label || item.name }}
         </button>
       </div>
 
       <OntologyClassTree
         v-if="item.expanded && hasChildItems(item)"
         :items="item.children"
-        :selectedClass="selectedClass"
+        :selectedClassIri="selectedClassIri"
         :indentationLevel="indentationLevel + 1"
         @select="$emit('select', $event)"
+        @toggle="$emit('toggle', $event)"
       />
     </li>
   </ul>
@@ -51,7 +52,7 @@ export default defineComponent({
       type: Array,
       default: () => [],
     },
-    selectedClass: {
+    selectedClassIri: {
       type: String,
       default: '',
     },
@@ -60,16 +61,15 @@ export default defineComponent({
       default: 0,
     },
   },
-  emits: ['select'],
+  emits: ['select', 'toggle'],
   components: {
     OntologyClassTree: () => import('./OntologyClassTree.vue'),
   },
   methods: {
     hasChildItems(item) {
-      return Array.isArray(item?.children) && item.children.length > 0;
-    },
-    toggleItem(item) {
-      item.expanded = !item.expanded;
+      const hasLoadedChildren = Array.isArray(item?.children) && item.children.length > 0;
+      const hasGraphChildren = Array.isArray(item?.childIris) && item.childIris.length > 0;
+      return hasLoadedChildren || hasGraphChildren;
     },
     getIndentationStyle(level) {
       return {
@@ -124,7 +124,7 @@ export default defineComponent({
 }
 
 .ontology-class-tree__bullet::before {
-  content: '•';
+  content: '\2022';
 }
 
 .ontology-class-tree__label {

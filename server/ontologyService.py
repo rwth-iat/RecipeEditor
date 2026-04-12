@@ -41,6 +41,10 @@ class OntologyValidationError(OntologyServiceError):
     status_code = 422
 
 
+class OntologyRequestError(OntologyServiceError):
+    status_code = 400
+
+
 @dataclass(frozen=True)
 class UploadOntologyResult:
     filename: str
@@ -145,21 +149,32 @@ def load_ontology(config: dict, category: str, filename: str):
 
 def get_ontology_classes(config: dict, category: str, filename: str) -> list[str]:
     ontology = load_ontology(config, category, filename)
-    return sorted(cls.name for cls in ontology.classes())
+    return [
+        get_ontology_class_display_name(cls)
+        for cls in get_sorted_ontology_classes(ontology)
+    ]
 
 
-def get_ontology_class_tree(config: dict, category: str, filename: str) -> list[dict]:
+def get_ontology_class_tree(config: dict, category: str, filename: str) -> dict:
     ontology = load_ontology(config, category, filename)
-    return [recursively_add_subclasses(root_class) for root_class in get_root_classes(ontology)]
+    return build_normalized_ontology_class_graph(ontology)
 
 
-def get_ontology_subclasses(config: dict, category: str, filename: str, super_class: str) -> list[dict]:
+def get_ontology_subclasses(
+    config: dict,
+    category: str,
+    filename: str,
+    *,
+    class_iri: str | None = None,
+    class_name: str | None = None,
+) -> list[dict]:
     ontology = load_ontology(config, category, filename)
-    super_class_obj = ontology[super_class]
-    if super_class_obj is None:
-        raise OntologyNotFoundError(
-            f"Superclass '{super_class}' was not found in ontology '{filename}'."
-        )
+    super_class_obj = resolve_ontology_class(
+        ontology,
+        filename,
+        class_iri=class_iri,
+        class_name=class_name,
+    )
     return [recursively_add_subclasses(super_class_obj)]
 
 
@@ -334,34 +349,313 @@ def build_temp_ontology_iri(stem: str) -> str:
 
 
 def get_root_classes(ontology) -> list:
-    classes = sorted(list(ontology.classes()), key=lambda cls: cls.name)
+    classes = get_sorted_ontology_classes(ontology)
     class_set = set(classes)
     roots = []
 
     for cls in classes:
-        direct_named_parents = [
-            parent
-            for parent in cls.is_a
-            if parent in class_set and getattr(parent, "name", None)
-        ]
+        direct_named_parents = get_direct_named_parents(cls, class_set)
         if not direct_named_parents:
             roots.append(cls)
 
     return roots
 
 
+def sort_ontology_classes(classes: Iterable[object]) -> list[object]:
+    return sorted(
+        list(classes),
+        key=lambda cls: (
+            get_ontology_class_display_name(cls).lower(),
+            normalize_ontology_class_iri(getattr(cls, "iri", "")),
+        ),
+    )
+
+
+def get_sorted_ontology_classes(ontology) -> list:
+    return sort_ontology_classes(ontology.classes())
+
+
+def get_direct_named_parents(cls, classes_or_class_set: Iterable[object]) -> list[object]:
+    class_set = classes_or_class_set if isinstance(classes_or_class_set, set) else set(classes_or_class_set)
+    direct_named_parents = [
+        parent
+        for parent in cls.is_a
+        if parent in class_set and get_ontology_class_display_name(parent)
+    ]
+    return sort_ontology_classes(direct_named_parents)
+
+
+def build_ontology_class_other_information(cls) -> list[dict]:
+    return [{
+        "otherInfoID": "SemanticDescription",
+        "description": ["URI referencing the Ontology Class definition"],
+        "otherValue": [{
+            "valueString": iri_to_uri(cls.iri),
+            "dataType": "uriReference",
+            "key": str(cls),
+        }],
+    }]
+
+
+def get_ontology_class_label(cls) -> str:
+    raw_label = getattr(cls, "label", None)
+    if isinstance(raw_label, list):
+        for value in raw_label:
+            label = str(value).strip()
+            if label:
+                return label
+        return ""
+
+    if isinstance(raw_label, str):
+        return raw_label.strip()
+
+    return ""
+
+
+def is_deprecated_ontology_class(cls) -> bool:
+    raw_value = getattr(cls, "deprecated", False)
+    if isinstance(raw_value, list):
+        return any(str(value).strip().lower() == "true" for value in raw_value)
+
+    if isinstance(raw_value, str):
+        return raw_value.strip().lower() == "true"
+
+    return bool(raw_value)
+
+
+def get_direct_named_parent_map(classes: list[object]) -> dict[str, list[object]]:
+    class_set = set(classes)
+    parent_map = {}
+
+    for cls in classes:
+        class_iri = normalize_ontology_class_iri(getattr(cls, "iri", ""))
+        if not class_iri:
+            continue
+        parent_map[class_iri] = get_direct_named_parents(cls, class_set)
+
+    return parent_map
+
+
+def get_nearest_visible_named_parents(
+    cls,
+    direct_parent_map: dict[str, list[object]],
+    visible_classes: set[object],
+    cache: dict[str, list[object]],
+    path: set[str] | None = None,
+) -> list[object]:
+    class_iri = normalize_ontology_class_iri(getattr(cls, "iri", ""))
+    if not class_iri:
+        return []
+
+    if class_iri in cache:
+        return cache[class_iri]
+
+    active_path = path or set()
+    if class_iri in active_path:
+        return []
+
+    active_path.add(class_iri)
+    visible_parents = []
+
+    for parent in direct_parent_map.get(class_iri, []):
+        parent_iri = normalize_ontology_class_iri(getattr(parent, "iri", ""))
+        if not parent_iri:
+            continue
+
+        if parent in visible_classes:
+            visible_parents.append(parent)
+            continue
+
+        visible_parents.extend(
+            get_nearest_visible_named_parents(
+                parent,
+                direct_parent_map,
+                visible_classes,
+                cache,
+                active_path,
+            )
+        )
+
+    active_path.remove(class_iri)
+    visible_parents = deduplicate_ontology_classes(visible_parents)
+    cache[class_iri] = visible_parents
+    return visible_parents
+
+
+def deduplicate_ontology_classes(classes: Iterable[object]) -> list[object]:
+    ordered_unique_classes = []
+    seen_iris = set()
+
+    for cls in classes:
+        class_iri = normalize_ontology_class_iri(getattr(cls, "iri", ""))
+        if not class_iri or class_iri in seen_iris:
+            continue
+        seen_iris.add(class_iri)
+        ordered_unique_classes.append(cls)
+
+    return sort_ontology_classes(ordered_unique_classes)
+
+
+def build_normalized_ontology_class_graph(ontology) -> dict:
+    all_classes = get_sorted_ontology_classes(ontology)
+    classes = [cls for cls in all_classes if not is_deprecated_ontology_class(cls)]
+    visible_class_set = set(classes)
+    direct_parent_map = get_direct_named_parent_map(all_classes)
+    visible_parent_cache = {}
+    parent_map = {}
+    child_map = {}
+    root_iris = []
+
+    for cls in classes:
+        class_iri = normalize_ontology_class_iri(getattr(cls, "iri", ""))
+        if not class_iri:
+            continue
+
+        direct_named_parents = get_nearest_visible_named_parents(
+            cls,
+            direct_parent_map,
+            visible_class_set,
+            visible_parent_cache,
+        )
+        parent_map[class_iri] = direct_named_parents
+        child_map.setdefault(class_iri, [])
+
+        if not direct_named_parents:
+            root_iris.append(class_iri)
+
+        for parent in direct_named_parents:
+            parent_iri = normalize_ontology_class_iri(getattr(parent, "iri", ""))
+            if not parent_iri:
+                continue
+            child_map.setdefault(parent_iri, []).append(cls)
+
+    nodes = {}
+    for cls in classes:
+        class_iri = normalize_ontology_class_iri(getattr(cls, "iri", ""))
+        if not class_iri:
+            continue
+
+        child_iris = [
+            normalize_ontology_class_iri(getattr(child, "iri", ""))
+            for child in sort_ontology_classes(child_map.get(class_iri, []))
+        ]
+        parent_iris = [
+            normalize_ontology_class_iri(getattr(parent, "iri", ""))
+            for parent in parent_map.get(class_iri, [])
+        ]
+
+        nodes[class_iri] = {
+            "iri": class_iri,
+            "name": get_ontology_class_display_name(cls),
+            "label": get_ontology_class_label(cls),
+            "childIris": deduplicate_ontology_iris(child_iris),
+            "parentIris": deduplicate_ontology_iris(parent_iris),
+            "otherInformation": build_ontology_class_other_information(cls),
+        }
+
+    root_iris = deduplicate_ontology_iris(root_iris)
+    hidden_root_iris = {
+        root_iri
+        for root_iri in root_iris
+        if root_iri in nodes and not nodes[root_iri]["label"] and not nodes[root_iri]["childIris"]
+    }
+
+    if hidden_root_iris:
+        root_iris = [root_iri for root_iri in root_iris if root_iri not in hidden_root_iris]
+        for hidden_root_iri in hidden_root_iris:
+            nodes.pop(hidden_root_iri, None)
+
+    return {
+        "rootIris": root_iris,
+        "nodes": nodes,
+    }
+
+
+def get_ontology_class_display_name(cls) -> str:
+    name = getattr(cls, "name", None)
+    if isinstance(name, str) and name.strip():
+        return name.strip()
+
+    iri = normalize_ontology_class_iri(getattr(cls, "iri", ""))
+    if iri:
+        fragment = iri.rsplit("#", 1)[-1]
+        if fragment != iri:
+            return fragment
+        return iri.rsplit("/", 1)[-1]
+
+    return str(cls).split(".")[-1]
+
+
+def normalize_ontology_class_iri(value: str | None) -> str:
+    normalized = (value or "").strip()
+    return iri_to_uri(normalized) if normalized else ""
+
+
+def deduplicate_ontology_iris(values: Iterable[str]) -> list[str]:
+    ordered_unique_iris = []
+    seen = set()
+
+    for value in values:
+        normalized_iri = normalize_ontology_class_iri(value)
+        if not normalized_iri or normalized_iri in seen:
+            continue
+        seen.add(normalized_iri)
+        ordered_unique_iris.append(normalized_iri)
+
+    return ordered_unique_iris
+
+
+def build_ontology_class_lookups(ontology) -> tuple[dict[str, object], dict[str, list[object]]]:
+    iri_lookup = {}
+    name_lookup = {}
+
+    for cls in ontology.classes():
+        normalized_iri = normalize_ontology_class_iri(getattr(cls, "iri", ""))
+        if normalized_iri:
+            iri_lookup[normalized_iri] = cls
+
+        display_name = get_ontology_class_display_name(cls)
+        if display_name:
+            name_lookup.setdefault(display_name, []).append(cls)
+
+    return iri_lookup, name_lookup
+
+
+def resolve_ontology_class(
+    ontology,
+    filename: str,
+    *,
+    class_iri: str | None = None,
+    class_name: str | None = None,
+):
+    iri_lookup, name_lookup = build_ontology_class_lookups(ontology)
+
+    normalized_iri = normalize_ontology_class_iri(class_iri)
+    if normalized_iri:
+        resolved = iri_lookup.get(normalized_iri)
+        if resolved is None:
+            raise OntologyNotFoundError(
+                f"Superclass '{normalized_iri}' was not found in ontology '{filename}'."
+            )
+        return resolved
+
+    normalized_name = (class_name or "").strip()
+    if normalized_name:
+        matches = name_lookup.get(normalized_name, [])
+        if not matches:
+            raise OntologyNotFoundError(
+                f"Superclass '{normalized_name}' was not found in ontology '{filename}'."
+            )
+        return matches[0]
+
+    raise OntologyRequestError("Missing required query parameter 'classIri'.")
+
+
 def recursively_add_subclasses(super_class):
     output_obj = {
-        "name": str(super_class).split(".")[-1],
-        "otherInformation": [{
-            "otherInfoID": "SemanticDescription",
-            "description": ["URI referencing the Ontology Class definition"],
-            "otherValue": [{
-                "valueString": iri_to_uri(super_class.iri),
-                "dataType": "uriReference",
-                "key": str(super_class),
-            }],
-        }],
+        "name": get_ontology_class_display_name(super_class),
+        "iri": normalize_ontology_class_iri(getattr(super_class, "iri", "")),
+        "otherInformation": build_ontology_class_other_information(super_class),
         "children": [],
     }
     if super_class is None:

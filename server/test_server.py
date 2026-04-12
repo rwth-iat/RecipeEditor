@@ -57,6 +57,58 @@ Class: :Copper
     SubClassOf: :MaterialRoot
 """
 
+EXTERNAL_NAMESPACE_RDFXML = """<?xml version="1.0"?>
+<rdf:RDF xmlns="http://example.com/graph#"
+     xml:base="http://example.com/graph"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
+    <owl:Ontology rdf:about="http://example.com/graph"/>
+    <owl:Class rdf:about="http://example.com/external#ExternalRoot"/>
+    <owl:Class rdf:about="http://example.com/external#ExternalChild">
+        <rdfs:subClassOf rdf:resource="http://example.com/external#ExternalRoot"/>
+    </owl:Class>
+</rdf:RDF>
+"""
+
+FILTERED_CLASS_TREE_RDFXML = """<?xml version="1.0"?>
+<rdf:RDF xmlns="http://example.com/filter#"
+     xml:base="http://example.com/filter"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#">
+    <owl:Ontology rdf:about="http://example.com/filter"/>
+    <owl:Class rdf:about="http://example.com/filter#VisibleRoot">
+        <rdfs:label>Visible Root</rdfs:label>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.com/filter#VisibleChild">
+        <rdfs:subClassOf rdf:resource="http://example.com/filter#VisibleRoot"/>
+        <rdfs:label>Visible Child</rdfs:label>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.com/filter#DeprecatedRoot">
+        <owl:deprecated rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</owl:deprecated>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.com/filter#DeprecatedIntermediate">
+        <rdfs:subClassOf rdf:resource="http://example.com/filter#VisibleRoot"/>
+        <rdfs:label>Deprecated Intermediate</rdfs:label>
+        <owl:deprecated rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</owl:deprecated>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.com/filter#Grandchild">
+        <rdfs:subClassOf rdf:resource="http://example.com/filter#DeprecatedIntermediate"/>
+        <rdfs:label>Grandchild</rdfs:label>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.com/filter#UnlabeledLeafRoot"/>
+    <owl:Class rdf:about="http://example.com/filter#UnlabeledRoot">
+        <rdfs:label></rdfs:label>
+    </owl:Class>
+    <owl:Class rdf:about="http://example.com/filter#ChildOfUnlabeledRoot">
+        <rdfs:subClassOf rdf:resource="http://example.com/filter#UnlabeledRoot"/>
+        <rdfs:label>Child Of Unlabeled Root</rdfs:label>
+    </owl:Class>
+</rdf:RDF>
+"""
+
 
 def write_ontology(path, contents):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -215,8 +267,51 @@ def test_get_onto_class_tree(client):
     assert response.status_code == 200
 
     response_obj = response.get_json()
-    assert response_obj[0]["name"] == "ProcessRoot"
-    assert response_obj[0]["children"][0]["name"] == "Mixing"
+    assert response_obj["rootIris"] == ["http://example.com/process#ProcessRoot"]
+    assert response_obj["nodes"]["http://example.com/process#ProcessRoot"]["name"] == "ProcessRoot"
+    assert response_obj["nodes"]["http://example.com/process#ProcessRoot"]["label"] == ""
+    assert response_obj["nodes"]["http://example.com/process#ProcessRoot"]["iri"] == "http://example.com/process#ProcessRoot"
+    assert response_obj["nodes"]["http://example.com/process#ProcessRoot"]["childIris"] == ["http://example.com/process#Mixing"]
+    assert response_obj["nodes"]["http://example.com/process#Mixing"]["name"] == "Mixing"
+    assert response_obj["nodes"]["http://example.com/process#Mixing"]["label"] == ""
+    assert response_obj["nodes"]["http://example.com/process#Mixing"]["iri"] == "http://example.com/process#Mixing"
+    assert response_obj["nodes"]["http://example.com/process#Mixing"]["parentIris"] == ["http://example.com/process#ProcessRoot"]
+
+
+def test_get_onto_class_tree_filters_deprecated_classes_and_unlabeled_leaf_roots(client, app):
+    ontology_root = Path(app.config["ONTOLOGY_UPLOAD_ROOT"])
+    write_ontology(
+        ontology_root / "materials" / "FilteredTree.owl",
+        FILTERED_CLASS_TREE_RDFXML,
+    )
+
+    response = client.get('/onto/materials/FilteredTree.owl/class-tree')
+    assert response.status_code == 200
+
+    response_obj = response.get_json()
+    assert set(response_obj["rootIris"]) == {
+        "http://example.com/filter#VisibleRoot",
+        "http://example.com/filter#UnlabeledRoot",
+    }
+
+    assert "http://example.com/filter#DeprecatedRoot" not in response_obj["nodes"]
+    assert "http://example.com/filter#DeprecatedIntermediate" not in response_obj["nodes"]
+    assert "http://example.com/filter#UnlabeledLeafRoot" not in response_obj["nodes"]
+
+    visible_root = response_obj["nodes"]["http://example.com/filter#VisibleRoot"]
+    assert visible_root["label"] == "Visible Root"
+    assert set(visible_root["childIris"]) == {
+        "http://example.com/filter#VisibleChild",
+        "http://example.com/filter#Grandchild",
+    }
+
+    grandchild = response_obj["nodes"]["http://example.com/filter#Grandchild"]
+    assert grandchild["label"] == "Grandchild"
+    assert grandchild["parentIris"] == ["http://example.com/filter#VisibleRoot"]
+
+    unlabeled_root = response_obj["nodes"]["http://example.com/filter#UnlabeledRoot"]
+    assert unlabeled_root["label"] == ""
+    assert unlabeled_root["childIris"] == ["http://example.com/filter#ChildOfUnlabeledRoot"]
 
 
 def test_delete_ontology(client, app):
@@ -236,7 +331,56 @@ def test_get_onto_subclasses(client):
 
     response_obj = response.get_json()
     assert response_obj[0]["name"] == "ProcessRoot"
+    assert response_obj[0]["iri"] == "http://example.com/process#ProcessRoot"
     assert response_obj[0]["children"][0]["name"] == "Mixing"
+
+
+def test_get_onto_subclasses_by_class_iri(client):
+    response = client.get(
+        '/onto/processes/ProcessOntology.owl/subclasses',
+        query_string={'classIri': 'http://example.com/process#ProcessRoot'}
+    )
+    assert response.status_code == 200
+
+    response_obj = response.get_json()
+    assert response_obj[0]["name"] == "ProcessRoot"
+    assert response_obj[0]["iri"] == "http://example.com/process#ProcessRoot"
+    assert response_obj[0]["children"][0]["name"] == "Mixing"
+
+
+def test_get_onto_subclasses_by_class_iri_with_external_namespace(client, app):
+    ontology_root = Path(app.config["ONTOLOGY_UPLOAD_ROOT"])
+    write_ontology(
+        ontology_root / "processes" / "ExternalNamespace.owl",
+        EXTERNAL_NAMESPACE_RDFXML,
+    )
+
+    response = client.get(
+        '/onto/processes/ExternalNamespace.owl/subclasses',
+        query_string={'classIri': 'http://example.com/external#ExternalRoot'}
+    )
+    assert response.status_code == 200
+
+    response_obj = response.get_json()
+    assert response_obj[0]["name"] == "ExternalRoot"
+    assert response_obj[0]["iri"] == "http://example.com/external#ExternalRoot"
+    assert response_obj[0]["children"][0]["name"] == "ExternalChild"
+
+
+def test_get_onto_subclasses_by_class_iri_requires_query_parameter(client):
+    response = client.get('/onto/processes/ProcessOntology.owl/subclasses')
+    assert response.status_code == 400
+
+    payload = response.get_json()
+    assert "classIri" in payload["error"]
+
+
+def test_get_onto_subclasses_by_class_iri_returns_404_for_unknown_iri(client):
+    response = client.get(
+        '/onto/processes/ProcessOntology.owl/subclasses',
+        query_string={'classIri': 'http://example.com/process#UnknownRoot'}
+    )
+    assert response.status_code == 404
 
 
 def test_post_onto_rdfxml_processes(client):

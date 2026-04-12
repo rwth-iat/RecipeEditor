@@ -36,7 +36,7 @@
               -add .stop so that only the selected child is dragged (prevent event propagation)
     -->
     <li v-for="item in items" 
-        :key="item.name" 
+        :key="item.iri || item.name" 
         @click.stop="handleItemClick(item, $event)"
         @dragstart.stop="$event => dragstart($event, item, classes)"
         draggable="true"
@@ -52,7 +52,7 @@
           </span>
           <span v-else class="tree-bullet" aria-hidden="true"></span>
         </span>
-        <span>{{ item.name }}</span> 
+        <span>{{ getDisplayName(item) }}</span> 
       </div> 
       <!--
         for the new recursice component we increase the intendationLevel to get that tree view
@@ -62,20 +62,22 @@
         :items="item.children"
         :indentationLevel="indentationLevel + 1"
         :classes=classes
+        :graphNodes="graphNodes"
+        :itemDefaults="itemDefaults"
       />
     </li>
   </ul>
 </template>
 
 <script>
-import { defineComponent, reactive } from 'vue';
+import { defineComponent } from 'vue';
 
 export default defineComponent({
   name: 'RecursiveComponent',
   props: {
     items: {
-      type: Object,
-      required: true,
+      type: Array,
+      default: () => [],
     },
     indentationLevel: {
       type: Number,
@@ -84,31 +86,87 @@ export default defineComponent({
     classes:{
       type: String,
       default: "process_element sidebar_element"
-    }
+    },
+    graphNodes: {
+      type: Object,
+      default: null,
+    },
+    itemDefaults: {
+      type: Object,
+      default: () => ({}),
+    },
   },
   components: {
     RecursiveComponent: () => import('./RecursiveComponent.vue'),
   },
-  setup() {
-    const state = reactive({
-      toggleItem(item) {
-        item.expanded = !item.expanded;
-      },
-      hasChildItems(item) {
-        return item.children && item.children.length > 0;
-      },
-      handleItemClick(item, event) {
-        if (!state.hasChildItems(item)) return;
-        state.toggleItem(item);
-        event.stopPropagation();
-      },
-    });
-
-    return {
-      ...state,
-    };
-  },
   methods: {
+    getDisplayName(item) {
+      if (typeof item?.displayName === 'string' && item.displayName.trim()) {
+        return item.displayName.trim();
+      }
+      if (typeof item?.label === 'string' && item.label.trim()) {
+        return item.label.trim();
+      }
+      if (typeof item?.name === 'string' && item.name.trim()) {
+        return item.name.trim();
+      }
+      return 'Unnamed';
+    },
+    createGraphChildItem(graphNode) {
+      if (!graphNode || typeof graphNode !== 'object') {
+        return null;
+      }
+
+      const displayName = this.getDisplayName(graphNode);
+      return {
+        ...graphNode,
+        ...this.itemDefaults,
+        name: displayName,
+        displayName,
+        ontologyClassName: graphNode.name,
+        childIris: Array.isArray(graphNode.childIris) ? [...graphNode.childIris] : [],
+        children: [],
+        childrenLoaded: false,
+        expanded: false,
+      };
+    },
+    ensureChildrenLoaded(item) {
+      if (
+        !item ||
+        typeof item !== 'object' ||
+        item.childrenLoaded ||
+        !Array.isArray(item.childIris) ||
+        item.childIris.length === 0 ||
+        !this.graphNodes
+      ) {
+        return;
+      }
+
+      item.children = item.childIris
+        .map((childIri) => this.createGraphChildItem(this.graphNodes?.[childIri]))
+        .filter(Boolean);
+      item.childrenLoaded = true;
+    },
+    toggleItem(item) {
+      item.expanded = !item.expanded;
+    },
+    hasChildItems(item) {
+      const hasLoadedChildren = Array.isArray(item?.children) && item.children.length > 0;
+      const hasGraphChildren = Array.isArray(item?.childIris) && item.childIris.length > 0;
+      return hasLoadedChildren || hasGraphChildren;
+    },
+    handleItemClick(item, event) {
+      if (!this.hasChildItems(item)) {
+        return;
+      }
+
+      if (!item.expanded) {
+        this.ensureChildrenLoaded(item);
+      }
+
+      this.toggleItem(item);
+      event.stopPropagation();
+    },
     getIndentationStyle(level) {
       const indentation = level * 20; // Adjust the indentation size as needed
       return {
@@ -117,7 +175,6 @@ export default defineComponent({
     },
     //when starting to drag an element safe attributes to datatransfer, to access them in workspace component
     dragstart(event, item, classes){
-      console.log("dragstart")
       event.dataTransfer.dropEffect = "copy"
       event.dataTransfer.effectAllowed = "copy"
       event.dataTransfer.setData("item", JSON.stringify(item))
