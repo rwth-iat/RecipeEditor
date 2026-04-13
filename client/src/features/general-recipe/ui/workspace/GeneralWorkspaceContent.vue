@@ -848,9 +848,7 @@ function deleteElement(item) {
     );
     if (elementRef !== undefined) {
         layoutObserver.unobserve(elementRef);
-        jsplumbInstance.value.removeAllEndpoints(elementRef);
-        jsplumbInstance.value.deleteConnectionsForElement(elementRef);
-        elementRef.remove();
+        jsplumbInstance.value?.unmanage?.(elementRef, false);
     }
 
     if (managedElements.value[item.id]) {
