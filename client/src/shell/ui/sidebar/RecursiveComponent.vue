@@ -35,7 +35,7 @@
               -add .preventDefault to enable own programmed drag and drop functionality
               -add .stop so that only the selected child is dragged (prevent event propagation)
     -->
-    <li v-for="item in items" 
+    <li v-for="item in sortedItems" 
         :key="item.iri || item.name" 
         @click.stop="handleItemClick(item, $event)"
         @dragstart.stop="$event => dragstart($event, item, classes)"
@@ -64,6 +64,7 @@
         :classes=classes
         :graphNodes="graphNodes"
         :itemDefaults="itemDefaults"
+        :sortMode="sortMode"
       />
     </li>
   </ul>
@@ -71,6 +72,11 @@
 
 <script>
 import { defineComponent } from 'vue';
+import {
+  ONTOLOGY_TREE_SORT_MODE_DEFAULT,
+  getOntologyTreeItemDisplayName,
+  sortOntologyTreeItems,
+} from '@/services/common/ontologyTreeSort';
 
 export default defineComponent({
   name: 'RecursiveComponent',
@@ -95,22 +101,22 @@ export default defineComponent({
       type: Object,
       default: () => ({}),
     },
+    sortMode: {
+      type: String,
+      default: ONTOLOGY_TREE_SORT_MODE_DEFAULT,
+    },
   },
   components: {
     RecursiveComponent: () => import('./RecursiveComponent.vue'),
   },
+  computed: {
+    sortedItems() {
+      return sortOntologyTreeItems(this.items, this.sortMode);
+    },
+  },
   methods: {
     getDisplayName(item) {
-      if (typeof item?.displayName === 'string' && item.displayName.trim()) {
-        return item.displayName.trim();
-      }
-      if (typeof item?.label === 'string' && item.label.trim()) {
-        return item.label.trim();
-      }
-      if (typeof item?.name === 'string' && item.name.trim()) {
-        return item.name.trim();
-      }
-      return 'Unnamed';
+      return getOntologyTreeItemDisplayName(item);
     },
     createGraphChildItem(graphNode) {
       if (!graphNode || typeof graphNode !== 'object') {

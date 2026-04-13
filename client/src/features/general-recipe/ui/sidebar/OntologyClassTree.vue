@@ -1,7 +1,7 @@
 <template>
   <ul class="ontology-class-tree" role="tree">
     <li
-      v-for="item in items"
+      v-for="item in sortedItems"
       :key="item.iri || item.name"
       class="ontology-class-tree__item"
       role="treeitem"
@@ -35,6 +35,7 @@
         :items="item.children"
         :selectedClassIri="selectedClassIri"
         :indentationLevel="indentationLevel + 1"
+        :sortMode="sortMode"
         @select="$emit('select', $event)"
         @toggle="$emit('toggle', $event)"
       />
@@ -44,6 +45,10 @@
 
 <script>
 import { defineComponent } from 'vue';
+import {
+  ONTOLOGY_TREE_SORT_MODE_DEFAULT,
+  sortOntologyTreeItems,
+} from '@/services/common/ontologyTreeSort';
 
 export default defineComponent({
   name: 'OntologyClassTree',
@@ -60,10 +65,19 @@ export default defineComponent({
       type: Number,
       default: 0,
     },
+    sortMode: {
+      type: String,
+      default: ONTOLOGY_TREE_SORT_MODE_DEFAULT,
+    },
   },
   emits: ['select', 'toggle'],
   components: {
     OntologyClassTree: () => import('./OntologyClassTree.vue'),
+  },
+  computed: {
+    sortedItems() {
+      return sortOntologyTreeItems(this.items, this.sortMode);
+    },
   },
   methods: {
     hasChildItems(item) {

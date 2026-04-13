@@ -91,6 +91,16 @@
 
       <div v-else-if="current_ontology">
         <label>Select Name of Superclass: </label>
+        <div class="ontology-sort-controls">
+          <span>Class order:</span>
+          <label class="ontology-sort-controls__option">
+            <input
+              v-model="isOntologyTreeAlphabetical"
+              type="checkbox"
+            />
+            <span>A-Z</span>
+          </label>
+        </div>
         <div class="ontology-tree-panel">
           <p v-if="isLoadingOntologyTree" class="ontology-tree-empty">
             Loading ontology classes. Large ontologies can take some time.
@@ -99,6 +109,7 @@
             v-else-if="ontology_class_tree.length > 0"
             :items="ontology_class_tree"
             :selectedClassIri="current_super_class_iri"
+            :sortMode="ontologyTreeSortMode"
             @select="selectSuperClass"
             @toggle="toggleOntologyTreeNode"
           />
@@ -129,6 +140,10 @@ import axios from 'axios';
 import AddDialogContainer from '@/shell/ui/sidebar/AddDialogContainer.vue';
 import OntologyClassTree from '@/features/general-recipe/ui/sidebar/OntologyClassTree.vue';
 import { MATERIAL_CONTAINER_TYPE } from '@/services/recipe/general-recipe/materials/materialContainerUtils';
+import {
+  ONTOLOGY_TREE_SORT_MODE_ALPHABETICAL,
+  ONTOLOGY_TREE_SORT_MODE_DEFAULT,
+} from '@/services/common/ontologyTreeSort';
 
 const props = defineProps({
   element_type: String
@@ -143,6 +158,7 @@ const current_super_class_iri = ref('');
 const serverOntologies = ref([]);
 const ontology_class_graph = ref(createEmptyOntologyClassGraph());
 const ontology_class_tree = ref([]);
+const ontologyTreeSortMode = ref(ONTOLOGY_TREE_SORT_MODE_DEFAULT);
 const current_file = ref(null);
 const fileInput = ref(null);
 
@@ -173,6 +189,14 @@ const ontologyCategoryLabel = computed(() => (
 
 const dialogStatusClass = computed(() => `dialog-status--${dialogStatus.value}`);
 const precheckStatusClass = computed(() => `dialog-status--${precheckStatus.value}`);
+const isOntologyTreeAlphabetical = computed({
+  get: () => ontologyTreeSortMode.value === ONTOLOGY_TREE_SORT_MODE_ALPHABETICAL,
+  set: (value) => {
+    ontologyTreeSortMode.value = value
+      ? ONTOLOGY_TREE_SORT_MODE_ALPHABETICAL
+      : ONTOLOGY_TREE_SORT_MODE_DEFAULT;
+  },
+});
 
 const canUploadOntology = computed(() => (
   Boolean(current_file.value) && isSelectedFileSupported.value && !isUploadingOntology.value
@@ -807,6 +831,28 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.ontology-sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  color: #e0e4ea;
+}
+
+.ontology-sort-controls__option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: #e0e4ea;
+}
+
+.ontology-sort-controls__option input {
+  width: auto;
+  height: auto;
+  margin: 0;
+}
+
 .ontology-tree-panel {
   max-height: 260px;
   overflow: auto;

@@ -30,12 +30,23 @@
             </svg>
           </button>
         </div>
+        <div v-if="hasSortableImportedTree(group)" class="imported-class-sort-controls">
+          <span>Class order:</span>
+          <label class="imported-class-sort-controls__option">
+            <input
+              v-model="group.sortAlphabetically"
+              type="checkbox"
+            />
+            <span>A-Z</span>
+          </label>
+        </div>
         <Recursive_component
           :items="group.items"
           :indentationLevel="0"
           :classes="elementClass"
           :graphNodes="group.graphNodes"
           :itemDefaults="group.itemDefaults"
+          :sortMode="group.sortAlphabetically ? ONTOLOGY_TREE_SORT_MODE_ALPHABETICAL : ONTOLOGY_TREE_SORT_MODE_DEFAULT"
         />
       </div>
     </div>
@@ -55,6 +66,10 @@
 import '@/shell/assets/main.scss';
 import { computed, ref, toRefs, watch } from 'vue';
 import Recursive_component from '@/shell/ui/sidebar/RecursiveComponent.vue';
+import {
+  ONTOLOGY_TREE_SORT_MODE_ALPHABETICAL,
+  ONTOLOGY_TREE_SORT_MODE_DEFAULT,
+} from '@/services/common/ontologyTreeSort';
 
 const props = defineProps({
   elementType: String,
@@ -121,6 +136,7 @@ function normalizeImportedGroup(payload) {
     items: clonePackages(items),
     graphNodes,
     itemDefaults,
+    sortAlphabetically: false,
   };
 }
 
@@ -132,6 +148,10 @@ function addElements(payload) {
 
 function removeImportedGroup(groupId) {
   importedElementGroups.value = importedElementGroups.value.filter(group => group.id !== groupId);
+}
+
+function hasSortableImportedTree(group) {
+  return Boolean(group?.graphNodes && Object.keys(group.graphNodes).length > 0);
 }
 
 const addElementsOpen = ref(false);
@@ -199,11 +219,32 @@ function onAddBtnClick() {
   padding: 4px;
 }
 
+.imported-class-sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;           /* Abstand zwischen "Class order:" und A-Z */
+  margin-top: -2px;     /* Abstand zur Überschrift darüber */
+  margin-bottom: 6px;  /* Abstand zum Baum darunter */
+  font-size: 0.9rem;   /* allgemeine Schriftgröße */
+}
+
+.imported-class-sort-controls__option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.imported-class-sort-controls__option input {
+  width: auto;
+  height: auto;
+  margin: 0;
+}
+
 .imported-elements-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px;
+  margin-bottom: 0px;
 }
 
 .imported-elements-header h3 {

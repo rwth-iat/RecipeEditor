@@ -452,6 +452,60 @@ describe("GeneralAddDialog", () => {
     expect(wrapper.vm.ontology_class_tree[2].expanded).toBe(false);
   });
 
+  it("switches the ontology tree between ontology order and alphabetical order", async () => {
+    mockClient.get.mockImplementation((url) => {
+      if (url === "/onto/materials") {
+        return Promise.resolve({ data: ["materials.owl"] });
+      }
+      if (url === "/onto/materials/materials.owl/class-tree") {
+        return Promise.resolve({
+          data: createOntologyClassGraph(
+            [
+              "http://example.com/material#Zulu",
+              "http://example.com/material#Alpha",
+              "http://example.com/material#Mike",
+            ],
+            {
+              "http://example.com/material#Zulu": createOntologyGraphNode({
+                iri: "http://example.com/material#Zulu",
+                name: "Zulu",
+                label: "Zulu",
+              }),
+              "http://example.com/material#Alpha": createOntologyGraphNode({
+                iri: "http://example.com/material#Alpha",
+                name: "Alpha",
+                label: "Alpha",
+              }),
+              "http://example.com/material#Mike": createOntologyGraphNode({
+                iri: "http://example.com/material#Mike",
+                name: "Mike",
+                label: "Mike",
+              }),
+            }
+          ),
+        });
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+
+    const wrapper = mountDialog("Materials");
+    await flushPromises();
+
+    const getRenderedLabels = () => wrapper
+      .findAll(".ontology-class-tree__label")
+      .map((node) => node.text());
+
+    expect(getRenderedLabels()).toEqual(["Zulu", "Alpha", "Mike"]);
+
+    await wrapper.find('.ontology-sort-controls input[type="checkbox"]').setValue(true);
+
+    expect(getRenderedLabels()).toEqual(["Alpha", "Mike", "Zulu"]);
+
+    await wrapper.find('.ontology-sort-controls input[type="checkbox"]').setValue(false);
+
+    expect(getRenderedLabels()).toEqual(["Zulu", "Alpha", "Mike"]);
+  });
+
   it("shows a loading state while ontology classes are loading", async () => {
     const deferredClassTree = createDeferred();
 
