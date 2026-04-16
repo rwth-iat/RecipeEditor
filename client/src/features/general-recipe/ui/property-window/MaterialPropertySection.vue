@@ -99,7 +99,7 @@
           >
             <button
               type="button"
-              class="button-with-border--red item-delete-button"
+              class="button-with-border--red item-delete-button material-property-delete-button"
               @click="removeMaterialSpecificationProperty(material, propertyIndex)"
               aria-label="Delete Material Property"
             >
@@ -356,6 +356,10 @@ function removeMaterialSpecificationProperty(material, index) {
   position: absolute;
   top: 10px;
   right: 10px;
+}
+
+.material-property-delete-button {
+  transform: translateY(-12px);
 }
 
 .material-property-section {
